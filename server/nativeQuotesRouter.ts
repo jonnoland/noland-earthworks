@@ -29,7 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
@@ -765,7 +765,7 @@ export const nativeQuotesRouter = router({
         ? measurements.map((measurement) => `${measurement.label}: ${measurement.value} ${measurement.unit}${measurement.notes ? ` (${measurement.notes})` : ""}`).join("; ")
         : "No measurements entered.";
       const visualContent = await buildEvidenceContent(ctx.user.id, evidence);
-      const prompt = `Review this Noland Earthworks quote as internal decision support for the owner. Return a concise, plain-language cost evaluation in no more than 120 words. Identify visible or recorded scope risks, access/terrain/vegetation questions, and whether the current rental-only margin appears thin, reasonable, or needs owner review. Do not recommend a final price, do not invent site conditions, and clearly state that this rental-only margin excludes labor, fuel, machine wear, overhead, taxes, and any other job costs.\n\nQuote total: $${(quote.totalCents / 100).toLocaleString("en-US")}\nInternal Cat rental/transport/tax cost: $${(rentalCostCents / 100).toLocaleString("en-US")}\nRental-only gross contribution: $${(rentalOnlyProfitCents / 100).toLocaleString("en-US")}\nRental-only margin: ${rentalOnlyMarginPct === null ? "not available" : `${rentalOnlyMarginPct}%`}\nService: ${quote.serviceType ?? "not recorded"}\nAcreage: ${quote.acreage ?? "not recorded"}\nSite measurements: ${measurementContext}\nInternal notes: ${quote.internalNotes ?? "none"}`;
+      const prompt = `Review this Noland Earthworks quote as internal decision support for the owner. Return a concise, plain-language cost evaluation in no more than 120 words plus up to five short cost flags. Consider potential missing labor, fuel, mobilization, machine-wear, access, and scope costs only when the supplied photos, measurements, or notes give a factual reason to verify them. For example, dense vegetation, visible slope, long travel/access constraints, or a large recorded area can justify a flag to confirm labor/fuel/mobilization. Do not invent site conditions, do not estimate dollars, and do not recommend a final price. The rental-only margin is not full job profit; it excludes labor, fuel, machine wear, overhead, taxes, and all other job costs.\n\nQuote total: $${(quote.totalCents / 100).toLocaleString("en-US")}\nInternal Cat rental/transport/tax cost: $${(rentalCostCents / 100).toLocaleString("en-US")}\nRental-only gross contribution: $${(rentalOnlyProfitCents / 100).toLocaleString("en-US")}\nRental-only margin: ${rentalOnlyMarginPct === null ? "not available" : `${rentalOnlyMarginPct}%`}\nService: ${quote.serviceType ?? "not recorded"}\nAcreage: ${quote.acreage ?? "not recorded"}\nSite measurements: ${measurementContext}\nInternal notes: ${quote.internalNotes ?? "none"}`;
       const result = await invokeLLM({
         model: "gemini-3-flash-preview",
         max_tokens: 1000,
@@ -780,8 +780,23 @@ export const nativeQuotesRouter = router({
             strict: true,
             schema: {
               type: "object",
-              properties: { summary: { type: "string" } },
-              required: ["summary"],
+              properties: {
+                summary: { type: "string" },
+                flags: {
+                  type: "array",
+                  maxItems: 5,
+                  items: {
+                    type: "object",
+                    properties: {
+                      category: { type: "string", enum: ["labor", "fuel", "mobilization", "machine_wear", "access", "scope"] },
+                      reason: { type: "string" },
+                    },
+                    required: ["category", "reason"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["summary", "flags"],
               additionalProperties: false,
             },
           },
@@ -790,14 +805,24 @@ export const nativeQuotesRouter = router({
       const rawContent = result.choices?.[0]?.message?.content ?? "{}";
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       let summary = "";
+      let flags: QuoteCostFlag[] = [];
       try {
-        summary = String(JSON.parse(stripCodeFence(raw)).summary ?? "").trim();
+        const parsed = JSON.parse(stripCodeFence(raw));
+        summary = String(parsed.summary ?? "").trim();
+        const allowedCategories = new Set<QuoteCostFlag["category"]>(["labor", "fuel", "mobilization", "machine_wear", "access", "scope"]);
+        flags = Array.isArray(parsed.flags)
+          ? parsed.flags
+            .filter((flag: unknown): flag is QuoteCostFlag => Boolean(flag && typeof flag === "object" && allowedCategories.has((flag as QuoteCostFlag).category) && typeof (flag as QuoteCostFlag).reason === "string" && (flag as QuoteCostFlag).reason.trim()))
+            .slice(0, 5)
+            .map((flag: QuoteCostFlag) => ({ category: flag.category, reason: flag.reason.trim().slice(0, 240) }))
+          : [];
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an invalid cost review." });
       }
       if (!summary) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a cost review." });
-      await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostReviewUpdatedAt: new Date() }).where(eq(nativeQuotes.id, quote.id));
-      return { summary, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt: new Date() };
+      const reviewedAt = new Date();
+      await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostFlags: JSON.stringify(flags), aiCostReviewUpdatedAt: reviewedAt }).where(eq(nativeQuotes.id, quote.id));
+      return { summary, flags, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt };
     }),
 
   // ─── AI Suggest ────────────────────────────────────────────────────────────

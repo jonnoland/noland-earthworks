@@ -54,7 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -103,6 +103,13 @@ function isNashvilleParcelViewerUrl(url: string | null | undefined): boolean {
   return Boolean(url?.includes("maps.nashville.gov/ParcelViewer"));
 }
 
+const RENTAL_MARGIN_TONE_CLASSES = {
+  neutral: "border-zinc-600 bg-zinc-900/60 text-zinc-200",
+  red: "border-red-500/45 bg-red-500/[0.08] text-red-200",
+  amber: "border-amber-500/45 bg-amber-500/[0.08] text-amber-200",
+  green: "border-emerald-500/45 bg-emerald-500/[0.08] text-emerald-200",
+} as const;
+
 interface NativeQuote {
   id: number;
   clientName: string;
@@ -120,6 +127,7 @@ interface NativeQuote {
   insuranceDocuments: string;
   aiEvidenceSummary: string | null;
   aiCostReview: string | null;
+  aiCostFlags: string | null;
   aiCostReviewUpdatedAt: Date | null;
   estimatedDuration: string | null;
   acreage: string | null;
@@ -487,6 +495,7 @@ interface QuoteFormData {
   insuranceDocuments: QuoteInsuranceDocument[];
   aiEvidenceSummary: string;
   aiCostReview: string;
+  aiCostFlags: QuoteCostFlag[];
   sourceDetail: string;
   fitDecision: "unreviewed" | "owner_review" | "pursue" | "pass" | "refer_out";
   nextActionType: string;
@@ -575,6 +584,7 @@ function QuoteFormModal({
     insuranceDocuments: [],
     aiEvidenceSummary: "",
     aiCostReview: "",
+    aiCostFlags: [],
     sourceDetail: "manual",
     fitDecision: "unreviewed",
     nextActionType: "review_request",
@@ -609,6 +619,7 @@ function QuoteFormModal({
         insuranceDocuments: parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(editQuote.insuranceDocuments, []),
         aiEvidenceSummary: editQuote.aiEvidenceSummary ?? "",
         aiCostReview: editQuote.aiCostReview ?? "",
+        aiCostFlags: parseQuoteSupportArtifacts<QuoteCostFlag[]>(editQuote.aiCostFlags, []),
         sourceDetail: editQuote.sourceDetail ?? "manual",
         fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
         nextActionType: editQuote.nextActionType ?? "review_request",
@@ -667,7 +678,7 @@ function QuoteFormModal({
   });
   const reviewCostMutation = trpc.nativeQuotes.reviewCost.useMutation({
     onSuccess: (result) => {
-      setForm((current) => ({ ...current, aiCostReview: result.summary }));
+      setForm((current) => ({ ...current, aiCostReview: result.summary, aiCostFlags: result.flags }));
       utils.nativeQuotes.list.invalidate();
       toast.success("Internal AI cost review generated.");
     },
@@ -778,6 +789,7 @@ function QuoteFormModal({
   const totalCents = costBreakdown.allPhasesTotalCents;
   const internalRentalCostCents = useMemo(() => getQuoteRentalCostCents(form.rentalEquipment), [form.rentalEquipment]);
   const { rentalOnlyProfitCents, rentalOnlyMarginPct } = getQuoteRentalOnlyMargin(totalCents, internalRentalCostCents);
+  const rentalOnlyMarginStatus = getQuoteRentalOnlyMarginStatus(rentalOnlyMarginPct);
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
   const appliedDiscountCodes = useMemo(
     () => new Set(discountItems.map((item) => item.discountCode).filter((code): code is string => Boolean(code))),
@@ -1491,9 +1503,23 @@ function QuoteFormModal({
               </section>
             </div>
             <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.035] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-300" /><div><p className="text-xs font-semibold text-emerald-100">Proof of insurance for the quote email</p><p className="mt-0.5 text-[10px] text-zinc-500">Add your current certificate here. When you send the quote, choose the file(s) to attach. It is not shown in the portal.</p></div></div><label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-emerald-500/40 px-2 text-[10px] font-medium text-emerald-100 hover:bg-emerald-500/10"><ShieldCheck className="mr-1 h-3 w-3" />{uploadingKind === "insurance" ? "Uploading…" : "Add proof of insurance"}<input type="file" className="sr-only" accept="application/pdf,image/jpeg,image/png" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("insurance", event.target.files); event.currentTarget.value = ""; }} /></label>{form.insuranceDocuments.length > 0 && <ul className="mt-2 space-y-1">{form.insuranceDocuments.map((document) => <li key={document.key} className="flex items-center justify-between gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><a href={document.url} target="_blank" rel="noreferrer" className="truncate text-emerald-100 hover:underline">{document.filename}</a><button type="button" className="text-zinc-400 hover:text-red-300" onClick={() => setForm(current => ({ ...current, insuranceDocuments: current.insuranceDocuments.filter(item => item.key !== document.key) }))}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}</section>
-            {insuranceLibrary.length > 0 && <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.025] p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs font-semibold text-emerald-100">Saved proof-of-insurance library</p><p className="mt-0.5 text-[10px] text-zinc-500">Select a saved certificate for this quote without uploading it again.</p></div><span className="text-[10px] text-emerald-100/70">Internal only</span></div><div className="mt-2 grid gap-1.5 md:grid-cols-2">{insuranceLibrary.map((document) => { const added = form.insuranceDocuments.some((item) => item.key === document.storageKey); return <div key={document.id} className="flex items-center gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><FileText className="h-3.5 w-3.5 shrink-0 text-emerald-300" /><span className="min-w-0 flex-1 truncate text-zinc-200">{document.label}</span><Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-emerald-200 hover:bg-emerald-500/10" disabled={added} onClick={() => setForm((current) => ({ ...current, insuranceDocuments: [...current.insuranceDocuments, { key: document.storageKey, url: document.storageUrl, filename: document.filename, mimeType: document.mimeType as QuoteInsuranceDocument["mimeType"], sizeBytes: document.sizeBytes }] }))}>{added ? "Selected" : "Use"}</Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-zinc-500 hover:text-red-300" aria-label={`Archive ${document.label}`} onClick={() => { if (window.confirm(`Archive ${document.label} from the saved insurance library?`)) archiveInsuranceLibraryMutation.mutate({ id: document.id }); }}><Trash2 className="h-3 w-3" /></Button></div>; })}</div></section>}
+            {insuranceLibrary.length > 0 && <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.025] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs font-semibold text-emerald-100">Saved proof-of-insurance library</p><p className="mt-0.5 text-[10px] text-zinc-500">Preview, select, or remove an outdated certificate. Removed files are no longer selectable for new quote emails.</p></div><span className="text-[10px] text-emerald-100/70">Internal only</span></div>
+              <div className="mt-2 grid gap-1.5 md:grid-cols-2">{insuranceLibrary.map((document) => {
+                const added = form.insuranceDocuments.some((item) => item.key === document.storageKey);
+                return <div key={document.id} className="flex items-center gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><FileText className="h-3.5 w-3.5 shrink-0 text-emerald-300" /><span className="min-w-0 flex-1 truncate text-zinc-200">{document.label}</span><a href={document.storageUrl} target="_blank" rel="noreferrer" className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-emerald-200 hover:bg-emerald-500/10" aria-label={`Preview ${document.label}`} title="Preview"><Eye className="h-3.5 w-3.5" /></a><Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-emerald-200 hover:bg-emerald-500/10" disabled={added} onClick={() => setForm((current) => ({ ...current, insuranceDocuments: [...current.insuranceDocuments, { key: document.storageKey, url: document.storageUrl, filename: document.filename, mimeType: document.mimeType as QuoteInsuranceDocument["mimeType"], sizeBytes: document.sizeBytes }] }))}>{added ? "Selected" : "Use"}</Button><Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-zinc-400 hover:bg-red-500/10 hover:text-red-200" aria-label={`Remove ${document.label} from the saved insurance library`} onClick={() => { if (window.confirm(`Remove ${document.label} from the saved insurance library? It will no longer be selectable for new quote emails.`)) archiveInsuranceLibraryMutation.mutate({ id: document.id }); }}>Remove</Button></div>;
+              })}</div>
+            </section>}
             {form.insuranceDocuments.length > 0 && <div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-emerald-500/35 text-[10px] text-emerald-100 hover:bg-emerald-500/10" disabled={saveInsuranceLibraryMutation.isPending} onClick={() => { const unsaved = form.insuranceDocuments.find((document) => !insuranceLibrary.some((libraryDocument) => libraryDocument.storageKey === document.key)); if (!unsaved) { toast.message("All attached insurance documents are already saved in your library."); return; } saveInsuranceLibraryMutation.mutate({ ...unsaved, label: unsaved.filename, expiresAt: null }); }}><FileText className="mr-1 h-3 w-3" />{saveInsuranceLibraryMutation.isPending ? "Saving…" : "Save attached document to library"}</Button></div>}
-            <section className="mt-3 rounded-md border border-sky-500/25 bg-sky-500/[0.035] p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sky-100">Internal rental-only margin</p><p className="mt-0.5 text-[10px] leading-relaxed text-zinc-400">Quote total less Cat rental, transport, and tax. This is not full job profit—it excludes labor, fuel, machine wear, overhead, and all other job costs.</p></div><div className="text-right"><p className="text-base font-bold text-sky-200">{rentalOnlyMarginPct === null ? "—" : `${rentalOnlyMarginPct.toFixed(1)}%`}</p><p className="text-[10px] text-zinc-500">rental-only margin</p></div></div><div className="mt-2 grid gap-2 text-[11px] text-zinc-300 sm:grid-cols-3"><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Customer quote</span>{formatQuoteCents(totalCents)}</div><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Cat rental cost</span>{formatQuoteCents(internalRentalCostCents)}</div><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Rental-only contribution</span>{internalRentalCostCents > 0 ? formatQuoteCents(rentalOnlyProfitCents) : "Add rental cost"}</div></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] text-sky-100/70">Gemini 3 Flash uses saved photos and measurements only as internal review context.</span><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/45 text-[10px] text-sky-100 hover:bg-sky-500/10" disabled={!draftQuoteId || (form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0) || reviewCostMutation.isPending} onClick={() => { if (!draftQuoteId) { toast.message("Save this quote as a draft before generating an internal cost review."); return; } reviewCostMutation.mutate({ id: draftQuoteId }); }}><Sparkles className="mr-1 h-3 w-3" />{reviewCostMutation.isPending ? "Reviewing…" : "Generate concise cost review"}</Button></div>{!draftQuoteId && <p className="mt-2 text-[10px] text-amber-200">Save as a draft first to generate and retain this review.</p>}{draftQuoteId && form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0 && <p className="mt-2 text-[10px] text-amber-200">Add a site photo or measurement before generating the review.</p>}{form.aiCostReview && <div className="mt-3 rounded border border-sky-500/20 bg-zinc-950/40 px-3 py-2 text-[11px] leading-relaxed text-sky-100"><span className="font-semibold">Latest internal cost review:</span> {form.aiCostReview}</div>}</section>
+            <section className={`mt-3 rounded-md border p-3 ${RENTAL_MARGIN_TONE_CLASSES[rentalOnlyMarginStatus.tone]}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold">Internal rental-only margin</p><p className="mt-0.5 text-[10px] leading-relaxed text-zinc-300">Quote total less Cat rental, transport, and tax. This is not full job profit—it excludes labor, fuel, machine wear, overhead, and all other job costs.</p></div><div className="text-right"><p className="text-base font-bold">{rentalOnlyMarginPct === null ? "—" : `${rentalOnlyMarginPct.toFixed(1)}%`}</p><p className="text-[10px]">{rentalOnlyMarginStatus.label}</p></div></div>
+              <div className="mt-2 grid gap-2 text-[11px] text-zinc-200 sm:grid-cols-3"><div className="rounded bg-zinc-950/35 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-400">Customer quote</span>{formatQuoteCents(totalCents)}</div><div className="rounded bg-zinc-950/35 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-400">Cat rental cost</span>{formatQuoteCents(internalRentalCostCents)}</div><div className="rounded bg-zinc-950/35 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-400">Rental-only contribution</span>{internalRentalCostCents > 0 ? formatQuoteCents(rentalOnlyProfitCents) : "Add rental cost"}</div></div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] text-zinc-200/80">Gemini 3 Flash uses saved photos and measurements only as internal review context.</span><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/45 text-[10px] text-sky-100 hover:bg-sky-500/10" disabled={!draftQuoteId || (form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0) || reviewCostMutation.isPending} onClick={() => { if (!draftQuoteId) { toast.message("Save this quote as a draft before generating an internal cost review."); return; } reviewCostMutation.mutate({ id: draftQuoteId }); }}><Sparkles className="mr-1 h-3 w-3" />{reviewCostMutation.isPending ? "Reviewing…" : "Generate concise cost review"}</Button></div>
+              {!draftQuoteId && <p className="mt-2 text-[10px] text-amber-200">Save as a draft first to generate and retain this review.</p>}
+              {draftQuoteId && form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0 && <p className="mt-2 text-[10px] text-amber-200">Add a site photo or measurement before generating the review.</p>}
+              {form.aiCostReview && <div className="mt-3 rounded border border-sky-500/20 bg-zinc-950/40 px-3 py-2 text-[11px] leading-relaxed text-sky-100"><span className="font-semibold">Latest internal cost review:</span> {form.aiCostReview}</div>}
+              {form.aiCostFlags.length > 0 && <div className="mt-2 rounded border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-amber-100">Cost categories to verify</p><div className="mt-1.5 flex flex-wrap gap-1.5">{form.aiCostFlags.map((flag, index) => <span key={`${flag.category}-${index}`} className="rounded-full border border-amber-500/30 bg-zinc-950/45 px-2 py-1 text-[10px] text-amber-100"><strong className="capitalize">{flag.category.replace("_", " ")}:</strong> {flag.reason}</span>)}</div></div>}
+            </section>
             {form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}
           </details>
 

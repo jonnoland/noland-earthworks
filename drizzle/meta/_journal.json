@@ -911,6 +911,13 @@
       "when": 1788028012706,
       "tag": "0129_gigantic_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "5",
+      "when": 1788029044174,
+      "tag": "0130_glorious_juggernaut",
+      "breakpoints": true
     }
   ]
 }

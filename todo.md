@@ -3845,3 +3845,9 @@
 - [x] Add an owner-scoped saved proof-of-insurance library with reuse and selection in the quote workspace
 - [x] Add a concise Gemini 3 Flash cost-review action that uses saved site photos, measurements, rental cost, and quote total as internal context
 - [x] Add schema migration, protected API tests, and full validation for these quote enhancements
+
+## Operations Quote Cost Flags and Insurance Library Management — Aug 2026
+- [x] Enhance the internal Gemini cost review to flag labor, fuel, mobilization, and other likely missing cost categories only when supported by recorded or visible conditions
+- [x] Add clearly labeled red, amber, and green rental-only margin cues without representing the metric as full job profitability
+- [x] Add preview and archive/remove controls for owner-scoped saved proof-of-insurance documents
+- [x] Add regression coverage and full validation for the enhanced quote review and document controls

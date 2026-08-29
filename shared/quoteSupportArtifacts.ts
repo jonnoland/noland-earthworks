@@ -31,6 +31,13 @@ export type QuoteInsuranceLibraryDocument = QuoteInsuranceDocument & {
   expiresAt?: string | null;
 };
 
+export type QuoteCostFlagCategory = "labor" | "fuel" | "mobilization" | "machine_wear" | "access" | "scope";
+
+export type QuoteCostFlag = {
+  category: QuoteCostFlagCategory;
+  reason: string;
+};
+
 export type QuoteMeasurement = {
   label: string;
   value: string;
@@ -60,6 +67,17 @@ export function getQuoteRentalOnlyMargin(totalCents: number, rentalCostCents: nu
     ? Math.round((rentalOnlyProfitCents / totalCents) * 1000) / 10
     : null;
   return { rentalOnlyProfitCents, rentalOnlyMarginPct };
+}
+
+/** Cues apply only to the rental-only metric; they never describe full job profitability. */
+export function getQuoteRentalOnlyMarginStatus(rentalOnlyMarginPct: number | null): {
+  tone: "neutral" | "red" | "amber" | "green";
+  label: "Add rental cost" | "Thin rental-only margin" | "Review rental-only margin" | "Healthy rental-only margin";
+} {
+  if (rentalOnlyMarginPct === null) return { tone: "neutral", label: "Add rental cost" };
+  if (rentalOnlyMarginPct < 25) return { tone: "red", label: "Thin rental-only margin" };
+  if (rentalOnlyMarginPct < 40) return { tone: "amber", label: "Review rental-only margin" };
+  return { tone: "green", label: "Healthy rental-only margin" };
 }
 
 export function parseQuoteSupportArtifacts<T>(raw: string | null | undefined, fallback: T): T {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
 
 const source = (path: string) => readFileSync(resolve(import.meta.dirname, `../${path}`), "utf8");
 
@@ -22,6 +22,13 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
       rentalOnlyProfitCents: 1000000,
       rentalOnlyMarginPct: null,
     });
+  });
+
+  it("uses conservative red, amber, and green cues only for the rental-only margin", () => {
+    expect(getQuoteRentalOnlyMarginStatus(null)).toEqual({ tone: "neutral", label: "Add rental cost" });
+    expect(getQuoteRentalOnlyMarginStatus(24.9)).toEqual({ tone: "red", label: "Thin rental-only margin" });
+    expect(getQuoteRentalOnlyMarginStatus(25)).toEqual({ tone: "amber", label: "Review rental-only margin" });
+    expect(getQuoteRentalOnlyMarginStatus(40)).toEqual({ tone: "green", label: "Healthy rental-only margin" });
   });
 
   it("fails closed to an empty support-artifact collection when a legacy quote has malformed JSON", () => {
@@ -45,6 +52,8 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(router).toContain("reviewCost: ownerProcedure");
     expect(router).toContain('model: "gemini-3-flash-preview"');
     expect(router).toContain("Add at least one site photo or measurement before generating a cost review.");
+    expect(router).toContain("Consider potential missing labor, fuel, mobilization, machine-wear, access, and scope costs");
+    expect(router).toContain("aiCostFlags: JSON.stringify(flags)");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? [])");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, evidence)");
     expect(router).not.toContain("rentalEquipment: quote.rentalEquipment");
@@ -56,6 +65,10 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Saved proof-of-insurance library");
     expect(quoteForm).toContain("Internal rental-only margin");
     expect(quoteForm).toContain("Generate concise cost review");
+    expect(quoteForm).toContain("RENTAL_MARGIN_TONE_CLASSES");
+    expect(quoteForm).toContain("Cost categories to verify");
+    expect(quoteForm).toContain("Preview");
+    expect(quoteForm).toContain("Remove");
   });
 
   it("uses explicit attachment limits and validates that documents belong to the quote owner", () => {

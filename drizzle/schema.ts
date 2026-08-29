@@ -1964,6 +1964,8 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   aiEvidenceSummary: text("aiEvidenceSummary"),
   /** Concise internal cost review generated from saved site evidence and cost context. */
   aiCostReview: text("aiCostReview"),
+  /** JSON list of evidence-based internal cost categories requiring owner confirmation. */
+  aiCostFlags: text("aiCostFlags"),
   aiCostReviewUpdatedAt: timestamp("aiCostReviewUpdatedAt"),
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
