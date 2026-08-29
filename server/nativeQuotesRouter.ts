@@ -993,6 +993,92 @@ export const nativeQuotesRouter = router({
       return { photoAnnotations };
     }),
 
+  generateClientMessage: ownerProcedure
+    .input(z.object({
+      clientName: z.string().trim().min(1).max(160),
+      title: z.string().trim().max(240).optional(),
+      propertyAddress: z.string().trim().max(500).optional(),
+      serviceType: z.string().trim().min(1).max(160),
+      parcelId: z.string().trim().max(160).optional(),
+      parcelCounty: z.string().trim().max(160).optional(),
+      estimatedDuration: z.string().trim().max(160).optional(),
+      totalCents: z.number().int().min(0).max(100_000_000),
+      lineItems: z.array(lineItemSchema).min(1).max(100),
+      measurements: z.array(quoteMeasurementSchema).max(24).optional(),
+      evidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const evidence = input.evidence ?? [];
+      assertOwnedAttachmentKeys(ctx.user.id, evidence);
+
+      const visibleLineItems = input.lineItems
+        .filter((item) => item.kind !== "phase" && item.unitPriceCents >= 0)
+        .map((item) => `${item.description}: ${item.qty} × $${(item.unitPriceCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`)
+        .join("; ") || "Quoted work as listed.";
+      const measurementContext = (input.measurements ?? []).length > 0
+        ? (input.measurements ?? []).map((measurement) => `${measurement.label}: ${measurement.value} ${measurement.unit}${measurement.notes ? ` (${measurement.notes})` : ""}`).join("; ")
+        : "No additional field measurements recorded.";
+      const photoAnnotationContext = evidence.length > 0
+        ? evidence.map((attachment, index) => `Photo ${index + 1}: ${attachment.caption ?? attachment.filename}${attachment.tags?.length ? ` [${attachment.tags.join(", ")}]` : ""}`).join("; ")
+        : "No site photos attached.";
+      const propertyReference = [
+        input.propertyAddress ? `Address: ${input.propertyAddress}` : "",
+        input.parcelId ? `Parcel ID: ${input.parcelId}` : "",
+        input.parcelCounty ? `County: ${input.parcelCounty}` : "",
+      ].filter(Boolean).join("; ") || "Property reference was not recorded.";
+      const visualContent = await buildEvidenceContent(ctx.user.id, evidence);
+      const prompt = `Write one concise, client-ready message for a completed Noland Earthworks quote. Use only the provided quote facts and visible site-photo evidence. The owner will review and edit before sending.
+
+Client: ${input.clientName}
+Quote title: ${input.title || "not recorded"}
+Service: ${input.serviceType}
+Property / work-area reference: ${propertyReference}
+Quoted items: ${visibleLineItems}
+Recorded measurements: ${measurementContext}
+Photo observations: ${photoAnnotationContext}
+Estimated duration: ${input.estimatedDuration || "to be confirmed during scheduling"}
+Final quoted total: $${(input.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+
+Requirements:
+- Keep this between 70 and 150 words in direct, professional, plain language.
+- State the exact final quoted total once, but do not break out internal costs, rental, margin, fuel, labor, discounts, or markup.
+- Refer to the work area as identified by the customer, address, Parcel ID, or recorded reference; never guarantee legal property lines, boundaries, acreage, permits, or utility locations.
+- If photos or measurements leave scope uncertain, include a concise site-verification sentence.
+- Do not invent work, conditions, timing, pricing, approvals, or attachments. Do not include corporate jargon or emojis.`;
+      const result = await invokeLLM({
+        model: "gemini-3-flash-preview",
+        max_tokens: 900,
+        messages: [
+          { role: "system", content: "You write accurate, concise customer messages for a veteran-owned forestry mulching and land management company. Use only supplied facts and visible evidence." },
+          { role: "user", content: [{ type: "text", text: prompt }, ...visualContent] as any },
+        ],
+        response_format: {
+          type: "json_schema" as const,
+          json_schema: {
+            name: "completed_quote_client_message",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: { message: { type: "string" } },
+              required: ["message"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const rawContent = result.choices?.[0]?.message?.content ?? "{}";
+      const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      let message = "";
+      try {
+        const parsed = JSON.parse(stripCodeFence(raw));
+        message = typeof parsed.message === "string" ? parsed.message.trim().slice(0, 1600) : "";
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an invalid client message." });
+      }
+      if (!message) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a client message." });
+      return { message };
+    }),
+
   // ─── AI Suggest ────────────────────────────────────────────────────────────
   aiSuggest: ownerProcedure
     .input(z.object({

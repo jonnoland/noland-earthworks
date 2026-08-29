@@ -930,6 +930,44 @@ function QuoteFormModal({
     },
   });
 
+  const generateClientMessageMutation = trpc.nativeQuotes.generateClientMessage.useMutation({
+    onSuccess: ({ message }) => {
+      setForm((previous) => ({ ...previous, clientMessage: message }));
+      toast.success("Client message generated. Review and edit it before sending.");
+    },
+    onError: (error) => toast.error(`Client message could not be generated: ${error.message}`),
+  });
+
+  const generateClientMessage = () => {
+    const serviceType = aiPrimaryService?.label ?? form.serviceType;
+    const lineItems = normalizeQuoteLineItemsForSave(form.lineItems);
+    if (!form.clientName.trim()) {
+      toast.error("Enter the client name before generating a client message.");
+      return;
+    }
+    if (!serviceType) {
+      toast.error("Select a service type before generating a client message.");
+      return;
+    }
+    if (lineItems.length === 0 || lineItems.every((item) => item.kind === "phase")) {
+      toast.error("Add the completed quote items before generating a client message.");
+      return;
+    }
+    generateClientMessageMutation.mutate({
+      clientName: form.clientName.trim(),
+      title: form.title.trim() || undefined,
+      propertyAddress: form.propertyAddress.trim() || undefined,
+      serviceType,
+      parcelId: form.parcelId.trim() || undefined,
+      parcelCounty: form.parcelCounty.trim() || undefined,
+      estimatedDuration: form.estimatedDuration.trim() || undefined,
+      totalCents,
+      lineItems,
+      measurements: form.quoteMeasurements,
+      evidence: form.quoteEvidence,
+    });
+  };
+
   const applyAiSuggestion = () => {
     if (!aiSuggestion) return;
     // Recalculate total using editable multipliers if they differ from server values
@@ -1955,6 +1993,10 @@ function QuoteFormModal({
               <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
                 <Label className="text-zinc-400 text-xs">Client Message (shown on portal)</Label>
                 <div className="flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-emerald-200 hover:bg-emerald-500/10" onClick={generateClientMessage} disabled={generateClientMessageMutation.isPending}>
+                    {generateClientMessageMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+                    {generateClientMessageMutation.isPending ? "Building message…" : "Generate client message"}
+                  </Button>
                   <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-amber-200 hover:bg-amber-500/10" onClick={() => appendClientTerms(PHASED_WORK_TERMS)}>Insert Phased Terms</Button>
                   <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-sky-200 hover:bg-sky-500/10" onClick={() => appendClientTerms(DAY_RATE_TERMS)}>Insert Day-Rate Terms</Button>
                   <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-sky-200 hover:bg-sky-500/10" onClick={() => appendClientTerms(ONE_DAY_TRIAL_TERMS)}>Insert Trial Terms</Button>

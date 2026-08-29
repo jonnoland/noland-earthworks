@@ -3907,3 +3907,8 @@
 ## Quote Evidence Blank Screen Repair — Aug 2026
 - [x] Repair the photo picker and drag-and-drop interaction so selecting site photos never opens a blank screen
 - [x] Add regression coverage and validate in-panel photo upload behavior with visible status feedback
+
+## Quote-Derived Client Message Generator — Aug 2026
+- [x] Generate a concise editable client message from completed quote items, selected site photos, property boundaries, measurements, duration, and final quote total
+- [x] Keep internal rental costs, margins, AI cost flags, and private notes out of the client message
+- [x] Add regression coverage and validate protected message generation and quote-send behavior

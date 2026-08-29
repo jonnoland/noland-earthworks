@@ -154,6 +154,23 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Remove");
   });
 
+  it("generates an editable client message from completed quote facts without exposing internal cost detail", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(router).toContain("generateClientMessage: ownerProcedure");
+    expect(router).toContain('model: "gemini-3-flash-preview"');
+    expect(router).toContain("Final quoted total:");
+    expect(router).toContain("Property / work-area reference:");
+    expect(router).toContain("never guarantee legal property lines, boundaries, acreage, permits, or utility locations");
+    expect(router).toContain("do not break out internal costs, rental, margin, fuel, labor, discounts, or markup");
+    expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, evidence)");
+    expect(quoteForm).toContain("generateClientMessageMutation");
+    expect(quoteForm).toContain("Generate client message");
+    expect(quoteForm).toContain("Review and edit it before sending.");
+    expect(quoteForm).toContain("clientMessage: message");
+  });
+
   it("uses an in-app insurance preview with labeled download and separate-tab fallbacks instead of an unlabeled blank tab", () => {
     const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
 
