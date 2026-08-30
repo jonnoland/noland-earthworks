@@ -3917,3 +3917,8 @@
 - [x] Clear stale AI evidence summaries when site photos or measurements are added, removed, reordered, or edited
 - [x] Show a clear fresh-review prompt rather than an outdated missing-evidence conclusion
 - [x] Add regression coverage and validate the evidence status follows the current quote attachments
+
+## Rental-Inclusive Final Service Amount Verification — Aug 2026
+- [x] Verify and correct every Operations quote total display so confirmed rental, transport, and tax are included in the final customer service amount
+- [x] Keep the rental component internal while aligning saved quote totals, portal approval, deposits, email, and PDF totals
+- [x] Add regression coverage and validate rental-inclusive quote total consistency

@@ -44,6 +44,16 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     });
   });
 
+  it("passes the selected rental markup into AI Suggest so its displayed final total includes the rental component", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(quoteForm).toContain("rentalMarkupPct: form.rentalMarkupPct");
+    expect(router).toContain("rentalMarkupPct: z.number().int().min(10).max(20).optional()");
+    expect(router).toContain("getQuoteTotalWithRentalCharge(totalMid * 100, getQuoteRentalCostCents(rentalEquipment), rentalMarkupPct)");
+    expect(router).toContain("getQuoteTotalWithRentalCharge(serviceTotalCents, getQuoteRentalCostCents(rentalEquipment), rentalMarkupPct).totalCents");
+  });
+
   it("fails closed to an empty support-artifact collection when a legacy quote has malformed JSON", () => {
     expect(parseQuoteSupportArtifacts("not-json", [])).toEqual([]);
     expect(parseQuoteSupportArtifactArray("not-json")).toEqual([]);

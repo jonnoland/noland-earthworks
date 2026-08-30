@@ -1052,6 +1052,7 @@ function QuoteFormModal({
       access: aiAccess,
       notes: form.internalNotes || undefined,
       rentalEquipment: form.rentalEquipment,
+      rentalMarkupPct: form.rentalMarkupPct,
       measurements: form.quoteMeasurements,
       evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS) : [],
     });

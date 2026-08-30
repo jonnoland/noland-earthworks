@@ -1092,6 +1092,7 @@ Requirements:
       access: z.string().optional(),
       notes: z.string().max(5000).optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      rentalMarkupPct: z.number().int().min(10).max(20).optional(),
       measurements: z.array(quoteMeasurementSchema).max(24).optional(),
       // Keep the quote's full saved evidence set while using the shared
       // twenty-photo bound for the multimodal request.
@@ -1104,8 +1105,8 @@ Requirements:
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["acreage"], message: "Enter acreage for this service." });
       }
     }))
-    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: { serviceType: string; acreage?: number; linearFeet?: number; clearingWidthFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string; rentalEquipment?: QuoteRentalEquipment[]; measurements?: QuoteMeasurement[]; evidence?: QuoteEvidenceAttachment[] } }) => {
-      const { serviceType, acreage, linearFeet, clearingWidthFeet, unitRateCents, terrain, density, access, notes, rentalEquipment = [], measurements = [], evidence = [] } = input;
+    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: { serviceType: string; acreage?: number; linearFeet?: number; clearingWidthFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string; rentalEquipment?: QuoteRentalEquipment[]; rentalMarkupPct?: number; measurements?: QuoteMeasurement[]; evidence?: QuoteEvidenceAttachment[] } }) => {
+      const { serviceType, acreage, linearFeet, clearingWidthFeet, unitRateCents, terrain, density, access, notes, rentalEquipment = [], rentalMarkupPct = 15, measurements = [], evidence = [] } = input;
       assertOwnedAttachmentKeys(ctx.user.id, evidence);
 
       // ── Pull DB-driven pricing (same source as Cost Estimator) ──────────────
@@ -1184,6 +1185,7 @@ Requirements:
             kind: "mobilization" as const,
           }] : []),
         ];
+        const rentalInclusiveTotal = getQuoteTotalWithRentalCharge(totalMid * 100, getQuoteRentalCostCents(rentalEquipment), rentalMarkupPct);
         return {
           title: `${serviceType} — ${footage.toLocaleString()} Linear Ft`,
           estimatedDuration: footage <= 1320 ? "1" : footage <= 5280 ? "2" : "3",
@@ -1192,7 +1194,7 @@ Requirements:
             ? "Site photos and measurements are saved for owner review. Linear Foot pricing remains controlled by the recorded footage, saved Operations rates, and on-site verification."
             : "No site photos or measurements were provided. Linear Foot pricing remains subject to on-site verification.",
           lineItems,
-          totalCents: totalMid * 100,
+          totalCents: rentalInclusiveTotal.totalCents,
           belowMinimum: false,
           minimumJobCents: MIN_JOB * 100,
           breakdown: {
@@ -1352,8 +1354,9 @@ Rules:
         totalCents:     Math.round(li.qty * li.unitPriceCents),
       }));
 
-      const finalTotalCents = lineItems.reduce((s, li) => s + li.totalCents, 0);
-      const belowMinimum = finalTotalCents < MIN_JOB * 100;
+      const serviceTotalCents = lineItems.reduce((s, li) => s + li.totalCents, 0);
+      const finalTotalCents = getQuoteTotalWithRentalCharge(serviceTotalCents, getQuoteRentalCostCents(rentalEquipment), rentalMarkupPct).totalCents;
+      const belowMinimum = serviceTotalCents < MIN_JOB * 100;
       return {
         title:             parsed.title ?? `${serviceType} - ${resolvedAcreage} Acres`,
         estimatedDuration: parsed.estimatedDuration ?? "",
