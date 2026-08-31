@@ -12,4 +12,14 @@ describe("customer portal PDF cleanup", () => {
     expect(css).toContain(".ne-chat-widget");
     expect(css).toContain("display: none !important");
   });
+
+  it("shows a subtotal before each customer discount and preserves visible discount emphasis in the printable portal", () => {
+    const portal = fs.readFileSync(path.resolve(import.meta.dirname, "../client/src/pages/NativeQuotePortal.tsx"), "utf8");
+
+    expect(portal).toContain("Subtotal before discount");
+    expect(portal).toContain("Discount applied —");
+    expect(portal).toContain("border-emerald-400/45");
+    expect(portal).toContain("print:bg-emerald-50");
+    expect(portal).toContain("isCustomerDiscount");
+  });
 });

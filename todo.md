@@ -3938,3 +3938,8 @@
 ## Client Portal Discount-Last Verification — Aug 2026
 - [x] Verify and enforce the final-item discount ordering in client portal pricing, including the printable PDF
 - [x] Add portal-specific regression coverage for standard and phased pricing sections
+
+## Client Portal Discount Clarity — Aug 2026
+- [x] Add a visible subtotal immediately before each customer discount in standard and phased portal pricing sections
+- [x] Make customer discount rows visually distinct while preserving printable PDF clarity
+- [x] Add regression coverage and validate the updated client portal pricing presentation

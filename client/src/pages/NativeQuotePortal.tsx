@@ -33,6 +33,10 @@ function lineQuantityText(item: { description: string; qty: number; serviceCode?
   return formatQuoteLineQuantity(item);
 }
 
+function isCustomerDiscount(item: { kind?: string; unitPriceCents: number; totalCents: number }) {
+  return item.kind === "discount" || item.unitPriceCents < 0 || item.totalCents < 0;
+}
+
 function EstimatedFootageNotice({ item }: { item: { description: string; serviceCode?: string; measurementUnit?: "linear_foot"; quantitySource?: "measured" | "acreage_estimate"; sourceAcreage?: number; clearingWidthFeet?: number } }) {
   if (!isEstimatedLinearFootQuoteLine(item)) return null;
   const basis = linearFootEstimateBasis(item);
@@ -392,16 +396,23 @@ export default function NativeQuotePortal() {
                 </div>
                 <span className="text-amber-300 text-sm font-semibold shrink-0">{fmt(section.totalCents)}</span>
               </div>
-              {section.lineItems.filter((item) => item !== section.phase).map((li, i) => (
-                <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-zinc-800 gap-4">
-                  <div className="flex-1">
-                     <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-zinc-200 text-sm"}>{li.description}</p>
-                     {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="text-zinc-500 text-xs mt-0.5">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
-                     <EstimatedFootageNotice item={li} />
+              {(() => {
+                const sectionItems = section.lineItems.filter((item) => item !== section.phase);
+                const firstDiscountIndex = sectionItems.findIndex(isCustomerDiscount);
+                return sectionItems.map((li, i) => (
+                  <div key={`${section.phase.phaseId}-${i}`}>
+                    {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-amber-500/30 bg-amber-500/[0.06] px-5 py-2 text-xs font-semibold text-zinc-200 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(section.subtotalCents)}</span></div>}
+                    <div className={`flex items-start justify-between gap-4 border-t px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 border-t-emerald-400/30 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-zinc-800"}`}>
+                      <div className="flex-1">
+                        <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>
+                        {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
+                        <EstimatedFootageNotice item={li} />
+                      </div>
+                      <span className={isCustomerDiscount(li) ? "shrink-0 text-sm font-semibold text-emerald-200 print:text-emerald-900" : "shrink-0 text-sm font-medium text-amber-400"}>{fmt(li.qty * li.unitPriceCents)}</span>
+                    </div>
                   </div>
-                  <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
-                </div>
-              ))}
+                ));
+              })()}
               <div className="border-t border-amber-500/25 bg-amber-500/[0.07] px-5 py-3">
                 <div className="flex items-center justify-between text-xs text-zinc-300"><span>Phase subtotal</span><span>{fmt(section.subtotalCents)}</span></div>
                 {section.discountCents < 0 && <div className="mt-1 flex items-center justify-between text-xs text-emerald-300"><span>Phase discounts</span><span>{fmt(section.discountCents)}</span></div>}
@@ -409,13 +420,21 @@ export default function NativeQuotePortal() {
               </div>
             </div>
           ))}
-          {unassignedApprovedLineItems.map((li, i) => (
-            <div key={`unassigned-${i}`} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
-              <div className="min-w-0"><p className="text-zinc-200 text-sm">{li.description}</p>{(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}</div>
-              <EstimatedFootageNotice item={li} />
-              <span className="text-amber-400 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
-            </div>
-          ))}
+          {(() => {
+            const firstDiscountIndex = unassignedApprovedLineItems.findIndex(isCustomerDiscount);
+            const subtotalCents = unassignedApprovedLineItems
+              .filter((item) => !isCustomerDiscount(item))
+              .reduce((sum, item) => sum + (item.qty * item.unitPriceCents), 0);
+            return unassignedApprovedLineItems.map((li, i) => (
+              <div key={`unassigned-${i}`}>
+                {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-amber-500/30 bg-amber-500/[0.06] px-5 py-2 text-xs font-semibold text-zinc-200 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(subtotalCents)}</span></div>}
+                <div className={`flex items-start justify-between gap-4 border-b px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-zinc-800"}`}>
+                  <div className="min-w-0"><p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>{(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}<EstimatedFootageNotice item={li} /></div>
+                  <span className={isCustomerDiscount(li) ? "shrink-0 text-sm font-semibold text-emerald-200 print:text-emerald-900" : "shrink-0 text-sm font-medium text-amber-400"}>{fmt(li.qty * li.unitPriceCents)}</span>
+                </div>
+              </div>
+            ));
+          })()}
           <div className="flex items-center justify-between px-5 py-4 bg-zinc-800/60">
             <span className="text-white font-bold text-sm">Phase 1 total</span>
             <span className="text-amber-400 font-bold text-lg">{fmt(phaseSummary.phaseOneTotalCents)}</span>
@@ -445,16 +464,23 @@ export default function NativeQuotePortal() {
                 </div>
                 <span className="text-indigo-200 text-sm font-semibold shrink-0">{fmt(section.totalCents)}</span>
               </div>
-              {section.lineItems.filter((item) => item !== section.phase).map((li, i) => (
-                <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-indigo-500/15 gap-4">
-                  <div className="flex-1">
-                     <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-indigo-50 text-sm"}>{li.description}</p>
-                     {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="text-indigo-200/60 text-xs mt-0.5">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
-                     <EstimatedFootageNotice item={li} />
+              {(() => {
+                const sectionItems = section.lineItems.filter((item) => item !== section.phase);
+                const firstDiscountIndex = sectionItems.findIndex(isCustomerDiscount);
+                return sectionItems.map((li, i) => (
+                  <div key={`${section.phase.phaseId}-${i}`}>
+                    {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-indigo-500/40 bg-indigo-500/[0.09] px-5 py-2 text-xs font-semibold text-indigo-100 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(section.subtotalCents)}</span></div>}
+                    <div className={`flex items-start justify-between gap-4 border-t px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 border-t-emerald-400/30 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-indigo-500/15"}`}>
+                      <div className="flex-1">
+                        <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-indigo-50"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>
+                        {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-indigo-200/60">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
+                        <EstimatedFootageNotice item={li} />
+                      </div>
+                      <span className={isCustomerDiscount(li) ? "shrink-0 text-sm font-semibold text-emerald-200 print:text-emerald-900" : "shrink-0 text-sm font-medium text-indigo-200"}>{fmt(li.qty * li.unitPriceCents)}</span>
+                    </div>
                   </div>
-                  <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-indigo-200 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
-                </div>
-              ))}
+                ));
+              })()}
               <div className="border-t border-indigo-500/30 bg-indigo-950/35 px-5 py-3">
                 <div className="flex items-center justify-between text-xs text-indigo-100"><span>Phase subtotal</span><span>{fmt(section.subtotalCents)}</span></div>
                 {section.discountCents < 0 && <div className="mt-1 flex items-center justify-between text-xs text-emerald-300"><span>Phase discounts</span><span>{fmt(section.discountCents)}</span></div>}
