@@ -3922,3 +3922,9 @@
 - [x] Verify and correct every Operations quote total display so confirmed rental, transport, and tax are included in the final customer service amount
 - [x] Keep the rental component internal while aligning saved quote totals, portal approval, deposits, email, and PDF totals
 - [x] Add regression coverage and validate rental-inclusive quote total consistency
+
+## Customer Quote Rental Line Reconciliation — Aug 2026
+- [x] Display the marked-up rental component as a customer-safe Required Equipment & Project Costs line whenever it is included in the total
+- [x] Make ordinary and phased quote line items reconcile exactly to the displayed total, deposit, email, portal, and PDF amounts
+- [x] Keep raw rental, transport, tax, and markup values internal while exposing only the included customer charge
+- [x] Add regression coverage and validate rental-inclusive customer line-item reconciliation

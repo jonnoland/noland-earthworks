@@ -416,7 +416,6 @@ export default function NativeQuotePortal() {
               <span className="text-amber-400 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
           ))}
-          {quote.includesRequiredEquipmentCosts && <div className="border-t border-zinc-800 px-5 py-3 text-xs leading-relaxed text-zinc-400">Required equipment and project costs for the stated scope are included in the Phase 1 total below.</div>}
           <div className="flex items-center justify-between px-5 py-4 bg-zinc-800/60">
             <span className="text-white font-bold text-sm">Phase 1 total</span>
             <span className="text-amber-400 font-bold text-lg">{fmt(phaseSummary.phaseOneTotalCents)}</span>

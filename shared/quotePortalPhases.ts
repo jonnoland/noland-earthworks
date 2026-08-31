@@ -19,9 +19,9 @@ export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLi
 }
 
 /**
- * `includedApprovedCostCents` is a quote-wide customer charge that must not become
- * a visible line item (for example, included equipment/project cost). It is due
- * with Phase 1 so approval and deposit math stays aligned with the saved quote total.
+ * `includedApprovedCostCents` is a quote-wide customer charge for required equipment
+ * and project costs. It is displayed as a customer-safe line in the current approval
+ * so every visible quote total reconciles, while the raw rental cost and markup stay internal.
  */
 export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[], includedApprovedCostCents = 0) {
   const normalizedItems = ensureQuotePhaseIds(items);
@@ -31,10 +31,35 @@ export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[], include
     ...section,
     lineItems: section.itemIndices.map((index) => normalizedItems[index]),
   }));
-  const approvedPhaseSections = phaseSections.filter((section) => section.phase.phaseAuthorization !== "optional_future");
+  let approvedPhaseSections = phaseSections.filter((section) => section.phase.phaseAuthorization !== "optional_future");
   const optionalFuturePhaseSections = phaseSections.filter((section) => section.phase.phaseAuthorization === "optional_future");
   const assignedPhaseIds = new Set(phaseSections.map((section) => section.phase.phaseId));
-  const unassignedApprovedLineItems = normalizedItems.filter((item) => !item.phaseId || !assignedPhaseIds.has(item.phaseId));
+  let unassignedApprovedLineItems = normalizedItems.filter((item) => !item.phaseId || !assignedPhaseIds.has(item.phaseId));
+  const equipmentCostLine: QuotePortalLineItem | null = includedApprovedCostCents > 0
+    ? {
+      description: "Required Equipment & Project Costs",
+      qty: 1,
+      unitPriceCents: includedApprovedCostCents,
+      totalCents: includedApprovedCostCents,
+      kind: "service",
+    }
+    : null;
+
+  if (equipmentCostLine) {
+    if (approvedPhaseSections.length > 0) {
+      approvedPhaseSections = approvedPhaseSections.map((section, index) => index === 0
+        ? {
+          ...section,
+          lineItems: [...section.lineItems, equipmentCostLine],
+          subtotalCents: section.subtotalCents + includedApprovedCostCents,
+          totalCents: section.totalCents + includedApprovedCostCents,
+        }
+        : section,
+      );
+    } else {
+      unassignedApprovedLineItems = [...unassignedApprovedLineItems, equipmentCostLine];
+    }
+  }
   const approvedLineItems = [
     ...approvedPhaseSections.flatMap((section) => section.lineItems),
     ...unassignedApprovedLineItems,
