@@ -3928,3 +3928,9 @@
 - [x] Make ordinary and phased quote line items reconcile exactly to the displayed total, deposit, email, portal, and PDF amounts
 - [x] Keep raw rental, transport, tax, and markup values internal while exposing only the included customer charge
 - [x] Add regression coverage and validate rental-inclusive customer line-item reconciliation
+
+## Quote Discount-Last Ordering — Aug 2026
+- [x] Keep every standard quote discount after all non-discount items
+- [x] Keep every phase-scoped discount as the final item within its phase section
+- [x] Preserve discount-last ordering through AI Suggest, manual reordering, saved quotes, customer portal, and PDF output
+- [x] Add regression coverage and validate discount-last quote ordering

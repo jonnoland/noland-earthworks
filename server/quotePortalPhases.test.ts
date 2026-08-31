@@ -49,4 +49,17 @@ describe("customer portal phased quote summary", () => {
       totalCents: 115000,
     });
   });
+
+  it("keeps standard and phase-scoped discounts as the final visible work item in their section", () => {
+    const summary = getQuotePortalPhaseSummary([
+      { description: "Standard discount", qty: 1, unitPriceCents: -5000, totalCents: -5000, kind: "discount" },
+      { description: "Standard mulching", qty: 1, unitPriceCents: 500000, totalCents: 500000, kind: "service" },
+      { description: "Phase 1", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "phase", phaseId: "phase-1", phaseAuthorization: "approved_now" },
+      { description: "Phase discount", qty: 1, unitPriceCents: -2500, totalCents: -2500, kind: "discount", phaseId: "phase-1" },
+      { description: "Phase service", qty: 1, unitPriceCents: 250000, totalCents: 250000, kind: "service", phaseId: "phase-1" },
+    ]);
+
+    expect(summary.unassignedApprovedLineItems.map((item) => item.description)).toEqual(["Standard mulching", "Standard discount"]);
+    expect(summary.approvedPhaseSections[0].lineItems.map((item) => item.description)).toEqual(["Phase 1", "Phase service", "Phase discount"]);
+  });
 });

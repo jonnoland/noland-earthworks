@@ -9,6 +9,6 @@ describe("Operations quote line-item reordering controls", () => {
     expect(editor).toContain('application/x-noland-quote-line-item');
     expect(editor).toContain('title="Move up"');
     expect(editor).toContain('title="Move down"');
-    expect(editor).toContain('lineItems: moveQuoteLineItem(current.lineItems, fromIndex, toIndex)');
+    expect(editor).toContain('lineItems: normalizeQuoteLineItemsForSave(moveQuoteLineItem(current.lineItems, fromIndex, toIndex))');
   });
 });

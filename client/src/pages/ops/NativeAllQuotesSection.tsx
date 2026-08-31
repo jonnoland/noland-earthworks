@@ -54,7 +54,7 @@ import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@share
 import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quoteCostBreakdown";
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
-import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
+import { ensureQuotePhaseIds, getQuotePhaseSections, orderQuoteLineItemsWithDiscountsLast } from "@shared/quotePhaseSections";
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
@@ -428,7 +428,7 @@ function emptyRentalEquipment(): QuoteRentalEquipment {
 }
 
 function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
-  return items.map((item) => {
+  const normalizedItems = items.map((item) => {
     const quantity = Number(item.qty);
     const unitPrice = Number(item.unitPriceCents);
     const qty = Number.isFinite(quantity) ? Math.max(1, quantity) : 1;
@@ -441,6 +441,7 @@ function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
       totalCents: roundQuoteCentsUp(qty * unitPriceCents),
     };
   });
+  return orderQuoteLineItemsWithDiscountsLast(normalizedItems);
 }
 
 interface QuoteFormData {
@@ -1180,7 +1181,7 @@ function QuoteFormModal({
   const handleMoveLineItem = (fromIndex: number, toIndex: number) => {
     setForm((current) => ({
       ...current,
-      lineItems: moveQuoteLineItem(current.lineItems, fromIndex, toIndex),
+      lineItems: normalizeQuoteLineItemsForSave(moveQuoteLineItem(current.lineItems, fromIndex, toIndex)),
     }));
   };
 

@@ -1,5 +1,5 @@
 import { buildQuoteCostBreakdown, type QuoteBreakdownLineItem } from "./quoteCostBreakdown";
-import { ensureQuotePhaseIds, getQuotePhaseSections, type QuotePhaseSection } from "./quotePhaseSections";
+import { getQuotePhaseSections, orderQuoteLineItemsWithDiscountsLast, type QuotePhaseSection } from "./quotePhaseSections";
 
 export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   description: string;
@@ -24,7 +24,7 @@ export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLi
  * so every visible quote total reconciles, while the raw rental cost and markup stay internal.
  */
 export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[], includedApprovedCostCents = 0) {
-  const normalizedItems = ensureQuotePhaseIds(items);
+  const normalizedItems = orderQuoteLineItemsWithDiscountsLast(items);
   const breakdown = buildQuoteCostBreakdown(normalizedItems);
   const isDiscount = (item: QuotePortalLineItem) => item.kind === "discount" || item.unitPriceCents < 0;
   const phaseSections = getQuotePhaseSections(normalizedItems).map((section) => ({

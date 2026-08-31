@@ -28,6 +28,7 @@ import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
+import { orderQuoteLineItemsWithDiscountsLast } from "../shared/quotePhaseSections";
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
@@ -200,12 +201,13 @@ async function buildEvidenceContent(ownerId: number, evidence: QuoteEvidenceAtta
 }
 
 function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
-  return items.map((item) => ({
+  const normalizedItems = items.map((item) => ({
     ...item,
     qty: Math.max(1, item.qty),
     unitPriceCents: roundQuoteCentsUp(item.unitPriceCents),
     totalCents: roundQuoteCentsUp(Math.max(1, item.qty) * roundQuoteCentsUp(item.unitPriceCents)),
   }));
+  return orderQuoteLineItemsWithDiscountsLast(normalizedItems);
 }
 
 function quoteServiceKey(value: string) {

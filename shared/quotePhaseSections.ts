@@ -28,6 +28,33 @@ export function ensureQuotePhaseIds<T extends PhaseSectionLineItem>(items: T[]):
   )) as T[];
 }
 
+function isDiscountLineItem(item: PhaseSectionLineItem) {
+  return item.kind === "discount" || item.unitPriceCents < 0;
+}
+
+function discountLast<T extends PhaseSectionLineItem>(items: T[]) {
+  return [
+    ...items.filter((item) => !isDiscountLineItem(item)),
+    ...items.filter(isDiscountLineItem),
+  ];
+}
+
+/** Keeps discounts at the end of their standard quote or phase section. */
+export function orderQuoteLineItemsWithDiscountsLast<T extends PhaseSectionLineItem>(items: T[]): T[] {
+  const normalizedItems = ensureQuotePhaseIds(items);
+  const phaseHeaders = normalizedItems.filter((item) => item.kind === "phase" && item.phaseId);
+  const assignedPhaseIds = new Set(phaseHeaders.map((item) => item.phaseId));
+  const ordered: T[] = [];
+
+  for (const phase of phaseHeaders) {
+    const sectionItems = normalizedItems.filter((item) => item !== phase && item.phaseId === phase.phaseId);
+    ordered.push(phase, ...discountLast(sectionItems));
+  }
+
+  ordered.push(...discountLast(normalizedItems.filter((item) => !item.phaseId || !assignedPhaseIds.has(item.phaseId))));
+  return ordered;
+}
+
 export function getQuotePhaseSections<T extends PhaseSectionLineItem>(items: T[]): QuotePhaseSection<T>[] {
   const phases = items
     .map((item, index) => ({ item, index }))
