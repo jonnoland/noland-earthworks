@@ -50,14 +50,22 @@ export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[], include
       approvedPhaseSections = approvedPhaseSections.map((section, index) => index === 0
         ? {
           ...section,
-          lineItems: [...section.lineItems, equipmentCostLine],
+          lineItems: [
+            ...section.lineItems.filter((item) => !isDiscount(item)),
+            equipmentCostLine,
+            ...section.lineItems.filter(isDiscount),
+          ],
           subtotalCents: section.subtotalCents + includedApprovedCostCents,
           totalCents: section.totalCents + includedApprovedCostCents,
         }
         : section,
       );
     } else {
-      unassignedApprovedLineItems = [...unassignedApprovedLineItems, equipmentCostLine];
+      unassignedApprovedLineItems = [
+        ...unassignedApprovedLineItems.filter((item) => !isDiscount(item)),
+        equipmentCostLine,
+        ...unassignedApprovedLineItems.filter(isDiscount),
+      ];
     }
   }
   const approvedLineItems = [

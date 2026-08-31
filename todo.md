@@ -3934,3 +3934,7 @@
 - [x] Keep every phase-scoped discount as the final item within its phase section
 - [x] Preserve discount-last ordering through AI Suggest, manual reordering, saved quotes, customer portal, and PDF output
 - [x] Add regression coverage and validate discount-last quote ordering
+
+## Client Portal Discount-Last Verification — Aug 2026
+- [x] Verify and enforce the final-item discount ordering in client portal pricing, including the printable PDF
+- [x] Add portal-specific regression coverage for standard and phased pricing sections
