@@ -3986,3 +3986,8 @@
 - [x] Reproduce the valid Cheatham County Parcel ID mismatch against the official source format
 - [x] Update Operations and Noland Field matching to handle that assessor format safely
 - [x] Add regression coverage, validate the exact record, and publish the repair
+
+## Mobilization Quote Item — Sep 2026
+- [x] Add Mobilization to the Operations quote line-item service selector
+- [x] Confirm Mobilization retains normal pricing and phase-assignment behavior
+- [x] Add regression coverage and validate the quote item selector

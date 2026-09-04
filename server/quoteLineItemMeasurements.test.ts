@@ -9,6 +9,7 @@ import {
   isLinearFootQuoteLine,
   LINEAR_FOOT_CLEARING_WIDTH_OPTIONS,
   linearFootEstimateBasis,
+  QUOTE_LINE_ITEM_SERVICE_OPTIONS,
   quoteLineQuantityLabel,
 } from "@shared/quoteLineItemMeasurements";
 import { isOperationsLinearFootService } from "@shared/operationsQuotePricing";
@@ -57,10 +58,19 @@ describe("quote service line measurements", () => {
     expect(quoteLineQuantityLabel(line)).toBe("Quantity");
   });
 
+  it("offers Mobilization as a normal quote item without making it a primary project service", () => {
+    const line = createQuoteServiceLineItem("mobilization");
+    expect(line.description).toBe("Mobilization");
+    expect(line.measurementUnit).toBeUndefined();
+    expect(isLinearFootQuoteLine(line)).toBe(false);
+    expect(QUOTE_LINE_ITEM_SERVICE_OPTIONS.some((option) => option.value === "mobilization")).toBe(true);
+  });
+
   it("renders the same service selector for initial, added, and phase-scoped service lines", () => {
     const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
     expect(editor).toContain('aria-label="Quote service"');
-    expect(editor).toContain("QUOTE_LINE_SERVICE_OPTIONS.map");
+    expect(editor).toContain("QUOTE_LINE_ITEM_SERVICE_OPTIONS.map");
+    expect(editor).toContain('QUOTE_LINE_SERVICE_OPTIONS.some((service) => service.value === selectedService.value)');
     expect(editor).toContain("const DEFAULT_LINE_ITEMS: LineItem[] = [");
     expect(editor).toContain("{ ...createQuoteServiceLineItem(), kind: \"service\" }");
     expect(editor).toContain("Rate / linear ft");

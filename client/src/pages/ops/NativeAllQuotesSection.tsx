@@ -61,6 +61,7 @@ import {
   getQuoteLineServiceOption,
   inferQuoteLineServiceOption,
   isLinearFootQuoteLine,
+  QUOTE_LINE_ITEM_SERVICE_OPTIONS,
   QUOTE_LINE_SERVICE_OPTIONS,
   quoteLineQuantityLabel,
   type QuoteLineMeasurementUnit,
@@ -250,7 +251,7 @@ function LineItemRow({
               aria-label="Quote service"
               className="mt-1 h-9 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-sm text-zinc-100"
             >
-              {QUOTE_LINE_SERVICE_OPTIONS.map((service) => <option key={service.value} value={service.value}>{service.label}{service.measurementUnit === "linear_foot" ? " — linear ft" : ""}</option>)}
+              {QUOTE_LINE_ITEM_SERVICE_OPTIONS.map((service) => <option key={service.value} value={service.value}>{service.label}{service.measurementUnit === "linear_foot" ? " — linear ft" : ""}</option>)}
               <option value="custom">Custom service / charge</option>
             </select>
           </label>
@@ -1128,7 +1129,7 @@ function QuoteFormModal({
       return {
         ...prev,
         lineItems: items,
-        serviceType: field === "serviceCode" && selectedService && i === firstServiceIndex ? selectedService.label : prev.serviceType,
+        serviceType: field === "serviceCode" && selectedService && QUOTE_LINE_SERVICE_OPTIONS.some((service) => service.value === selectedService.value) && i === firstServiceIndex ? selectedService.label : prev.serviceType,
         acreage: field === "serviceCode" && selectedService?.measurementUnit === "linear_foot" && i === firstServiceIndex ? "" : prev.acreage,
       };
     });

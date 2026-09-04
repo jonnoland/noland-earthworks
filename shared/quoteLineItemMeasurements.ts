@@ -5,7 +5,8 @@ export type QuoteLineServiceCode =
   | "right-of-way-clearing"
   | "brush-hogging"
   | "trail-cutting"
-  | "fence-line-clearing";
+  | "fence-line-clearing"
+  | "mobilization";
 
 export type QuoteLineMeasurementUnit = "linear_foot";
 export type QuoteLineQuantitySource = "measured" | "acreage_estimate";
@@ -32,6 +33,15 @@ export const QUOTE_LINE_SERVICE_OPTIONS: QuoteLineServiceOption[] = [
   { value: "fence-line-clearing", label: "Fence Line Clearing", measurementUnit: "linear_foot" },
 ];
 
+/**
+ * Project services are kept separate from quote-item charges so Mobilization
+ * can be added to a quote or phase without becoming the project’s main service.
+ */
+export const QUOTE_LINE_ITEM_SERVICE_OPTIONS: QuoteLineServiceOption[] = [
+  ...QUOTE_LINE_SERVICE_OPTIONS,
+  { value: "mobilization", label: "Mobilization" },
+];
+
 export interface MeasuredQuoteLineItem {
   description: string;
   qty: number;
@@ -45,13 +55,13 @@ export interface MeasuredQuoteLineItem {
 }
 
 export function getQuoteLineServiceOption(value: string | undefined): QuoteLineServiceOption | undefined {
-  return QUOTE_LINE_SERVICE_OPTIONS.find((option) => option.value === value);
+  return QUOTE_LINE_ITEM_SERVICE_OPTIONS.find((option) => option.value === value);
 }
 
 export function inferQuoteLineServiceOption(description: string | undefined): QuoteLineServiceOption | undefined {
   const normalized = description?.trim().toLocaleLowerCase();
   if (!normalized) return undefined;
-  return QUOTE_LINE_SERVICE_OPTIONS.find((option) => {
+  return QUOTE_LINE_ITEM_SERVICE_OPTIONS.find((option) => {
     const label = option.label.toLocaleLowerCase();
     return normalized === label || normalized.startsWith(`${label} `) || normalized.startsWith(`${label}—`);
   });
