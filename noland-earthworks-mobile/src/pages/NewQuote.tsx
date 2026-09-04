@@ -19,7 +19,10 @@ import {
   CloudCheck,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { Geolocation } from "@capacitor/geolocation";
+import { Share } from "@capacitor/share";
 import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
@@ -30,6 +33,7 @@ import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
 import { calculateLinearFeetFromAcreage, LINEAR_FOOT_CLEARING_WIDTH_OPTIONS } from "../../../shared/quoteLineItemMeasurements";
+import { buildOnxSiteWalkWaypointGpx, onxSiteWalkWaypointFileName } from "@/lib/onxSiteWalk";
 import {
   calculateCachedFieldEstimate,
   readFieldPricingSnapshot,
@@ -320,6 +324,9 @@ export default function NewQuote() {
   const cachedPricingRef = React.useRef<FieldPricingSnapshot | null>(null);
   const wasOfflineRef = React.useRef(!navigator.onLine);
   const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
+  const [onxHandoffMessage, setOnxHandoffMessage] = useState<string | null>(null);
+  const [onxHandoffError, setOnxHandoffError] = useState<string | null>(null);
+  const [onxHandoffPrepared, setOnxHandoffPrepared] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExistingClientContact | null>(null);
@@ -529,6 +536,9 @@ export default function NewQuote() {
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
     skipForwardGeocode.current = true;
+    setOnxHandoffPrepared(false);
+    setOnxHandoffMessage(null);
+    setOnxHandoffError(null);
     setSelectedParcelBoundary(match.boundaryRings);
     setForm((current) => ({
       ...current,
@@ -560,6 +570,57 @@ export default function NewQuote() {
         setParcelMatches(result.matches);
       },
     });
+  };
+
+  const shareOnxSiteWalkWaypoint = async () => {
+    const latitude = form.lat;
+    const longitude = form.lng;
+    if (typeof latitude !== "number" || !Number.isFinite(latitude) || typeof longitude !== "number" || !Number.isFinite(longitude)) {
+      setOnxHandoffError("Select a property or set the site location before creating the onX waypoint.");
+      return;
+    }
+    const waypoint = {
+      parcelId: form.parcelId,
+      county: normalizeCountyName(form.county) || form.county,
+      address: form.address,
+      latitude,
+      longitude,
+    };
+    const fileName = onxSiteWalkWaypointFileName(waypoint);
+    const gpx = buildOnxSiteWalkWaypointGpx(waypoint);
+    setOnxHandoffError(null);
+    setOnxHandoffMessage(null);
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const savedFile = await Filesystem.writeFile({
+          path: `onx-site-walk/${fileName}`,
+          data: gpx,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+          recursive: true,
+        });
+        const shareSupported = await Share.canShare();
+        if (!shareSupported.value) throw new Error("Sharing is not available on this device.");
+        await Share.share({
+          title: "onX Offroad site-walk waypoint",
+          text: "Import this waypoint into onX Offroad, walk the work area, and use Area Shape to measure the actual mulching scope.",
+          files: [savedFile.uri],
+          dialogTitle: "Open property waypoint with onX Offroad",
+        });
+      } else {
+        const gpxUrl = URL.createObjectURL(new Blob([gpx], { type: "application/gpx+xml" }));
+        const link = document.createElement("a");
+        link.href = gpxUrl;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(gpxUrl);
+      }
+      setOnxHandoffPrepared(true);
+      setOnxHandoffMessage("Waypoint ready. In onX Offroad, open My Content → Import and select the GPX file. Walk the actual scope, use Area Shape, then enter only the measured work-area acres below.");
+    } catch (error) {
+      setOnxHandoffError(error instanceof Error ? error.message : "The onX waypoint could not be prepared. Try again or use the Tennessee Property Viewer link.");
+    }
   };
 
   const applyAddressDetails = (details: { address?: string | null; street?: string; city?: string; zip?: string; county?: string }) => {
@@ -896,6 +957,7 @@ export default function NewQuote() {
       form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
       isLinearFootQuote ? `${form.serviceType} measurement: ${Math.round(effectiveLinearFeet).toLocaleString()} linear feet${form.quantitySource === "acreage_estimate" ? ` estimated from ${sourceAcreage} acres at ${clearingWidthFeet} feet wide — verify on site.` : "."}` : "",
       form.parcelId ? `TN Property Viewer reference: Parcel ${form.parcelId} · ${normalizeCountyName(form.county) || form.county}.` : "",
+      onxHandoffPrepared && Number.isFinite(acreage) ? `onX Offroad waypoint prepared; work-area acreage entered: ${acreage} acres. Confirm the final scope before sending.` : "",
       estimate?.selectedDiscount ? `Selected quote discount: ${estimate.selectedDiscount.label} (${estimate.selectedDiscount.percent}% — ${estimate.selectedDiscount.eligibility}).` : "",
     ].filter(Boolean).join("\n");
 
@@ -1000,7 +1062,12 @@ export default function NewQuote() {
   // ─── Styles ──────────────────────────────────────────────────────────────
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    if (key === "address" || key === "county" || key === "parcelId") setSelectedParcelBoundary(null);
+    if (key === "address" || key === "county" || key === "parcelId") {
+      setSelectedParcelBoundary(null);
+      setOnxHandoffPrepared(false);
+      setOnxHandoffMessage(null);
+      setOnxHandoffError(null);
+    }
     setForm((f) => ({ ...f, [key]: e.target.value }));
   };
 
@@ -1239,7 +1306,12 @@ export default function NewQuote() {
             <label style={labelStyle}>Address</label>
             <AddressAutocomplete
               value={form.address}
-              onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+              onChange={(addr) => {
+                setOnxHandoffPrepared(false);
+                setOnxHandoffMessage(null);
+                setOnxHandoffError(null);
+                setForm((f) => ({ ...f, address: addr }));
+              }}
               onCoordinates={(lat, lng) => {
                 skipForwardGeocode.current = true;
                 setForm((f) => ({ ...f, lat, lng }));
@@ -1311,6 +1383,9 @@ export default function NewQuote() {
                 lng={form.lng}
                 boundaryRings={selectedParcelBoundary}
                 onPinMoved={async (lat, lng) => {
+                  setOnxHandoffPrepared(false);
+                  setOnxHandoffMessage(null);
+                  setOnxHandoffError(null);
                   setForm((f) => ({ ...f, lat, lng }));
                   try {
                     const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat, lng });
@@ -1325,6 +1400,15 @@ export default function NewQuote() {
               />
             )}
             {selectedParcelBoundary && <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "6px 0 0" }}>Orange outline shows the official Tennessee Property Viewer parcel boundary.</p>}
+            {form.lat && form.lng && (
+              <div style={{ marginTop: 12, border: "1px solid oklch(0.55 0.16 210 / 0.45)", borderRadius: 10, padding: 11, backgroundColor: "oklch(0.55 0.16 210 / 0.07)" }}>
+                <p style={{ color: "oklch(0.76 0.14 210)", fontSize: 12, fontWeight: 700, margin: 0 }}>onX Offroad Site Walk</p>
+                <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.45, margin: "5px 0 9px" }}>Share a GPX property waypoint to onX before you walk the site. In onX, draw the work area with Area Shape; the property outline is reference only, not the quoted acreage.</p>
+                <button type="button" onClick={shareOnxSiteWalkWaypoint} style={{ border: "1px solid oklch(0.62 0.16 210)", borderRadius: 8, padding: "8px 10px", background: "transparent", color: "oklch(0.76 0.14 210)", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Share property waypoint to onX</button>
+                {onxHandoffMessage && <p role="status" style={{ color: "oklch(0.70 0.18 145)", fontSize: 11, lineHeight: 1.45, margin: "8px 0 0" }}>{onxHandoffMessage}</p>}
+                {onxHandoffError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, lineHeight: 1.45, margin: "8px 0 0" }}>{onxHandoffError}</p>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1347,8 +1431,9 @@ export default function NewQuote() {
             {/* Acreage services */}
             {!isROW && !isLinearFootService(form.serviceType) && (
               <div>
-                <label style={labelStyle}>Estimated Acreage *</label>
+                <label style={labelStyle}>Work-Area Acreage *</label>
                 <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
+                <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "5px 0 0" }}>{onxHandoffPrepared ? "Enter the acres measured for the actual work boundary in onX—not the entire deeded parcel." : "Enter only the portion of the property included in the quoted work."}</p>
               </div>
             )}
 

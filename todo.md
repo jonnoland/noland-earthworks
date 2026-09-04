@@ -3991,3 +3991,12 @@
 - [x] Add Mobilization to the Operations quote line-item service selector
 - [x] Confirm Mobilization retains normal pricing and phase-assignment behavior
 - [x] Add regression coverage and validate the quote item selector
+
+## Site-Walk Measurement Tool Review — Sep 2026
+- [x] Compare onX Offroad and field-measurement options for job-acreage capture
+- [x] Recommend an accurate, field-ready workflow for site visits and quote documentation
+
+## Noland Field onX Site-Walk Handoff — Sep 2026
+- [x] Confirm onX’s supported handoff options and define the companion-app site-walk workflow
+- [x] Add property handoff and measured-acreage capture to Noland Field quotes
+- [x] Add regression coverage and validate the field-to-quote workflow
