@@ -23,6 +23,6 @@ describe("Noland Field dual-distribution release script", () => {
     expect(source).toContain('run("pnpm", ["run", "build"], mobileRoot)');
     expect(source).toContain('run("./gradlew", [":app:assembleRelease"], join(mobileRoot, "android"))');
     expect(source).toContain("version !== mobilePackage.version");
-    expect(source).toContain("updateMobileRelease(version, storagePath, releaseNotes)");
+    expect(source).toContain("updateMobileRelease(version, storagePath, notes)");
   });
 });

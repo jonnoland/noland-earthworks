@@ -19,6 +19,7 @@ import {
   CloudCheck,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { AppLauncher } from "@capacitor/app-launcher";
 import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { Geolocation } from "@capacitor/geolocation";
@@ -331,6 +332,7 @@ export default function NewQuote() {
   const [onxHandoffMessage, setOnxHandoffMessage] = useState<string | null>(null);
   const [onxHandoffError, setOnxHandoffError] = useState<string | null>(null);
   const [onxHandoffPrepared, setOnxHandoffPrepared] = useState(false);
+  const [onxOpening, setOnxOpening] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExistingClientContact | null>(null);
@@ -623,9 +625,34 @@ export default function NewQuote() {
         URL.revokeObjectURL(gpxUrl);
       }
       setOnxHandoffPrepared(true);
-      setOnxHandoffMessage("Waypoint ready. In onX Offroad, open My Content → Import and select the GPX file. Walk the actual scope, use Area Shape, then enter only the measured work-area acres below.");
+      setOnxHandoffMessage("GPX waypoint ready. Save or send the file from the Android share sheet, then open onX Offroad and use My Content → Import to select it. Walk the actual scope, use Area Shape, then enter only the measured work-area acres below.");
     } catch (error) {
       setOnxHandoffError(error instanceof Error ? error.message : "The onX waypoint could not be prepared. Try again or use the Tennessee Property Viewer link.");
+    }
+  };
+
+  const openOnxOffroad = async () => {
+    setOnxHandoffError(null);
+    setOnxHandoffMessage(null);
+    if (!Capacitor.isNativePlatform()) {
+      setOnxHandoffError("Open Noland Field on your Android device to launch onX Offroad directly.");
+      return;
+    }
+
+    setOnxOpening(true);
+    try {
+      const onxAvailable = await AppLauncher.canOpenUrl({ url: "onxmaps.offroad" });
+      if (!onxAvailable.value) {
+        setOnxHandoffError("onX Offroad was not detected on this device. Install or update onX Offroad, then try again. You can still use Share GPX file and import it manually from onX My Content.");
+        return;
+      }
+
+      await AppLauncher.openUrl({ url: "onxmaps.offroad" });
+      setOnxHandoffMessage("Opened onX Offroad. onX imports GPX files from inside the app: tap My Content → Import, then select the GPX file you just saved or shared.");
+    } catch (error) {
+      setOnxHandoffError(error instanceof Error ? error.message : "Could not open onX Offroad. Use Share GPX file, then import it from onX My Content.");
+    } finally {
+      setOnxOpening(false);
     }
   };
 
@@ -1480,8 +1507,11 @@ export default function NewQuote() {
             {form.lat && form.lng && (
               <div style={{ marginTop: 12, border: "1px solid oklch(0.55 0.16 210 / 0.45)", borderRadius: 10, padding: 11, backgroundColor: "oklch(0.55 0.16 210 / 0.07)" }}>
                 <p style={{ color: "oklch(0.76 0.14 210)", fontSize: 12, fontWeight: 700, margin: 0 }}>onX Offroad Site Walk</p>
-                <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.45, margin: "5px 0 9px" }}>Share a GPX property waypoint to onX before you walk the site. In onX, draw the work area with Area Shape; the property outline is reference only, not the quoted acreage.</p>
-                <button type="button" onClick={shareOnxSiteWalkWaypoint} style={{ border: "1px solid oklch(0.62 0.16 210)", borderRadius: 8, padding: "8px 10px", background: "transparent", color: "oklch(0.76 0.14 210)", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Share property waypoint to onX</button>
+                <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.45, margin: "5px 0 9px" }}>Create the GPX waypoint, then open onX Offroad. onX imports GPX files from inside My Content, so Android does not list it as a share target. In onX, draw the work area with Area Shape; the property outline is reference only, not the quoted acreage.</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={shareOnxSiteWalkWaypoint} style={{ border: "1px solid oklch(0.62 0.16 210)", borderRadius: 8, padding: "8px 10px", background: "transparent", color: "oklch(0.76 0.14 210)", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Share GPX file</button>
+                  <button type="button" onClick={openOnxOffroad} disabled={onxOpening} style={{ border: "1px solid var(--ne-amber)", borderRadius: 8, padding: "8px 10px", background: onxOpening ? "var(--ne-raised)" : "transparent", color: "var(--ne-amber)", fontWeight: 700, fontSize: 11, cursor: onxOpening ? "not-allowed" : "pointer" }}>{onxOpening ? "Opening onX…" : "Open onX Offroad"}</button>
+                </div>
                 {onxHandoffMessage && <p role="status" style={{ color: "oklch(0.70 0.18 145)", fontSize: 11, lineHeight: 1.45, margin: "8px 0 0" }}>{onxHandoffMessage}</p>}
                 {onxHandoffError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, lineHeight: 1.45, margin: "8px 0 0" }}>{onxHandoffError}</p>}
               </div>

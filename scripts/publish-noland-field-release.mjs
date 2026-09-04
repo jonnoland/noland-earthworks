@@ -83,12 +83,12 @@ try {
   const releaseExists = spawnSync("gh", ["release", "view", tag, "--repo", repository], { cwd: root, stdio: "ignore" }).status === 0;
   if (releaseExists) {
     run("gh", ["release", "upload", tag, `${stagedApk}#${assetName}`, "--repo", repository, "--clobber"]);
-    run("gh", ["release", "edit", tag, "--repo", repository, "--title", `Noland Field v${version}`, "--notes", releaseNotes]);
+    run("gh", ["release", "edit", tag, "--repo", repository, "--title", `Noland Field v${version}`, "--notes", notes]);
   } else {
-    run("gh", ["release", "create", tag, `${stagedApk}#${assetName}`, "--repo", repository, "--target", "main", "--title", `Noland Field v${version}`, "--notes", releaseNotes]);
+    run("gh", ["release", "create", tag, `${stagedApk}#${assetName}`, "--repo", repository, "--target", "main", "--title", `Noland Field v${version}`, "--notes", notes]);
   }
 
-  updateMobileRelease(version, storagePath, releaseNotes);
+  updateMobileRelease(version, storagePath, notes);
   console.log(JSON.stringify({ version, storagePath, githubRelease: `https://github.com/${repository}/releases/tag/${tag}` }, null, 2));
 } finally {
   rmSync(stagingDirectory, { recursive: true, force: true });

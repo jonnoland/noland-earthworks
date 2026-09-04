@@ -4031,3 +4031,8 @@
 - [x] Publish the signed v0.4.16 and v0.4.17 APKs to GitHub Releases
 - [x] Add a reusable manual release script that uploads future APKs to GitHub and the in-app storage channel
 - [x] Validate GitHub release assets and document the future dual-distribution workflow
+
+## Noland Field onX Android Handoff — Sep 2026
+- [x] Verify onX Offroad’s Android import and direct-launch capabilities against the current GPX share workflow
+- [x] Improve direct onX discovery or provide the most reliable supported import fallback
+- [x] Validate the Android handoff and prepare an updated companion release if code changes are required
