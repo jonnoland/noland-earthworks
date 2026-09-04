@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { buildTennesseeParcelSearchPattern, normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildTennesseeParcelSearchPattern, normalizeTennesseeParcelId, parseTennesseeCountyMapParcel, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 import {
   buildExactNashvilleParcelWhere,
   buildNashvilleParcelWhere,
@@ -58,6 +58,14 @@ export function buildExactTennesseeParcelWhere(county: string, parcelId: string)
   const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
   const exactParcelId = parcelId.trim().replace(/'/g, "''");
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID = '${exactParcelId}'`;
+}
+
+export function buildCountyMapParcelWhere(county: string, parcelId: string): string | null {
+  const localParcel = parseTennesseeCountyMapParcel(parcelId);
+  if (!localParcel) return null;
+
+  const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
+  return `COUNTY_NAME = '${cleanCounty}' AND CMAP = '${localParcel.map}' AND PARCEL = '${localParcel.parcel}'`;
 }
 
 async function queryTennesseeParcels(
@@ -161,11 +169,10 @@ export const parcelRouter = router({
           }
         }
 
-        let features = await queryTennesseeParcels(
-          buildExactTennesseeParcelWhere(input.county, input.parcelId),
-          1,
-          12_000
-        );
+        const countyMapParcelWhere = buildCountyMapParcelWhere(input.county, input.parcelId);
+        let features = countyMapParcelWhere
+          ? await queryTennesseeParcels(countyMapParcelWhere, 1, 12_000)
+          : await queryTennesseeParcels(buildExactTennesseeParcelWhere(input.county, input.parcelId), 1, 12_000);
         if (features.length === 0) {
           features = await queryTennesseeParcels(
             buildTennesseeParcelWhere(input.county, input.parcelId),
@@ -243,12 +250,15 @@ export const parcelRouter = router({
           }
         }
 
-        let features = await queryTennesseeParcels(
-          buildExactTennesseeParcelWhere(input.county, input.parcelId),
-          1,
-          12_000,
-          { includeGeometry: true }
-        );
+        const countyMapParcelWhere = buildCountyMapParcelWhere(input.county, input.parcelId);
+        let features = countyMapParcelWhere
+          ? await queryTennesseeParcels(countyMapParcelWhere, 1, 12_000, { includeGeometry: true })
+          : await queryTennesseeParcels(
+              buildExactTennesseeParcelWhere(input.county, input.parcelId),
+              1,
+              12_000,
+              { includeGeometry: true }
+            );
         if (features.length === 0) {
           features = await queryTennesseeParcels(
             buildTennesseeParcelWhere(input.county, input.parcelId),

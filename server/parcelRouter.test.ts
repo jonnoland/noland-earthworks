@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId, toParcelBoundaryRings } from "./parcelRouter";
-import { buildTennesseeParcelSearchPattern, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildCountyMapParcelWhere, buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId, toParcelBoundaryRings } from "./parcelRouter";
+import { buildTennesseeParcelSearchPattern, parseTennesseeCountyMapParcel, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 describe("Tennessee Parcel ID lookup", () => {
   it("normalizes formatted Parcel IDs for a tolerant official-service search", () => {
@@ -17,6 +17,14 @@ describe("Tennessee Parcel ID lookup", () => {
 
   it("keeps unformatted Parcel IDs anchored while tolerating assessor spacing", () => {
     expect(buildTennesseeParcelSearchPattern("04200100100")).toBe("0%4%2%0%0%1%0%0%1%0%0%");
+  });
+
+  it("matches county-local assessor map-and-parcel formats without requiring the state parcel prefix", () => {
+    expect(parseTennesseeCountyMapParcel("032 051.00")).toEqual({ map: "032", parcel: "051.00" });
+    expect(buildCountyMapParcelWhere("Cheatham County", "032 051.00")).toBe(
+      "COUNTY_NAME = 'Cheatham' AND CMAP = '032' AND PARCEL = '051.00'"
+    );
+    expect(buildCountyMapParcelWhere("Cheatham", "032 051 00")).toBeNull();
   });
 
   it("prefers an exact county-scoped formatted Parcel ID query before using the tolerant fallback", () => {

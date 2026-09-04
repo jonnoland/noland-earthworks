@@ -33,6 +33,27 @@ export function buildTennesseeParcelSearchPattern(value: string): string {
   return `${normalizeTennesseeParcelId(value).split("").join("%")}%`;
 }
 
+export type TennesseeCountyMapParcel = {
+  map: string;
+  parcel: string;
+};
+
+/**
+ * Some counties show a local assessor identifier as map + parcel, for example
+ * `032 051.00` in Cheatham County. The statewide service stores the county's
+ * state code before that value in PARCELID, but exposes the local pieces in
+ * CMAP and PARCEL for an exact county-scoped match.
+ */
+export function parseTennesseeCountyMapParcel(value: string): TennesseeCountyMapParcel | null {
+  const match = value.trim().toUpperCase().match(/^([A-Z0-9]{1,5})\s+([A-Z0-9]{1,5})\.(\d{1,2})$/);
+  if (!match) return null;
+
+  return {
+    map: match[1],
+    parcel: `${match[2]}.${match[3].padStart(2, "0")}`,
+  };
+}
+
 export function validateTennesseeParcelId(value: string): TennesseeParcelIdValidation {
   const trimmed = value.trim();
   const normalized = normalizeTennesseeParcelId(trimmed);

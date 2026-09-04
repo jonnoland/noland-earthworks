@@ -3981,3 +3981,8 @@
 - [x] Trace the shared Parcel ID lookup failure across Operations and Noland Field
 - [x] Repair the common lookup path without changing saved parcel records
 - [x] Add regression coverage and validate both lookup clients
+
+## Cheatham Parcel ID Match Repair — Sep 2026
+- [x] Reproduce the valid Cheatham County Parcel ID mismatch against the official source format
+- [x] Update Operations and Noland Field matching to handle that assessor format safely
+- [x] Add regression coverage, validate the exact record, and publish the repair

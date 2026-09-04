@@ -15,6 +15,8 @@ describe("Noland Field parcel boundary overlay", () => {
     expect(lookupBlock).toContain("toParcelBoundaryRings(feature.geometry)");
     expect(lookupBlock).toContain("boundaryRings");
     expect(fieldRouter).toContain("buildTennesseeParcelSearchPattern");
+    expect(fieldRouter).toContain("buildFieldCountyMapParcelWhere");
+    expect(fieldRouter).toContain("CMAP = '${localParcel.map}' AND PARCEL = '${localParcel.parcel}'");
     expect(fieldRouter).not.toContain("LIKE '%${pattern}%'");
   });
 

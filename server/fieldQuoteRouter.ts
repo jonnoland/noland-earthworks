@@ -23,7 +23,7 @@ import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { buildTennesseeParcelSearchPattern, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildTennesseeParcelSearchPattern, parseTennesseeCountyMapParcel, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 import { getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
 import { formatQuoteCents, roundQuoteCentsUp } from "../shared/quoteMoney";
@@ -46,6 +46,14 @@ function buildFieldParcelWhere(county: string, parcelId: string): string {
   const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
   const pattern = buildTennesseeParcelSearchPattern(parcelId).replace(/'/g, "''");
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '${pattern}'`;
+}
+
+function buildFieldCountyMapParcelWhere(county: string, parcelId: string): string | null {
+  const localParcel = parseTennesseeCountyMapParcel(parcelId);
+  if (!localParcel) return null;
+
+  const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
+  return `COUNTY_NAME = '${cleanCounty}' AND CMAP = '${localParcel.map}' AND PARCEL = '${localParcel.parcel}'`;
 }
 
 type ParcelBoundaryRing = Array<{ lat: number; lng: number }>;
@@ -402,8 +410,9 @@ export const fieldQuoteRouter = router({
       }
 
       try {
+        const countyMapParcelWhere = buildFieldCountyMapParcelWhere(input.county, input.parcelId);
         const params = new URLSearchParams({
-          where: buildFieldParcelWhere(input.county, input.parcelId),
+          where: countyMapParcelWhere ?? buildFieldParcelWhere(input.county, input.parcelId),
           outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPV",
           returnGeometry: "true",
           returnCentroid: "true",
