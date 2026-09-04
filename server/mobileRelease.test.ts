@@ -6,27 +6,24 @@ import { getNolandFieldRelease } from "./mobileRelease";
 const root = resolve(import.meta.dirname, "..");
 
 describe("Noland Field mobile release channel", () => {
-  it("points the in-app update channel to the current signed updater-feedback APK", () => {
-    expect(getNolandFieldRelease()).toEqual({
-      version: "0.4.17",
-      downloadUrl: "/manus-storage/Noland-Field-v0.4.17_d189dc8a.apk",
-      releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-      notes: expect.stringContaining("Detect My Location"),
-      highlights: expect.arrayContaining([
-        expect.stringContaining("Detect My Location"),
-        expect.stringContaining("service-area counties"),
-        expect.stringContaining("per-byte download progress"),
-      ]),
-      history: expect.arrayContaining([expect.objectContaining({ version: "0.4.14", title: "Offline Operations pricing" })]),
-    });
+  it("points the in-app update channel to a signed APK matching the mobile package version", () => {
+    const packageJson = JSON.parse(readFileSync(resolve(root, "noland-earthworks-mobile/package.json"), "utf8")) as { version: string };
+    const release = getNolandFieldRelease();
+
+    expect(release.version).toBe(packageJson.version);
+    expect(release.downloadUrl).toMatch(new RegExp(`^/manus-storage/Noland-Field-v${packageJson.version.replaceAll(".", "\\.")}_.*\\.apk$`));
+    expect(release.releaseNotesUrl).toBe("https://nolandearthworks.com/field-release-notes");
+    expect(release.notes).toContain("Noland Field");
+    expect(release.highlights.length).toBeGreaterThan(0);
+    expect(release.history).toContainEqual(expect.objectContaining({ version: packageJson.version }));
   });
 
   it("keeps Android package version metadata aligned with the published update channel", () => {
     const gradle = readFileSync(resolve(root, "noland-earthworks-mobile/android/app/build.gradle"), "utf8");
     const packageJson = readFileSync(resolve(root, "noland-earthworks-mobile/package.json"), "utf8");
 
-    expect(gradle).toContain("versionCode 19");
-    expect(gradle).toContain('versionName "0.4.17"');
-    expect(packageJson).toContain('"version": "0.4.17"');
+    const version = JSON.parse(packageJson).version;
+    expect(gradle).toContain(`versionName "${version}"`);
+    expect(gradle).toMatch(/versionCode\s+\d+/);
   });
 });

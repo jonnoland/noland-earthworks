@@ -4022,3 +4022,12 @@
 - [x] Add a Detect My Location control that selects the current service-area county from GPS coordinates
 - [x] Add regression coverage and validate location permission, detected county, and failure handling
 - [x] Build and validate a signed replacement Noland Field APK with GPS county detection
+
+## GitHub Release Visibility Review — Sep 2026
+- [x] Inspect repository releases and the current Noland Field distribution path
+- [x] Explain why the latest APK releases are not visible in GitHub Releases
+
+## Noland Field Dual Release Publishing — Sep 2026
+- [x] Publish the signed v0.4.16 and v0.4.17 APKs to GitHub Releases
+- [x] Add a reusable manual release script that uploads future APKs to GitHub and the in-app storage channel
+- [x] Validate GitHub release assets and document the future dual-distribution workflow
