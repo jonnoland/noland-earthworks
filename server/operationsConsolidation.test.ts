@@ -54,11 +54,12 @@ describe("Operations consolidation", () => {
   });
 
   it("uses a conservative 15-day billing capacity and the matching $2,850 crew-day target as estimator defaults", () => {
-    const pricing = read("client/src/pages/ops/Pricing.tsx");
+    const pricingModel = read("shared/internalPricingModel.ts");
 
-    expect(pricing).toContain("workingDaysPerMonth: 15");
-    expect(pricing).toContain("targetMarginPct: 35.5");
-    expect(pricing).toContain("$2,850 internal crew-day target");
+    expect(pricingModel).toContain("ACTIVE_15_DAY_PRICING_CONFIG");
+    expect(pricingModel).toContain("workingDaysPerMonth: 15");
+    expect(pricingModel).toContain("targetMarginPct: 35.5");
+    expect(pricingModel).toContain("Owner-approved planning assumptions");
   });
 
   it("offers an internal comparison between the active 15-day plan and the prior 20-day pricing structure", () => {
@@ -69,6 +70,20 @@ describe("Operations consolidation", () => {
     expect(pricing).toContain("Compare prior 20-day model");
     expect(pricing).toContain("Active 15-day model vs. prior pricing structure");
     expect(pricing).toContain("Crew-day target");
+    expect(pricing).toContain("Monthly revenue target comparison");
+    expect(pricing).toContain("BarChart");
+  });
+
+  it("protects sent and non-repriceable quote work when applying the active model to drafts", () => {
+    const router = read("server/nativeQuotesRouter.ts");
+    const pricing = read("client/src/pages/ops/Pricing.tsx");
+
+    expect(router).toContain("getDraftRepricePreview: ownerProcedure");
+    expect(router).toContain("repriceEligibleDrafts: ownerProcedure");
+    expect(router).toContain('eq(nativeQuotes.status, "draft")');
+    expect(router).toContain('eq(nativeQuotes.status, "draft"))');
+    expect(pricing).toContain("Preview & update drafts");
+    expect(pricing).toContain("Update eligible draft quotes?");
   });
 
   it("uses the approved quote mailbox in business settings and outbound quote delivery", () => {

@@ -19,39 +19,19 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { loadMapScript } from "@/components/Map";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  ACTIVE_15_DAY_PRICING_CONFIG,
+  calculateInternalPricingModel,
+  PRIOR_20_DAY_PRICING_CONFIG,
+  type InternalPricingConfig,
+} from "@shared/internalPricingModel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface EquipmentItem {
-  id: string;
-  name: string;
-  monthlyCost: number;
-}
-
-interface OverheadItem {
-  id: string;
-  name: string;
-  monthlyCost: number;
-}
-
-interface PricingConfig {
-  hoursPerDay: number;
-  crewMembers: number;
-  wagePerHour: number;
-  burdenPct: number;
-  equipment: EquipmentItem[];
-  machineBurnRateGPH: number;
-  fuelPricePerGallon: number;
-  truckFuelPerDay: number;
-  teethCostPerSet: number;
-  daysPerSet: number;
-  annualMajorWear: number;
-  miscConsumablesPerDay: number;
-  overheadItems: OverheadItem[];
-  workingDaysPerMonth: number;
-  targetMarginPct: number;
-  acresPerDay: number;
-}
+type EquipmentItem = InternalPricingConfig["equipment"][number];
+type OverheadItem = InternalPricingConfig["overheadItems"][number];
+type PricingConfig = InternalPricingConfig;
 
 // ─── Overhead presets — costs calibrated to Middle/West Tennessee (Apr 2026) ──
 const OVERHEAD_PRESETS: { label: string; defaultCost: number }[] = [
@@ -75,74 +55,8 @@ const OVERHEAD_PRESETS: { label: string; defaultCost: number }[] = [
   { label: "Custom Item", defaultCost: 0 },
 ];
 
-// ─── Default config — Middle/West Tennessee market rates (Apr 2026) ───────────
-const DEFAULT_CONFIG: PricingConfig = {
-  hoursPerDay: 10,
-  crewMembers: 1,
-  wagePerHour: 70,
-  burdenPct: 10,
-  equipment: [
-    { id: "default-tracked-mulcher", name: "Tracked Forestry Mulcher (lease/payment)", monthlyCost: 1500 },
-    { id: "default-fecon-drum", name: "Fecon Drum Mulcher", monthlyCost: 500 },
-  ],
-  machineBurnRateGPH: 8,
-  fuelPricePerGallon: 4.5,
-  truckFuelPerDay: 45,
-  teethCostPerSet: 2200,
-  daysPerSet: 10,
-  annualMajorWear: 26400,
-  miscConsumablesPerDay: 100,
-  overheadItems: [
-    { id: "default-insurance", name: "Insurance", monthlyCost: 350 },
-    { id: "default-phone-admin", name: "Phone/Admin", monthlyCost: 100 },
-    { id: "default-marketing", name: "Website Hosting / Marketing Tools", monthlyCost: 500 },
-  ],
-  // Planning capacity: 15 billable days protects pricing for weather, travel,
-  // maintenance, site visits, and unfilled calendar days.
-  workingDaysPerMonth: 15,
-  // With the configured cost inputs and 15 billable days, this yields the
-  // owner-approved $2,850 internal crew-day target.
-  targetMarginPct: 35.5,
-  acresPerDay: 1,
-};
-
-/** The saved configuration structure in use before the 15-billable-day update. */
-const PRIOR_PRICING_CONFIG: PricingConfig = {
-  hoursPerDay: 8,
-  crewMembers: 1,
-  wagePerHour: 28,
-  burdenPct: 25,
-  equipment: [{ id: "prior-cat-299d3", name: "CAT 299D3 XE", monthlyCost: 2200 }],
-  machineBurnRateGPH: 7,
-  fuelPricePerGallon: 5.33,
-  truckFuelPerDay: 65,
-  teethCostPerSet: 2200,
-  daysPerSet: 12,
-  annualMajorWear: 18000,
-  miscConsumablesPerDay: 35,
-  overheadItems: [],
-  workingDaysPerMonth: 20,
-  targetMarginPct: 30,
-  acresPerDay: 1,
-};
-
-function calculatePricingModel(config: PricingConfig) {
-  const laborCostPerDay = config.hoursPerDay * config.crewMembers * config.wagePerHour * (1 + config.burdenPct / 100);
-  const equipmentCostPerDay = config.workingDaysPerMonth > 0
-    ? config.equipment.reduce((sum, item) => sum + item.monthlyCost, 0) / config.workingDaysPerMonth
-    : 0;
-  const fuelCostPerDay = config.machineBurnRateGPH * config.hoursPerDay * config.fuelPricePerGallon + config.truckFuelPerDay;
-  const wearCostPerDay = (config.daysPerSet > 0 ? config.teethCostPerSet / config.daysPerSet : 0)
-    + config.annualMajorWear / (config.workingDaysPerMonth * 12 || 1)
-    + config.miscConsumablesPerDay;
-  const overheadCostPerDay = config.workingDaysPerMonth > 0
-    ? config.overheadItems.reduce((sum, item) => sum + item.monthlyCost, 0) / config.workingDaysPerMonth
-    : 0;
-  const totalDailyCost = laborCostPerDay + equipmentCostPerDay + fuelCostPerDay + wearCostPerDay + overheadCostPerDay;
-  const crewDayRate = totalDailyCost / (1 - config.targetMarginPct / 100);
-
-  return { laborCostPerDay, equipmentCostPerDay, fuelCostPerDay, wearCostPerDay, overheadCostPerDay, totalDailyCost, crewDayRate };
-}
+const DEFAULT_CONFIG: PricingConfig = ACTIVE_15_DAY_PRICING_CONFIG;
+const PRIOR_PRICING_CONFIG: PricingConfig = PRIOR_20_DAY_PRICING_CONFIG;
 
 function readBrowserPricingConfig(): PricingConfig {
   try {
@@ -749,6 +663,7 @@ export default function Pricing() {
   const [config, setConfig] = useState<PricingConfig>(DEFAULT_CONFIG);
   const [showModal, setShowModal] = useState(false);
   const [showModelComparison, setShowModelComparison] = useState(false);
+  const [showDraftRepriceConfirm, setShowDraftRepriceConfirm] = useState(false);
   const importedBrowserConfig = useRef(false);
   const { data: sharedPricingConfig, isLoading: pricingConfigLoading } = trpc.ops.settings.getInternalPricingConfig.useQuery(undefined, { staleTime: 60_000, retry: false });
   const initializePricingConfig = trpc.ops.settings.initializeInternalPricingConfig.useMutation({
@@ -764,6 +679,20 @@ export default function Pricing() {
       utils.ops.settings.getInternalPricingConfig.invalidate();
     },
     onError: (error) => toast.error(error.message || "Could not save the shared pricing configuration."),
+  });
+  const { data: draftRepricePreview, isLoading: draftRepricePreviewLoading } = trpc.nativeQuotes.getDraftRepricePreview.useQuery(undefined, {
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const applyDraftReprice = trpc.nativeQuotes.repriceEligibleDrafts.useMutation({
+    onSuccess: (result) => {
+      utils.nativeQuotes.getDraftRepricePreview.invalidate();
+      utils.nativeQuotes.list.invalidate();
+      utils.ops.quotes.list.invalidate();
+      setShowDraftRepriceConfirm(false);
+      toast.success(`${result.updatedCount} draft ${result.updatedCount === 1 ? "quote was" : "quotes were"} updated to the 15-day model.`);
+    },
+    onError: (error) => toast.error(error.message || "Could not update draft quotes."),
   });
 
   useEffect(() => {
@@ -853,8 +782,8 @@ export default function Pricing() {
   // calculateDistance is defined after derived values to avoid hoisting issues — see below
 
   // Derived values
-  const activePricingModel = calculatePricingModel(config);
-  const priorPricingModel = calculatePricingModel(PRIOR_PRICING_CONFIG);
+  const activePricingModel = calculateInternalPricingModel(config);
+  const priorPricingModel = calculateInternalPricingModel(PRIOR_PRICING_CONFIG);
   const {
     laborCostPerDay,
     equipmentCostPerDay,
@@ -867,6 +796,10 @@ export default function Pricing() {
   const jobTotal = crewDayRate * crewDaysNeeded;
   const pricePerAcre = jobAcres > 0 ? jobTotal / jobAcres : 0;
   const jobProfit = jobTotal - totalDailyCost * crewDaysNeeded;
+  const revenueComparisonData = [
+    { model: "Prior 20-day", revenue: Math.round(priorPricingModel.crewDayRate * PRIOR_PRICING_CONFIG.workingDaysPerMonth) },
+    { model: "Active 15-day", revenue: Math.round(activePricingModel.crewDayRate * config.workingDaysPerMonth) },
+  ];
 
   // ─── Distance calculation (uses crewDayRate, declared above) ───────────────────────────────
   const calculateDistance = async () => {
@@ -987,6 +920,20 @@ export default function Pricing() {
             <span className="text-lg font-bold text-primary">${totalDailyCost.toFixed(0)}</span>
           </div>
           <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-3 flex flex-col gap-3 rounded-md border border-amber-500/25 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-foreground">Update eligible draft quotes</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{draftRepricePreviewLoading ? "Checking draft quote eligibility..." : `${draftRepricePreview?.eligibleQuoteCount ?? 0} of ${draftRepricePreview?.draftQuoteCount ?? 0} drafts contain acreage or day-rate work that can use the active 15-day model. Sent, approved, and linear-foot quotes are excluded.`}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDraftRepriceConfirm(true)}
+                disabled={draftRepricePreviewLoading || !draftRepricePreview?.eligibleQuoteCount || applyDraftReprice.isPending}
+                className="shrink-0 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {applyDraftReprice.isPending ? "Updating drafts..." : "Preview & update drafts"}
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => setShowModelComparison((current) => !current)}
@@ -1030,10 +977,47 @@ export default function Pricing() {
                     </tbody>
                   </table>
                 </div>
+                <div className="border-t border-border bg-background/20 px-4 py-4">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Monthly revenue target comparison</p>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={revenueComparisonData} margin={{ top: 12, right: 8, left: -14, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 255 / 30%)" vertical={false} />
+                      <XAxis dataKey="model" tick={{ fontSize: 10, fill: "oklch(0.67 0.01 255)" }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={(value) => `$${Math.round(value / 1000)}k`} tick={{ fontSize: 10, fill: "oklch(0.67 0.01 255)" }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: "oklch(0.15 0.01 255)", border: "1px solid oklch(0.30 0.01 255)", borderRadius: "8px", fontSize: "11px" }} formatter={(value: number) => [`$${value.toLocaleString()}`, "Monthly target"]} />
+                      <Bar dataKey="revenue" fill="oklch(0.65 0.18 55)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </section>
             )}
           </div>
         </div>
+
+        {showDraftRepriceConfirm && draftRepricePreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation">
+            <section role="dialog" aria-modal="true" aria-labelledby="draft-reprice-title" className="w-full max-w-xl rounded-lg border border-border bg-card p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 id="draft-reprice-title" className="text-base font-semibold text-foreground">Update eligible draft quotes?</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">This applies the active ${Math.round(activePricingModel.crewDayRate).toLocaleString()}/day model to eligible acreage and day-rate line items. Mobilization, equipment/project costs, discounts, and linear-foot work stay protected. Quotes that are not drafts are never changed.</p>
+                </div>
+                <button type="button" onClick={() => setShowDraftRepriceConfirm(false)} className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" aria-label="Close draft quote update preview"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="mt-4 rounded-md border border-border bg-secondary/30 p-3 text-xs">
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Eligible draft quotes</span><span className="font-semibold text-foreground">{draftRepricePreview.eligibleQuoteCount}</span></div>
+                <div className="mt-2 flex justify-between gap-4"><span className="text-muted-foreground">Total draft increase</span><span className="font-semibold text-emerald-400">${(draftRepricePreview.totalDeltaCents / 100).toLocaleString()}</span></div>
+              </div>
+              <div className="mt-4 max-h-48 overflow-y-auto rounded-md border border-border">
+                {draftRepricePreview.quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-2.5 last:border-0"><span className="min-w-0 truncate text-xs font-medium text-foreground">{quote.title}</span><span className="shrink-0 text-xs font-semibold text-emerald-400">+${(quote.deltaCents / 100).toLocaleString()}</span></div>)}
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowDraftRepriceConfirm(false)} className="rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary">Cancel</button>
+                <button type="button" onClick={() => applyDraftReprice.mutate()} disabled={applyDraftReprice.isPending} className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">{applyDraftReprice.isPending ? "Updating..." : "Update eligible drafts"}</button>
+              </div>
+            </section>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Margin slider */}

@@ -3958,3 +3958,9 @@
 - [x] Define a clear previous-model baseline against the active 15-day pricing configuration
 - [x] Add an internal comparison toggle and side-by-side daily pricing summary
 - [x] Add regression coverage and validate the pricing comparison presentation
+
+## Draft Quote Repricing and Revenue Chart — Aug 2026
+- [x] Define safe eligibility, calculation, and audit rules for bulk-updating draft quotes
+- [x] Add a protected bulk action to reprice eligible draft quotes with the active 15-day model
+- [x] Add an active-versus-prior monthly revenue comparison chart to the pricing view
+- [x] Add regression coverage and validate the repricing workflow and chart

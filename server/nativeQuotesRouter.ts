@@ -17,7 +17,7 @@ import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary, businessSettings } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -31,6 +31,8 @@ import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/
 import { orderQuoteLineItemsWithDiscountsLast } from "../shared/quotePhaseSections";
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
+import { ACTIVE_15_DAY_PRICING_CONFIG, calculateInternalPricingModel, isInternalPricingConfig, PRIOR_20_DAY_PRICING_CONFIG } from "../shared/internalPricingModel";
+import { repriceDraftQuoteLineItems } from "../shared/draftQuoteRepricing";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -78,6 +80,45 @@ function parsePortalLineItems(raw: string | null): QuotePortalLineItem[] {
   } catch {
     return [];
   }
+}
+
+async function getDraftRepricingRates() {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [settings] = await db.select({ pricingConfig: businessSettings.pricingConfig }).from(businessSettings).limit(1);
+  let activeConfig = ACTIVE_15_DAY_PRICING_CONFIG;
+  try {
+    const stored = settings?.pricingConfig ? JSON.parse(settings.pricingConfig) : null;
+    if (isInternalPricingConfig(stored)) activeConfig = stored;
+  } catch {
+    // Fall back to the owner-approved 15-day defaults when the stored JSON is unreadable.
+  }
+  return {
+    db,
+    activeCrewDayRateCents: roundQuoteCentsUp(calculateInternalPricingModel(activeConfig).crewDayRate * 100),
+    priorCrewDayRateCents: roundQuoteCentsUp(calculateInternalPricingModel(PRIOR_20_DAY_PRICING_CONFIG).crewDayRate * 100),
+  };
+}
+
+function buildDraftRepricePreview(
+  quote: { id: number; title: string; lineItems: string; totalCents: number; rentalEquipment: string | null; rentalMarkupPct: number | null },
+  activeCrewDayRateCents: number,
+  priorCrewDayRateCents: number,
+) {
+  const repriced = repriceDraftQuoteLineItems(parsePortalLineItems(quote.lineItems), activeCrewDayRateCents, priorCrewDayRateCents);
+  const serviceTotalCents = repriced.lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+  const rentalCostCents = getQuoteRentalCostCents(parseQuoteSupportArtifactArray<QuoteRentalEquipment>(quote.rentalEquipment));
+  const totalCents = getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, quote.rentalMarkupPct ?? 15).totalCents;
+  return {
+    id: quote.id,
+    title: quote.title,
+    previousTotalCents: quote.totalCents,
+    totalCents,
+    deltaCents: totalCents - quote.totalCents,
+    lineItems: repriced.lineItems,
+    repriceableItemCount: repriced.repriceableItemCount,
+    skippedPositiveItemCount: repriced.skippedPositiveItemCount,
+  };
 }
 
 function getIncludedRentalCustomerCharge(quote: { rentalEquipment: string | null; rentalMarkupPct: number | null }): number {
@@ -294,6 +335,57 @@ export const nativeQuotesRouter = router({
       const rows = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       return rows[0] ?? null;
     }),
+
+  /** Preview the active 15-day estimator effect without touching draft quote records. */
+  getDraftRepricePreview: ownerProcedure.query(async () => {
+    const { db, activeCrewDayRateCents, priorCrewDayRateCents } = await getDraftRepricingRates();
+    const drafts = await db.select({
+      id: nativeQuotes.id,
+      title: nativeQuotes.title,
+      lineItems: nativeQuotes.lineItems,
+      totalCents: nativeQuotes.totalCents,
+      rentalEquipment: nativeQuotes.rentalEquipment,
+      rentalMarkupPct: nativeQuotes.rentalMarkupPct,
+    }).from(nativeQuotes).where(eq(nativeQuotes.status, "draft")).orderBy(desc(nativeQuotes.updatedAt));
+    const allQuotes = drafts.map((quote) => buildDraftRepricePreview(quote, activeCrewDayRateCents, priorCrewDayRateCents));
+    const quotes = allQuotes.filter((quote) => quote.repriceableItemCount > 0);
+    return {
+      activeCrewDayRateCents,
+      priorCrewDayRateCents,
+      draftQuoteCount: drafts.length,
+      eligibleQuoteCount: quotes.length,
+      totalDeltaCents: quotes.reduce((sum, quote) => sum + quote.deltaCents, 0),
+      quotes: quotes.map(({ lineItems: _lineItems, ...quote }) => quote),
+    };
+  }),
+
+  /** Reprice only still-draft quotes that have eligible acreage or day-rate work. */
+  repriceEligibleDrafts: ownerProcedure.mutation(async () => {
+    const { db, activeCrewDayRateCents, priorCrewDayRateCents } = await getDraftRepricingRates();
+    const drafts = await db.select({
+      id: nativeQuotes.id,
+      title: nativeQuotes.title,
+      lineItems: nativeQuotes.lineItems,
+      totalCents: nativeQuotes.totalCents,
+      rentalEquipment: nativeQuotes.rentalEquipment,
+      rentalMarkupPct: nativeQuotes.rentalMarkupPct,
+    }).from(nativeQuotes).where(eq(nativeQuotes.status, "draft"));
+    const previews = drafts.map((quote) => buildDraftRepricePreview(quote, activeCrewDayRateCents, priorCrewDayRateCents))
+      .filter((quote) => quote.repriceableItemCount > 0);
+    const now = new Date();
+    for (const quote of previews) {
+      await db.update(nativeQuotes).set({
+        lineItems: JSON.stringify(normalizeQuoteLineItems(quote.lineItems)),
+        totalCents: quote.totalCents,
+        updatedAt: now,
+      }).where(and(eq(nativeQuotes.id, quote.id), eq(nativeQuotes.status, "draft")));
+    }
+    return {
+      updatedCount: previews.length,
+      totalDeltaCents: previews.reduce((sum, quote) => sum + quote.deltaCents, 0),
+      activeCrewDayRateCents,
+    };
+  }),
 
   create: ownerProcedure
     .input(z.object({
