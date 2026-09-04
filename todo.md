@@ -3948,3 +3948,8 @@
 - [x] Review current Operations pricing and available machine operating-cost inputs
 - [x] Calculate a practical daily pricing floor and quote guardrails
 - [x] Deliver a quote-conversion structure that protects margin while improving qualified-client acceptance
+
+## Estimator Daily Capacity Defaults — Aug 2026
+- [x] Set the saved internal estimator configuration to 15 billable days per month
+- [x] Set the saved solo-mulcher default crew-day target to $2,850
+- [x] Add regression coverage and validate the updated daily-cost and margin calculations

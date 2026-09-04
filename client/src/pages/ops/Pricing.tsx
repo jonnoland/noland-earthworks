@@ -92,8 +92,12 @@ const DEFAULT_CONFIG: PricingConfig = {
   annualMajorWear: 18000,
   miscConsumablesPerDay: 35,
   overheadItems: [],
-  workingDaysPerMonth: 20,
-  targetMarginPct: 30,
+  // Planning capacity: 15 billable days protects pricing for weather, travel,
+  // maintenance, site visits, and unfilled calendar days.
+  workingDaysPerMonth: 15,
+  // With the configured cost inputs and 15 billable days, this yields the
+  // owner-approved $2,850 internal crew-day target.
+  targetMarginPct: 35.5,
   acresPerDay: 1,
 };
 

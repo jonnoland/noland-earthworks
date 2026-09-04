@@ -53,6 +53,14 @@ describe("Operations consolidation", () => {
     expect(router).toContain("updateInternalPricingConfig: ownerProcedure");
   });
 
+  it("uses a conservative 15-day billing capacity and the matching $2,850 crew-day target as estimator defaults", () => {
+    const pricing = read("client/src/pages/ops/Pricing.tsx");
+
+    expect(pricing).toContain("workingDaysPerMonth: 15");
+    expect(pricing).toContain("targetMarginPct: 35.5");
+    expect(pricing).toContain("$2,850 internal crew-day target");
+  });
+
   it("uses the approved quote mailbox in business settings and outbound quote delivery", () => {
     const schema = read("drizzle/schema.ts");
     const quoteRouter = read("server/nativeQuotesRouter.ts");
