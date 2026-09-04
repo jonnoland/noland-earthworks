@@ -3953,3 +3953,8 @@
 - [x] Set the saved internal estimator configuration to 15 billable days per month
 - [x] Set the saved solo-mulcher default crew-day target to $2,850
 - [x] Add regression coverage and validate the updated daily-cost and margin calculations
+
+## Pricing Model Comparison — Aug 2026
+- [x] Define a clear previous-model baseline against the active 15-day pricing configuration
+- [x] Add an internal comparison toggle and side-by-side daily pricing summary
+- [x] Add regression coverage and validate the pricing comparison presentation

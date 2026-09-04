@@ -61,6 +61,16 @@ describe("Operations consolidation", () => {
     expect(pricing).toContain("$2,850 internal crew-day target");
   });
 
+  it("offers an internal comparison between the active 15-day plan and the prior 20-day pricing structure", () => {
+    const pricing = read("client/src/pages/ops/Pricing.tsx");
+
+    expect(pricing).toContain("PRIOR_PRICING_CONFIG");
+    expect(pricing).toContain("showModelComparison");
+    expect(pricing).toContain("Compare prior 20-day model");
+    expect(pricing).toContain("Active 15-day model vs. prior pricing structure");
+    expect(pricing).toContain("Crew-day target");
+  });
+
   it("uses the approved quote mailbox in business settings and outbound quote delivery", () => {
     const schema = read("drizzle/schema.ts");
     const quoteRouter = read("server/nativeQuotesRouter.ts");

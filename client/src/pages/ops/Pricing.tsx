@@ -3,7 +3,7 @@
  * Full-featured Crew-Day Pricing Calculator
  * Edit Pricing modal: Labor, Equipment (add/remove), Fuel, Wear & Consumables,
  * Monthly Overhead (dropdown presets + custom), Scheduling & Margin
- * Default values calibrated to Middle & West Tennessee market (Apr 2026)
+ * Default values use the owner-approved solo-mulcher cost basis.
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
@@ -77,21 +77,26 @@ const OVERHEAD_PRESETS: { label: string; defaultCost: number }[] = [
 
 // ─── Default config — Middle/West Tennessee market rates (Apr 2026) ───────────
 const DEFAULT_CONFIG: PricingConfig = {
-  hoursPerDay: 8,
+  hoursPerDay: 10,
   crewMembers: 1,
-  wagePerHour: 28,
-  burdenPct: 25,
+  wagePerHour: 70,
+  burdenPct: 10,
   equipment: [
-    { id: "default-cat-299d3", name: "CAT 299D3 XE", monthlyCost: 2200 },
+    { id: "default-tracked-mulcher", name: "Tracked Forestry Mulcher (lease/payment)", monthlyCost: 1500 },
+    { id: "default-fecon-drum", name: "Fecon Drum Mulcher", monthlyCost: 500 },
   ],
-  machineBurnRateGPH: 7,
-  fuelPricePerGallon: 5.33,
-  truckFuelPerDay: 65,
+  machineBurnRateGPH: 8,
+  fuelPricePerGallon: 4.5,
+  truckFuelPerDay: 45,
   teethCostPerSet: 2200,
-  daysPerSet: 12,
-  annualMajorWear: 18000,
-  miscConsumablesPerDay: 35,
-  overheadItems: [],
+  daysPerSet: 10,
+  annualMajorWear: 26400,
+  miscConsumablesPerDay: 100,
+  overheadItems: [
+    { id: "default-insurance", name: "Insurance", monthlyCost: 350 },
+    { id: "default-phone-admin", name: "Phone/Admin", monthlyCost: 100 },
+    { id: "default-marketing", name: "Website Hosting / Marketing Tools", monthlyCost: 500 },
+  ],
   // Planning capacity: 15 billable days protects pricing for weather, travel,
   // maintenance, site visits, and unfilled calendar days.
   workingDaysPerMonth: 15,
@@ -100,6 +105,44 @@ const DEFAULT_CONFIG: PricingConfig = {
   targetMarginPct: 35.5,
   acresPerDay: 1,
 };
+
+/** The saved configuration structure in use before the 15-billable-day update. */
+const PRIOR_PRICING_CONFIG: PricingConfig = {
+  hoursPerDay: 8,
+  crewMembers: 1,
+  wagePerHour: 28,
+  burdenPct: 25,
+  equipment: [{ id: "prior-cat-299d3", name: "CAT 299D3 XE", monthlyCost: 2200 }],
+  machineBurnRateGPH: 7,
+  fuelPricePerGallon: 5.33,
+  truckFuelPerDay: 65,
+  teethCostPerSet: 2200,
+  daysPerSet: 12,
+  annualMajorWear: 18000,
+  miscConsumablesPerDay: 35,
+  overheadItems: [],
+  workingDaysPerMonth: 20,
+  targetMarginPct: 30,
+  acresPerDay: 1,
+};
+
+function calculatePricingModel(config: PricingConfig) {
+  const laborCostPerDay = config.hoursPerDay * config.crewMembers * config.wagePerHour * (1 + config.burdenPct / 100);
+  const equipmentCostPerDay = config.workingDaysPerMonth > 0
+    ? config.equipment.reduce((sum, item) => sum + item.monthlyCost, 0) / config.workingDaysPerMonth
+    : 0;
+  const fuelCostPerDay = config.machineBurnRateGPH * config.hoursPerDay * config.fuelPricePerGallon + config.truckFuelPerDay;
+  const wearCostPerDay = (config.daysPerSet > 0 ? config.teethCostPerSet / config.daysPerSet : 0)
+    + config.annualMajorWear / (config.workingDaysPerMonth * 12 || 1)
+    + config.miscConsumablesPerDay;
+  const overheadCostPerDay = config.workingDaysPerMonth > 0
+    ? config.overheadItems.reduce((sum, item) => sum + item.monthlyCost, 0) / config.workingDaysPerMonth
+    : 0;
+  const totalDailyCost = laborCostPerDay + equipmentCostPerDay + fuelCostPerDay + wearCostPerDay + overheadCostPerDay;
+  const crewDayRate = totalDailyCost / (1 - config.targetMarginPct / 100);
+
+  return { laborCostPerDay, equipmentCostPerDay, fuelCostPerDay, wearCostPerDay, overheadCostPerDay, totalDailyCost, crewDayRate };
+}
 
 function readBrowserPricingConfig(): PricingConfig {
   try {
@@ -705,6 +748,7 @@ export default function Pricing() {
   const utils = trpc.useUtils();
   const [config, setConfig] = useState<PricingConfig>(DEFAULT_CONFIG);
   const [showModal, setShowModal] = useState(false);
+  const [showModelComparison, setShowModelComparison] = useState(false);
   const importedBrowserConfig = useRef(false);
   const { data: sharedPricingConfig, isLoading: pricingConfigLoading } = trpc.ops.settings.getInternalPricingConfig.useQuery(undefined, { staleTime: 60_000, retry: false });
   const initializePricingConfig = trpc.ops.settings.initializeInternalPricingConfig.useMutation({
@@ -809,18 +853,17 @@ export default function Pricing() {
   // calculateDistance is defined after derived values to avoid hoisting issues — see below
 
   // Derived values
-  const laborCostPerDay = config.hoursPerDay * config.crewMembers * config.wagePerHour * (1 + config.burdenPct / 100);
-  const equipmentCostPerDay = config.workingDaysPerMonth > 0
-    ? config.equipment.reduce((s, e) => s + e.monthlyCost, 0) / config.workingDaysPerMonth : 0;
-  const machineFuelPerDay = config.machineBurnRateGPH * config.hoursPerDay * config.fuelPricePerGallon;
-  const fuelCostPerDay = machineFuelPerDay + config.truckFuelPerDay;
-  const teethCostPerDay = config.daysPerSet > 0 ? config.teethCostPerSet / config.daysPerSet : 0;
-  const annualWearPerDay = config.annualMajorWear / (config.workingDaysPerMonth * 12 || 1);
-  const wearCostPerDay = teethCostPerDay + annualWearPerDay + config.miscConsumablesPerDay;
-  const totalMonthlyOverhead = config.overheadItems.reduce((s, o) => s + o.monthlyCost, 0);
-  const overheadPerDay = config.workingDaysPerMonth > 0 ? totalMonthlyOverhead / config.workingDaysPerMonth : 0;
-  const totalDailyCost = laborCostPerDay + equipmentCostPerDay + fuelCostPerDay + wearCostPerDay + overheadPerDay;
-  const crewDayRate = totalDailyCost / (1 - config.targetMarginPct / 100);
+  const activePricingModel = calculatePricingModel(config);
+  const priorPricingModel = calculatePricingModel(PRIOR_PRICING_CONFIG);
+  const {
+    laborCostPerDay,
+    equipmentCostPerDay,
+    fuelCostPerDay,
+    wearCostPerDay,
+    overheadCostPerDay: overheadPerDay,
+    totalDailyCost,
+    crewDayRate,
+  } = activePricingModel;
   const jobTotal = crewDayRate * crewDaysNeeded;
   const pricePerAcre = jobAcres > 0 ? jobTotal / jobAcres : 0;
   const jobProfit = jobTotal - totalDailyCost * crewDaysNeeded;
@@ -942,6 +985,53 @@ export default function Pricing() {
           <div className="flex items-center justify-between pt-3 border-t border-border">
             <span className="text-xs font-semibold text-foreground">Total Daily Cost</span>
             <span className="text-lg font-bold text-primary">${totalDailyCost.toFixed(0)}</span>
+          </div>
+          <div className="mt-4 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setShowModelComparison((current) => !current)}
+              aria-pressed={showModelComparison}
+              className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+            >
+              <TrendingDown className="h-3.5 w-3.5" />
+              {showModelComparison ? "Hide prior pricing model" : "Compare prior 20-day model"}
+            </button>
+            {showModelComparison && (
+              <section aria-label="Pricing model comparison" className="mt-3 overflow-hidden rounded-lg border border-primary/25 bg-secondary/20">
+                <div className="border-b border-border bg-primary/5 px-4 py-3">
+                  <p className="text-xs font-semibold text-foreground">Active 15-day model vs. prior pricing structure</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">This comparison is internal planning only. It does not change the active saved configuration, quotes, or customer-facing prices.</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-2.5 font-semibold">Measure</th>
+                        <th className="px-4 py-2.5 font-semibold text-primary">Active model</th>
+                        <th className="px-4 py-2.5 font-semibold">Prior model</th>
+                        <th className="px-4 py-2.5 font-semibold">Difference</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { label: "Billable days / month", active: `${config.workingDaysPerMonth}`, prior: `${PRIOR_PRICING_CONFIG.workingDaysPerMonth}`, delta: `${config.workingDaysPerMonth - PRIOR_PRICING_CONFIG.workingDaysPerMonth}` },
+                        { label: "Total daily cost", active: `$${activePricingModel.totalDailyCost.toFixed(0)}`, prior: `$${priorPricingModel.totalDailyCost.toFixed(0)}`, delta: `$${(activePricingModel.totalDailyCost - priorPricingModel.totalDailyCost).toFixed(0)}` },
+                        { label: "Target margin", active: `${config.targetMarginPct}%`, prior: `${PRIOR_PRICING_CONFIG.targetMarginPct}%`, delta: `${(config.targetMarginPct - PRIOR_PRICING_CONFIG.targetMarginPct).toFixed(1)} pts` },
+                        { label: "Crew-day target", active: `$${activePricingModel.crewDayRate.toFixed(0)}`, prior: `$${priorPricingModel.crewDayRate.toFixed(0)}`, delta: `$${(activePricingModel.crewDayRate - priorPricingModel.crewDayRate).toFixed(0)}` },
+                        { label: "Monthly revenue target", active: `$${(activePricingModel.crewDayRate * config.workingDaysPerMonth).toFixed(0)}`, prior: `$${(priorPricingModel.crewDayRate * PRIOR_PRICING_CONFIG.workingDaysPerMonth).toFixed(0)}`, delta: `$${((activePricingModel.crewDayRate * config.workingDaysPerMonth) - (priorPricingModel.crewDayRate * PRIOR_PRICING_CONFIG.workingDaysPerMonth)).toFixed(0)}` },
+                      ].map((row) => (
+                        <tr key={row.label} className="border-b border-border/60 last:border-0">
+                          <td className="px-4 py-3 font-medium text-foreground">{row.label}</td>
+                          <td className="px-4 py-3 font-semibold text-primary">{row.active}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{row.prior}</td>
+                          <td className="px-4 py-3 font-medium text-emerald-400">{row.delta}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
