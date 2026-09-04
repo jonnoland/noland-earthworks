@@ -30,12 +30,12 @@ describe("Noland Field dark brand theme", () => {
     }
   });
 
-  it("keeps the dark-theme companion package version aligned for the published v0.4.15 release", () => {
+  it("keeps the dark-theme companion package version aligned for the published v0.4.16 release", () => {
     const packageJson = source("noland-earthworks-mobile/package.json");
     const androidBuild = source("noland-earthworks-mobile/android/app/build.gradle");
 
-    expect(packageJson).toContain('"version": "0.4.15"');
-    expect(androidBuild).toContain('versionName "0.4.15"');
-    expect(androidBuild).toContain("versionCode 17");
+    expect(packageJson).toContain('"version": "0.4.16"');
+    expect(androidBuild).toContain('versionName "0.4.16"');
+    expect(androidBuild).toContain("versionCode 18");
   });
 });

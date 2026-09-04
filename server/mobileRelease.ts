@@ -1,9 +1,12 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.15",
-  downloadUrl: "/manus-storage/noland-field_v0.4.15_730c0427.apk",
+  version: "0.4.16",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.16_e03a2130.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Adds in-app release notes, visible signed-APK download progress, clear download status, and Android installer handoff. It also includes the v0.4.14 offline Operations pricing fallback and reconnect Sync Now control.",
+  notes: "Adds the service-area county selector for Parcel ID lookup, the Work-Area Acreage total preview, and the onX Offroad property-waypoint handoff. It retains the existing signed-APK download progress and Android installer handoff.",
   highlights: [
+    "Select any of the standard service-area counties directly in a quote before looking up a Parcel ID.",
+    "Work-Area Acreage now stays separate from deeded acreage and updates the estimate from current Operations rates.",
+    "Share the selected property waypoint to onX Offroad, walk the job boundary, and enter the measured work area in the quote.",
     "The updater now shows per-byte download progress and clear status messages for the signed Android package.",
     "When the transfer finishes, Noland Field opens the local package for Android installation with a clear saved-file fallback.",
     "The update notice opens Profile so the release notes and download state stay in one place.",
@@ -11,6 +14,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.16",
+      title: "Field measurement and county selection",
+      notes: "Adds a service-area county dropdown for Parcel ID lookup, the dedicated Work-Area Acreage estimate preview, and onX Offroad property-waypoint handoff.",
+    },
     {
       version: "0.4.15",
       title: "Updater feedback",

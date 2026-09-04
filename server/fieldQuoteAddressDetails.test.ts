@@ -20,7 +20,8 @@ describe("companion app structured address alignment", () => {
 
     expect(app).toContain('address: details.address || details.street || current.address');
     expect(app).toContain('placeholder="City"');
-    expect(app).toContain('placeholder="County"');
+    expect(app).toContain('Select service county');
+    expect(app).toContain('SERVICE_AREA_COUNTIES.map');
     expect(app).toContain('placeholder="ZIP"');
     expect(app).toContain("isServedCounty(form.county)");
     expect(autocomplete).toContain("onAddressDetails");

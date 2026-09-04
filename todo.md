@@ -4006,3 +4006,13 @@
 - [x] Add a dedicated Work-Area Acreage control that updates the current estimate
 - [x] Add a clear action for handled follow-up messages without removing unrelated quote data
 - [x] Add regression coverage and validate both workflows
+
+## Noland Field Replacement APK — Sep 2026
+- [x] Confirm the Android release version and signing configuration for the replacement build
+- [x] Build and validate an installable Noland Field APK with the latest companion updates
+- [x] Deliver the replacement APK with concise installation guidance
+
+## Noland Field County Selector — Sep 2026
+- [x] Identify the active Tennessee service-area county list and existing companion county input behavior
+- [x] Replace the companion free-text county field with a service-area county selector
+- [x] Add regression coverage and validate the updated county selection workflow

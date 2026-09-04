@@ -27,7 +27,7 @@ import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import QuoteClassificationGuide from "@/components/QuoteClassificationGuide";
-import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
+import { isServedCounty, normalizeCountyName, SERVICE_AREA_COUNTIES } from "@/lib/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -1357,12 +1357,15 @@ export default function NewQuote() {
             />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.75fr", gap: 8, marginTop: 10 }}>
               <input value={form.city} onChange={set("city")} placeholder="City" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
-              <input value={form.county} onChange={set("county")} placeholder="County" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
+              <select value={form.county} onChange={set("county")} style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }}>
+                <option value="">Select service county</option>
+                {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}
+              </select>
               <input value={form.zip} onChange={set("zip")} placeholder="ZIP" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
             </div>
             <div style={{ marginTop: 10, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 10, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
               <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Tennessee Parcel ID Lookup</label>
-              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Enter the county above and the Parcel ID from the Tennessee Property Viewer. Property details remain editable.</p>
+              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID from the Tennessee Property Viewer. Property details remain editable.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
                 <input
                   value={form.parcelId}
