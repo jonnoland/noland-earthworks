@@ -3547,6 +3547,15 @@ export function NativeAllQuotesSection() {
     onError: (err) => { toast.error(err.message); setDraftingFor(null); },
   });
 
+  const clearStaleFollowUpDraft = (quoteId: number) => {
+    setStaleFollowUpDrafts((current) => {
+      const next = { ...current };
+      delete next[quoteId];
+      return next;
+    });
+    toast.message("Follow-up message cleared.");
+  };
+
   const utils = trpc.useUtils();
   const updateStatusMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); },
@@ -3987,12 +3996,20 @@ export function NativeAllQuotesSection() {
                         {draft && (
                           <div className="rounded bg-primary/5 border border-primary/20 p-2">
                             <p className="text-xs text-foreground leading-relaxed">{draft}</p>
-                            <button
-                              className="text-[11px] text-primary hover:text-primary/80 mt-1.5 transition-colors"
-                              onClick={() => { navigator.clipboard.writeText(draft); toast.success("Copied to clipboard."); }}
-                            >
-                              Copy
-                            </button>
+                            <div className="mt-1.5 flex items-center gap-3">
+                              <button
+                                className="text-[11px] text-primary hover:text-primary/80 transition-colors"
+                                onClick={() => { navigator.clipboard.writeText(draft); toast.success("Copied to clipboard."); }}
+                              >
+                                Copy
+                              </button>
+                              <button
+                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => clearStaleFollowUpDraft(q.id)}
+                              >
+                                Clear message
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>

@@ -43,7 +43,29 @@ describe("Noland Field cached Operations pricing", () => {
 
     expect(cached.customerPriceLow).toBe(live.customerPriceLow);
     expect(cached.customerPriceHigh).toBe(live.customerPriceHigh);
+    expect(cached.customerPriceMid).toBe(live.customerPriceMid);
     expect(cached.minimumJobTotal).toBe(live.minimumJobTotal);
+  });
+
+  it("updates the work-area total from the same saved Operations acreage rates", () => {
+    const twoAcreWorkArea = calculateCachedFieldEstimate({
+      service: "Forestry Mulching",
+      acreage: 2,
+      terrain: "flat",
+      vegetationDensity: "moderate",
+      accessDifficulty: "easy",
+    }, snapshot);
+    const fiveAcreWorkArea = calculateCachedFieldEstimate({
+      service: "Forestry Mulching",
+      acreage: 5,
+      terrain: "flat",
+      vegetationDensity: "moderate",
+      accessDifficulty: "easy",
+    }, snapshot);
+
+    expect(twoAcreWorkArea.customerPriceMid).toBe(6300);
+    expect(fiveAcreWorkArea.customerPriceMid).toBe(15750);
+    expect(fiveAcreWorkArea.customerPriceMid).toBeGreaterThan(twoAcreWorkArea.customerPriceMid);
   });
 
   it("matches live Operations Linear Foot pricing when Fence Line footage is derived from acreage", () => {

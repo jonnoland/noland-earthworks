@@ -203,6 +203,7 @@ interface FormState {
   // Job details — core
   serviceType: string;
   acreage: string;
+  workAreaAcreage: string;
   linearFeet: string;
   quantitySource: "measured" | "acreage_estimate";
   sourceAcreage: string;
@@ -346,6 +347,7 @@ export default function NewQuote() {
     lng: null,
     serviceType: "Forestry Mulching",
     acreage: "",
+    workAreaAcreage: "",
     linearFeet: "",
     quantitySource: "measured",
     sourceAcreage: "",
@@ -432,7 +434,7 @@ export default function NewQuote() {
     const sourceAcreage = parseFloat(form.sourceAcreage);
     const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
     const linearFeet = parseFloat(form.linearFeet);
-    const acreage = parseFloat(form.acreage);
+    const acreage = parseFloat(form.workAreaAcreage);
     const cachedEstimate = calculateCachedFieldEstimate({
       service: form.serviceType,
       acreage: Number.isFinite(acreage) ? acreage : undefined,
@@ -549,7 +551,8 @@ export default function NewQuote() {
       county: normalizeCountyName(match.county) || current.county,
       lat: match.lat ?? current.lat,
       lng: match.lng ?? current.lng,
-      acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
+      acreage: current.workAreaAcreage || current.acreage,
+      workAreaAcreage: current.workAreaAcreage,
     }));
     setParcelMatches([]);
     setParcelIdError(null);
@@ -770,7 +773,7 @@ export default function NewQuote() {
     setForm((f) => ({
       ...f,
       ...(voiceResult.service && SERVICE_TYPES.includes(voiceResult.service) ? { serviceType: voiceResult.service } : {}),
-      ...(voiceResult.acreage !== null ? { acreage: voiceResult.acreage.toString() } : {}),
+      ...(voiceResult.acreage !== null ? { acreage: voiceResult.acreage.toString(), workAreaAcreage: voiceResult.acreage.toString() } : {}),
       ...(voiceResult.linearFeet !== null ? { linearFeet: voiceResult.linearFeet.toString() } : {}),
       ...(voiceResult.terrain && ["flat","rolling","steep","very_steep"].includes(voiceResult.terrain) ? { terrain: voiceResult.terrain as FormState["terrain"] } : {}),
       ...(voiceResult.vegetationDensity && ["light","moderate","heavy","very_heavy"].includes(voiceResult.vegetationDensity) ? { vegetationDensity: voiceResult.vegetationDensity as FormState["vegetationDensity"] } : {}),
@@ -868,7 +871,7 @@ export default function NewQuote() {
     if (!form.serviceType) return;
     setEstimate(null);
     setEstimateError(null);
-    const acreage = parseFloat(form.acreage);
+    const acreage = parseFloat(form.workAreaAcreage);
     const linearFeet = parseFloat(form.linearFeet);
     const sourceAcreage = parseFloat(form.sourceAcreage);
     const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
@@ -923,7 +926,7 @@ export default function NewQuote() {
     if (!form.name.trim()) { setSubmitError("Customer name is required."); return; }
     if (!form.serviceType) { setSubmitError("Service type is required."); return; }
 
-    const acreage = parseFloat(form.acreage);
+    const acreage = parseFloat(form.workAreaAcreage);
     const linearFeet = parseFloat(form.linearFeet);
     const sourceAcreage = parseFloat(form.sourceAcreage);
     const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
@@ -935,7 +938,7 @@ export default function NewQuote() {
     const needsAcreage = form.serviceType !== "Right-of-Way Clearing" && !isLinearFootQuote;
 
     if (needsAcreage && (!Number.isFinite(acreage) || acreage <= 0)) {
-      setSubmitError("Estimated acreage is required for this field request.");
+      setSubmitError("Work-area acreage is required for this field request.");
       return;
     }
     if (form.serviceType === "Right-of-Way Clearing" && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
@@ -1044,7 +1047,7 @@ export default function NewQuote() {
             clearExistingClient();
             setForm({
               name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", parcelId: "", lat: null, lng: null,
-              serviceType: "Forestry Mulching", acreage: "", linearFeet: "", quantitySource: "measured", sourceAcreage: "", clearingWidthFeet: "20",
+              serviceType: "Forestry Mulching", acreage: "", workAreaAcreage: "", linearFeet: "", quantitySource: "measured", sourceAcreage: "", clearingWidthFeet: "20",
               terrain: "flat", vegetationDensity: "moderate", accessDifficulty: "easy",
               mobilizationMiles: "0", hasStumps: false, stumpCount: "", trailWidth: "",
               rowWidth: "", fenceLineLF: "", vegetationTypes: "", obstacles: "",
@@ -1069,6 +1072,13 @@ export default function NewQuote() {
       setOnxHandoffError(null);
     }
     setForm((f) => ({ ...f, [key]: e.target.value }));
+  };
+
+  const updateWorkAreaAcreage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setEstimate(null);
+    setEstimateError(null);
+    setForm((current) => ({ ...current, acreage: value, workAreaAcreage: value }));
   };
 
   const inputStyle: React.CSSProperties = {
@@ -1109,6 +1119,18 @@ export default function NewQuote() {
 
   const isROW = form.serviceType === "Right-of-Way Clearing";
   const isFenceLine = form.serviceType === "Fence Line Clearing";
+  const workAreaPricePreview = (() => {
+    const acreage = Number.parseFloat(form.workAreaAcreage);
+    const snapshot = cachedPricing;
+    if (!snapshot || isROW || isLinearFootService(form.serviceType) || !Number.isFinite(acreage) || acreage <= 0) return null;
+    return calculateCachedFieldEstimate({
+      service: form.serviceType,
+      acreage,
+      terrain: form.terrain,
+      vegetationDensity: form.vegetationDensity,
+      accessDifficulty: form.accessDifficulty,
+    }, snapshot);
+  })();
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -1432,8 +1454,14 @@ export default function NewQuote() {
             {!isROW && !isLinearFootService(form.serviceType) && (
               <div>
                 <label style={labelStyle}>Work-Area Acreage *</label>
-                <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
+                <input value={form.workAreaAcreage} onChange={updateWorkAreaAcreage} placeholder="e.g. 5.5" type="number" inputMode="decimal" step="0.01" min="0.1" style={inputStyle} />
                 <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "5px 0 0" }}>{onxHandoffPrepared ? "Enter the acres measured for the actual work boundary in onX—not the entire deeded parcel." : "Enter only the portion of the property included in the quoted work."}</p>
+                {workAreaPricePreview && (
+                  <div role="status" style={{ marginTop: 8, borderRadius: 8, border: "1px solid oklch(0.70 0.18 145 / 0.45)", background: "oklch(0.70 0.18 145 / 0.08)", padding: "9px 10px" }}>
+                    <p style={{ color: "oklch(0.75 0.18 145)", fontSize: 12, fontWeight: 700, margin: 0 }}>Automatic estimated total: {formatQuoteCents(Math.ceil(workAreaPricePreview.customerPriceMid) * 100)}</p>
+                    <p style={{ color: "var(--ne-muted)", fontSize: 10, lineHeight: 1.4, margin: "3px 0 0" }}>Range: {formatQuoteCents(Math.ceil(workAreaPricePreview.customerPriceLow) * 100)} – {formatQuoteCents(Math.ceil(workAreaPricePreview.customerPriceHigh) * 100)}. Recalculated from the current {rateStatus === "live" ? "live" : "cached"} Operations acreage rates and selected site conditions.</p>
+                  </div>
+                )}
               </div>
             )}
 

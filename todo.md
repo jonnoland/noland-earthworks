@@ -4000,3 +4000,9 @@
 - [x] Confirm onX’s supported handoff options and define the companion-app site-walk workflow
 - [x] Add property handoff and measured-acreage capture to Noland Field quotes
 - [x] Add regression coverage and validate the field-to-quote workflow
+
+## Work-Area Pricing and Follow-Up Clearing — Sep 2026
+- [x] Inspect how companion quotes calculate prices from acreage and how Operations stores follow-up messages
+- [x] Add a dedicated Work-Area Acreage control that updates the current estimate
+- [x] Add a clear action for handled follow-up messages without removing unrelated quote data
+- [x] Add regression coverage and validate both workflows

@@ -25,6 +25,7 @@ export type CachedFieldEstimateInput = {
 export type CachedFieldEstimate = {
   customerPriceLow: number;
   customerPriceHigh: number;
+  customerPriceMid: number;
   linearFootEstimate: {
     linearFeet: number;
     sourceAcreage: number | null;
@@ -63,6 +64,7 @@ export function calculateCachedFieldEstimate(
   return {
     customerPriceLow: pricing.customerPriceLow,
     customerPriceHigh: pricing.customerPriceHigh,
+    customerPriceMid: pricing.customerPriceMid,
     linearFootEstimate: pricing.quantitySource === "acreage_estimate" && pricing.linearFeet
       ? {
           linearFeet: pricing.linearFeet,

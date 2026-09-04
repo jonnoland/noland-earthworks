@@ -23,7 +23,7 @@ describe("Noland Field website alignment", () => {
   it("requires the field scope measurement appropriate to the selected service", () => {
     const form = source("noland-earthworks-mobile/src/pages/NewQuote.tsx");
 
-    expect(form).toContain("Estimated acreage is required for this field request.");
+    expect(form).toContain("Work-area acreage is required for this field request.");
     expect(form).toContain("Linear feet are required for a right-of-way field request.");
     expect(form).toContain("Measured Linear Feet are required for this field request.");
     expect(form).toContain("Enter source acreage and clearing width to estimate Linear Feet.");
