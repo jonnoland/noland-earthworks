@@ -3943,3 +3943,8 @@
 - [x] Add a visible subtotal immediately before each customer discount in standard and phased portal pricing sections
 - [x] Make customer discount rows visually distinct while preserving printable PDF clarity
 - [x] Add regression coverage and validate the updated client portal pricing presentation
+
+## Daily Pricing Review — Aug 2026
+- [x] Review current Operations pricing and available machine operating-cost inputs
+- [x] Calculate a practical daily pricing floor and quote guardrails
+- [x] Deliver a quote-conversion structure that protects margin while improving qualified-client acceptance
