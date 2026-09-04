@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId, toParcelBoundaryRings } from "./parcelRouter";
-import { validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildTennesseeParcelSearchPattern, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 describe("Tennessee Parcel ID lookup", () => {
   it("normalizes formatted Parcel IDs for a tolerant official-service search", () => {
     expect(normalizeTennesseeParcelId("042 001 00100-000 2026")).toBe("042001001000002026");
   });
 
-  it("scopes Parcel ID lookup to the selected county", () => {
+  it("scopes an anchored tolerant Parcel ID lookup to the selected county", () => {
     const where = buildTennesseeParcelWhere("Houston County", "042 001 00100");
 
     expect(where).toContain("COUNTY_NAME = 'Houston'");
-    expect(where).toContain("PARCELID LIKE '%0%4%2%0%0%1%0%0%1%0%0%'");
+    expect(where).toContain("PARCELID LIKE '042%001%00100%'");
+    expect(where).not.toContain("PARCELID LIKE '%042");
+  });
+
+  it("keeps unformatted Parcel IDs anchored while tolerating assessor spacing", () => {
+    expect(buildTennesseeParcelSearchPattern("04200100100")).toBe("0%4%2%0%0%1%0%0%1%0%0%");
   });
 
   it("prefers an exact county-scoped formatted Parcel ID query before using the tolerant fallback", () => {

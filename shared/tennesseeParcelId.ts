@@ -12,6 +12,27 @@ export function normalizeTennesseeParcelId(value: string): string {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+/**
+ * Builds a tolerant, **anchored** Parcel ID pattern for the Tennessee
+ * statewide service. Parcel IDs are commonly stored with assessor-specific
+ * spaces or punctuation, so the pattern permits characters between submitted
+ * components while retaining a fixed opening value that the remote index can
+ * use. A leading wildcard caused full-county scans and timed-out lookups.
+ */
+export function buildTennesseeParcelSearchPattern(value: string): string {
+  const components = value
+    .trim()
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean);
+
+  if (components.length > 1) {
+    return `${components.join("%")}%`;
+  }
+
+  return `${normalizeTennesseeParcelId(value).split("").join("%")}%`;
+}
+
 export function validateTennesseeParcelId(value: string): TennesseeParcelIdValidation {
   const trimmed = value.trim();
   const normalized = normalizeTennesseeParcelId(trimmed);

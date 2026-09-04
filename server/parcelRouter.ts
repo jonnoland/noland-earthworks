@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildTennesseeParcelSearchPattern, normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 import {
   buildExactNashvilleParcelWhere,
   buildNashvilleParcelWhere,
@@ -50,9 +50,8 @@ export { normalizeTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 export function buildTennesseeParcelWhere(county: string, parcelId: string): string {
   const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
-  const normalizedParcelId = normalizeTennesseeParcelId(parcelId);
-  const parcelPattern = normalizedParcelId.split("").join("%");
-  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${parcelPattern}%'`;
+  const parcelPattern = buildTennesseeParcelSearchPattern(parcelId).replace(/'/g, "''");
+  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '${parcelPattern}'`;
 }
 
 export function buildExactTennesseeParcelWhere(county: string, parcelId: string): string {

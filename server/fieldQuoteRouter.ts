@@ -23,7 +23,7 @@ import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { buildTennesseeParcelSearchPattern, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 import { getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
 import { formatQuoteCents, roundQuoteCentsUp } from "../shared/quoteMoney";
@@ -44,8 +44,8 @@ function cleanParcelText(value: unknown): string | null {
 
 function buildFieldParcelWhere(county: string, parcelId: string): string {
   const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
-  const pattern = normalizeTennesseeParcelId(parcelId).split("").join("%");
-  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${pattern}%'`;
+  const pattern = buildTennesseeParcelSearchPattern(parcelId).replace(/'/g, "''");
+  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '${pattern}'`;
 }
 
 type ParcelBoundaryRing = Array<{ lat: number; lng: number }>;

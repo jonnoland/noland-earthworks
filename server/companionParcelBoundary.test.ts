@@ -14,6 +14,8 @@ describe("Noland Field parcel boundary overlay", () => {
     expect(lookupBlock).toContain('returnGeometry: "true"');
     expect(lookupBlock).toContain("toParcelBoundaryRings(feature.geometry)");
     expect(lookupBlock).toContain("boundaryRings");
+    expect(fieldRouter).toContain("buildTennesseeParcelSearchPattern");
+    expect(fieldRouter).not.toContain("LIKE '%${pattern}%'");
   });
 
   it("draws the selected parcel boundary with the existing draggable location pin", () => {

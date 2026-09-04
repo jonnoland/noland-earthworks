@@ -3964,3 +3964,20 @@
 - [x] Add a protected bulk action to reprice eligible draft quotes with the active 15-day model
 - [x] Add an active-versus-prior monthly revenue comparison chart to the pricing view
 - [x] Add regression coverage and validate the repricing workflow and chart
+
+## Edit Pricing Explanation — Sep 2026
+- [x] Explain each internal estimator component and the displayed formula results
+- [x] Recommend a practical owner-operator configuration and pricing guardrails
+
+## Corrected Daily Targets and Tiered Quotes — Sep 2026
+- [x] Recalculate daily, hourly, and production-based targets without the duplicated equipment payment
+- [x] Draft a client-ready tiered quote structure that protects margin and speeds decisions
+
+## Five-Acre Tiered Quote and Client Email — Sep 2026
+- [x] Draft a site-assessment-based tiered quote template for a standard five-acre residential project
+- [x] Draft a client email that explains the scope choices in plain language without publishing rates
+
+## Parcel ID Lookup Repair — Sep 2026
+- [x] Trace the shared Parcel ID lookup failure across Operations and Noland Field
+- [x] Repair the common lookup path without changing saved parcel records
+- [x] Add regression coverage and validate both lookup clients
