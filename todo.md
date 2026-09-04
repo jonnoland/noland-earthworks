@@ -4016,3 +4016,9 @@
 - [x] Identify the active Tennessee service-area county list and existing companion county input behavior
 - [x] Replace the companion free-text county field with a service-area county selector
 - [x] Add regression coverage and validate the updated county selection workflow
+
+## Noland Field GPS County Detection — Sep 2026
+- [x] Inspect existing device geolocation and reverse-geocoding support in the companion workflow
+- [x] Add a Detect My Location control that selects the current service-area county from GPS coordinates
+- [x] Add regression coverage and validate location permission, detected county, and failure handling
+- [x] Build and validate a signed replacement Noland Field APK with GPS county detection

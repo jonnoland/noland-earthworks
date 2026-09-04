@@ -313,6 +313,9 @@ export default function NewQuote() {
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [countyDetecting, setCountyDetecting] = useState(false);
+  const [countyDetectionMessage, setCountyDetectionMessage] = useState<string | null>(null);
+  const [countyDetectionError, setCountyDetectionError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [queuedOffline, setQueuedOffline] = useState(false);
@@ -843,6 +846,39 @@ export default function NewQuote() {
     }
   };
 
+  const handleDetectCounty = async () => {
+    setCountyDetecting(true);
+    setCountyDetectionMessage(null);
+    setCountyDetectionError(null);
+    try {
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+      const { latitude, longitude } = pos.coords;
+      const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat: latitude, lng: longitude });
+      const county = normalizeCountyName(geo?.county);
+
+      if (!county) {
+        setCountyDetectionError("Your current county could not be determined. Confirm the location permission, then select the county manually.");
+        return;
+      }
+
+      if (!isServedCounty(county)) {
+        setCountyDetectionError(`Your current location is in ${county}, which is outside the configured service-area list. Select a county manually if this is a travel job.`);
+        return;
+      }
+
+      setSelectedParcelBoundary(null);
+      setOnxHandoffPrepared(false);
+      setOnxHandoffMessage(null);
+      setOnxHandoffError(null);
+      setForm((current) => ({ ...current, county, lat: latitude, lng: longitude }));
+      setCountyDetectionMessage(`Selected ${county} from your current location.`);
+    } catch (error) {
+      setCountyDetectionError(error instanceof Error ? error.message : "Could not detect your county. Check location permission, then try again or select it manually.");
+    } finally {
+      setCountyDetecting(false);
+    }
+  };
+
   // ─── Camera ─────────────────────────────────────────────────────────────
 
   const handleTakePhoto = async () => {
@@ -1070,6 +1106,10 @@ export default function NewQuote() {
       setOnxHandoffPrepared(false);
       setOnxHandoffMessage(null);
       setOnxHandoffError(null);
+    }
+    if (key === "county") {
+      setCountyDetectionMessage(null);
+      setCountyDetectionError(null);
     }
     setForm((f) => ({ ...f, [key]: e.target.value }));
   };
@@ -1355,14 +1395,26 @@ export default function NewQuote() {
                 </button>
               }
             />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.75fr", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(0, 1.15fr) auto 0.75fr", gap: 8, marginTop: 10, alignItems: "end" }}>
               <input value={form.city} onChange={set("city")} placeholder="City" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
               <select value={form.county} onChange={set("county")} style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }}>
                 <option value="">Select service county</option>
                 {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}
               </select>
+              <button
+                type="button"
+                onClick={handleDetectCounty}
+                disabled={countyDetecting}
+                title="Detect current county from device location"
+                style={{ minHeight: 42, border: "1px solid var(--ne-amber)", borderRadius: 9, background: countyDetecting ? "var(--ne-raised)" : "transparent", color: "var(--ne-amber)", padding: "0 10px", fontWeight: 700, fontSize: 11, cursor: countyDetecting ? "not-allowed" : "pointer", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
+              >
+                {countyDetecting ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <MapPin size={14} />}
+                {countyDetecting ? "Detecting…" : "Detect My Location"}
+              </button>
               <input value={form.zip} onChange={set("zip")} placeholder="ZIP" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
             </div>
+            {countyDetectionMessage && <p aria-live="polite" style={{ color: "oklch(0.70 0.18 145)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.4 }}>{countyDetectionMessage}</p>}
+            {countyDetectionError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.4 }}>{countyDetectionError}</p>}
             <div style={{ marginTop: 10, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 10, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
               <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Tennessee Parcel ID Lookup</label>
               <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID from the Tennessee Property Viewer. Property details remain editable.</p>

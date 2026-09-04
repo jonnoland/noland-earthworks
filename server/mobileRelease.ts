@@ -1,9 +1,10 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.16",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.16_e03a2130.apk",
+  version: "0.4.17",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.17_d189dc8a.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Adds the service-area county selector for Parcel ID lookup, the Work-Area Acreage total preview, and the onX Offroad property-waypoint handoff. It retains the existing signed-APK download progress and Android installer handoff.",
+  notes: "Adds Detect My Location beside the county selector so Noland Field can use device GPS to choose the current configured service-area county. It retains county selection, Work-Area Acreage pricing, onX Offroad handoff, and the signed-APK installer flow.",
   highlights: [
+    "Detect My Location requests device location, identifies the current Tennessee county, and selects it when it is in the configured service area.",
     "Select any of the standard service-area counties directly in a quote before looking up a Parcel ID.",
     "Work-Area Acreage now stays separate from deeded acreage and updates the estimate from current Operations rates.",
     "Share the selected property waypoint to onX Offroad, walk the job boundary, and enter the measured work area in the quote.",
@@ -14,6 +15,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.17",
+      title: "GPS county detection",
+      notes: "Adds a Detect My Location control beside the service-area county selector. It uses device GPS and reverse geocoding to select the current served county, with clear permission and out-of-area feedback.",
+    },
     {
       version: "0.4.16",
       title: "Field measurement and county selection",
