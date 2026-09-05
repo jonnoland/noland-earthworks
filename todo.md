@@ -4057,3 +4057,8 @@
 - [x] Add an Operations dashboard widget for viewed quotes in the active 48-hour follow-up queue
 - [x] Add a clear client-portal indicator for locked quote revisions
 - [x] Add regression coverage and validate the dashboard and portal presentation
+
+## Noland Field Saved GPX onX Handoff — Sep 2026
+- [x] Inspect the existing GPX sharing, Android file storage, and direct onX launch workflow
+- [x] Save the generated GPX waypoint before launching onX and provide the best supported import path
+- [x] Validate the native handoff and publish a versioned replacement Noland Field APK

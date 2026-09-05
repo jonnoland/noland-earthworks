@@ -16,10 +16,13 @@ describe("Noland Field onX Offroad direct launch", () => {
     expect(mobilePackage).toContain('"@capacitor/app-launcher"');
   });
 
-  it("keeps the GPX share fallback and correctly explains onX’s in-app import step", () => {
+  it("saves the GPX waypoint before direct launch and explains onX’s required in-app import step", () => {
     expect(quoteSource).toContain("Share GPX file");
-    expect(quoteSource).toContain("Open onX Offroad");
+    expect(quoteSource).toContain("Save GPX & Open onX");
+    expect(quoteSource).toContain("directory: Directory.Documents");
+    expect(quoteSource).toContain("Noland Field/onx-site-walk/");
     expect(quoteSource).toContain("My Content → Import");
-    expect(quoteSource).toContain("Android does not list it as a share target");
+    expect(quoteSource).toContain("does not provide an automated import interface");
+    expect(manifest).toContain("android.permission.WRITE_EXTERNAL_STORAGE");
   });
 });

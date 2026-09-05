@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.19",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.19_54817e3c.apk",
+  version: "0.4.20",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.20_4b36ee5f.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.19: Fixes Detect My Location by declaring Android fine and coarse GPS permissions. Includes the current onX handoff, county detection, work-area acreage, and quote workflow updates.",
+  notes: "Noland Field v0.4.20: Save GPX & Open onX now writes the property waypoint to Documents/Noland Field/onx-site-walk before launching onX Offroad. Import remains a required onX My Content step because onX does not provide an automated import interface.",
   highlights: [
     "Detect My Location requests device location, identifies the current Tennessee county, and selects it when it is in the configured service area.",
     "Select any of the standard service-area counties directly in a quote before looking up a Parcel ID.",
@@ -15,6 +15,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.20",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.20: Save GPX & Open onX now writes the property waypoint to Documents/Noland Field/onx-site-walk before launching onX Offroad. Import remains a required onX My Content step because onX does not provide an automated import interface.",
+    },
     {
       version: "0.4.19",
       title: "Noland Field update",
