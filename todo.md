@@ -4062,3 +4062,8 @@
 - [x] Inspect the existing GPX sharing, Android file storage, and direct onX launch workflow
 - [x] Save the generated GPX waypoint before launching onX and provide the best supported import path
 - [x] Validate the native handoff and publish a versioned replacement Noland Field APK
+
+## Generated Client Message Voice — Sep 2026
+- [x] Update generated client-message instructions to use first-person owner-operator language only
+- [x] Add regression coverage preventing team-implying language in generated message prompts
+- [x] Validate and publish the client-message voice update

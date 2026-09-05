@@ -1209,6 +1209,8 @@ Final quoted total: $${(input.totalCents / 100).toLocaleString("en-US", { minimu
 
 Requirements:
 - Keep this between 70 and 150 words in direct, professional, plain language.
+- Write entirely in Jon's first-person singular owner-operator voice. Use "I," "me," and "my" when referring to the business or work.
+- Never use "we," "us," "our," "team," "crew," or "staff," and do not imply another person will visit, perform, complete, or follow up on the work.
 - State the exact final quoted total once, but do not break out internal costs, rental, margin, fuel, labor, discounts, or markup.
 - Refer to the work area as identified by the customer, address, Parcel ID, or recorded reference; never guarantee legal property lines, boundaries, acreage, permits, or utility locations.
 - If photos or measurements leave scope uncertain, include a concise site-verification sentence.
@@ -1217,7 +1219,7 @@ Requirements:
         model: "gemini-3-flash-preview",
         max_tokens: 900,
         messages: [
-          { role: "system", content: "You write accurate, concise customer messages for a veteran-owned forestry mulching and land management company. Use only supplied facts and visible evidence." },
+          { role: "system", content: "You write accurate, concise customer messages in Jon Noland's first-person singular owner-operator voice. Jon does the work himself. Use only supplied facts and visible evidence; never imply a team or use we, us, or our." },
           { role: "user", content: [{ type: "text", text: prompt }, ...visualContent] as any },
         ],
         response_format: {
