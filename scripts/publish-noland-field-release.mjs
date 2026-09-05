@@ -29,7 +29,10 @@ if (args.includes("--help") || args.includes("-h")) {
 const mobilePackage = JSON.parse(readFileSync(join(mobileRoot, "package.json"), "utf8"));
 const version = readOption("--version") ?? mobilePackage.version;
 let apkPath = readOption("--apk");
-const notes = readOption("--notes") ?? "Noland Field update. See the in-app release notes for details.";
+const requestedNotes = readOption("--notes") ?? "Update available. See the in-app release notes for details.";
+const notes = requestedNotes.startsWith("Noland Field")
+  ? requestedNotes
+  : `Noland Field v${version}: ${requestedNotes}`;
 
 if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
   console.error("Provide a semantic version, for example --version 0.4.18.");

@@ -3,6 +3,7 @@ import type { Express } from "express";
 const retiredLandServicePath = `/${"services"}/${["land", "clearing"].join("-")}`;
 
 export const LEGACY_SEO_REDIRECTS: Record<string, string> = {
+  "/request-a-site-visit": "/quote",
   "/blog/cost-of-land-clearing-tennessee": "/blog/cost-of-land-management-tennessee",
   [retiredLandServicePath]: "/services/land-management",
   "/services/mulch-redistribution": "/services/add-ons/mulch-redistribution",

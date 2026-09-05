@@ -2029,6 +2029,27 @@ export const nativeQuotes = mysqlTable("native_quotes", {
 export type NativeQuote = typeof nativeQuotes.$inferSelect;
 export type InsertNativeQuote = typeof nativeQuotes.$inferInsert;
 
+/**
+ * Immutable customer-facing snapshots created whenever a native quote portal is
+ * sent or revised. The public portal renders this snapshot, not later owner
+ * edits to the working quote record.
+ */
+export const nativeQuoteRevisions = mysqlTable("native_quote_revisions", {
+  id: int("id").primaryKey().autoincrement(),
+  quoteId: int("quoteId").notNull(),
+  revisionNumber: int("revisionNumber").notNull(),
+  snapshotJson: text("snapshotJson").notNull(),
+  sentAt: timestamp("sentAt").notNull(),
+  viewedAt: timestamp("viewedAt"),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("native_quote_revisions_quote_revision_unique").on(table.quoteId, table.revisionNumber),
+  index("native_quote_revisions_quote_sent_idx").on(table.quoteId, table.sentAt),
+]);
+export type NativeQuoteRevision = typeof nativeQuoteRevisions.$inferSelect;
+export type InsertNativeQuoteRevision = typeof nativeQuoteRevisions.$inferInsert;
+
 /** Reusable, owner-scoped proof-of-insurance documents selectable for future quote emails. */
 export const quoteInsuranceLibrary = mysqlTable("quote_insurance_library", {
   id: int("id").primaryKey().autoincrement(),

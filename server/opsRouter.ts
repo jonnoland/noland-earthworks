@@ -5942,23 +5942,22 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
 
   // ─── Priority 4: Quote Follow-Up Automation ────────────────────────────────────
   /**
-   * Returns native quotes sent to the client portal 7+ days ago
-   * with no client action and not yet converted.
-   * Used by the "Quotes Needing Follow-Up" panel in the All Quotes tab.
+   * Returns native quotes viewed by the client at least 48 hours ago with no
+   * decision and not yet converted. Used by the owner follow-up panel.
    */
   getStaleQuotes: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
-    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const rows = await db
       .select()
       .from(nativeQuotes)
       .where(and(
-        lt(nativeQuotes.portalSentAt, cutoff),
+        lt(nativeQuotes.portalViewedAt, cutoff),
         sql`${nativeQuotes.clientAction} IS NULL`,
         sql`${nativeQuotes.convertedToJobAt} IS NULL`,
       ))
-      .orderBy(desc(nativeQuotes.portalSentAt))
+      .orderBy(desc(nativeQuotes.portalViewedAt))
       .limit(20);
     return rows.map(q => ({
       id: q.id,
@@ -5966,8 +5965,9 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       phone: q.clientPhone,
       service: q.serviceType ?? "Land Management",
       acreage: q.acreage ?? undefined,
-      portalSentAt: q.portalSentAt,
-      daysSinceSent: Math.floor((Date.now() - (q.portalSentAt?.getTime() ?? Date.now())) / (1000 * 60 * 60 * 24)),
+      portalViewedAt: q.portalViewedAt,
+      followUpDueAt: q.nextActionDueAt,
+      hoursSinceViewed: Math.floor((Date.now() - (q.portalViewedAt?.getTime() ?? Date.now())) / (1000 * 60 * 60)),
     }));
   }),
 
@@ -5977,13 +5977,13 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       clientName: z.string(),
       service: z.string(),
       acreage: z.string().optional(),
-      daysSinceSent: z.number(),
+      hoursSinceViewed: z.number(),
     }))
     .mutation(async ({ input }) => {
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "You are writing a follow-up text message for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Write a short, casual, warm follow-up SMS (2-3 sentences max) in Jon's voice. Reference the client by first name, mention the specific service, and ask if they have any questions or want to move forward. Sound like a real person, not a sales script. No emojis. No hashtags." },
-          { role: "user", content: `Draft a follow-up SMS for: Client: ${input.clientName}. Service: ${input.service}. ${input.acreage ? `Acreage: ${input.acreage}.` : ""} Quote sent ${input.daysSinceSent} days ago with no response.` },
+          { role: "user", content: `Draft a follow-up SMS for: Client: ${input.clientName}. Service: ${input.service}. ${input.acreage ? `Acreage: ${input.acreage}.` : ""} The client viewed the quote ${input.hoursSinceViewed} hours ago and has not responded.` },
         ],
       });
       const draft = (result.choices?.[0]?.message?.content as string ?? "").trim();

@@ -166,6 +166,7 @@ interface NativeQuote {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ quote }: { quote: NativeQuote }) {
+  if (quote.nextActionType === "send_revision") return <Badge className="bg-amber-500 text-zinc-950 text-xs">Revision Ready</Badge>;
   if (quote.convertedToJobAt || quote.status === "invoiced") return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
   if (quote.depositPaidAt) return <Badge className="bg-green-600 text-white text-xs">Deposit Paid</Badge>;
   if (quote.clientAction === "approved" || quote.status === "approved") return <Badge className="bg-emerald-600 text-white text-xs">Approved</Badge>;
@@ -3537,6 +3538,7 @@ export function NativeAllQuotesSection() {
   const [draftingFor, setDraftingFor] = useState<number | null>(null);
   const { data: staleQuotes = [] } = trpc.ops.getStaleQuotes.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60,
     retry: false,
   });
   const draftFollowUpMutation = trpc.ops.draftQuoteFollowUp.useMutation({
@@ -3958,7 +3960,7 @@ export function NativeAllQuotesSection() {
               >
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-semibold text-foreground">Quotes Needing Follow-Up</span>
+              <span className="text-sm font-semibold text-foreground">Viewed Quotes Needing Follow-Up</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20 font-semibold">{(staleQuotes as any[]).length}</span>
                 </div>
                 {showStalePanel ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -3972,7 +3974,7 @@ export function NativeAllQuotesSection() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="text-xs font-semibold text-foreground">{q.clientName ?? `Quote #${q.id}`}</p>
-                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land Management"} &middot; {q.daysSinceSent} days since sent</p>
+                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land Management"} &middot; viewed {q.hoursSinceViewed} hours ago with no decision</p>
                           </div>
                           <Button
                             variant="outline"
@@ -3986,7 +3988,7 @@ export function NativeAllQuotesSection() {
                                 clientName: q.clientName ?? "there",
                                 service: q.service ?? "land management",
                                 acreage: q.acreage ?? undefined,
-                                daysSinceSent: q.daysSinceSent,
+                                hoursSinceViewed: q.hoursSinceViewed,
                               });
                             }}
                           >

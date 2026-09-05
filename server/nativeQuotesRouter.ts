@@ -17,7 +17,7 @@ import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary, businessSettings } from "../drizzle/schema";
+import { nativeQuotes, nativeQuoteRevisions, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary, businessSettings } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -33,6 +33,7 @@ import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRen
 import { storageGet, storagePut } from "./storage";
 import { ACTIVE_15_DAY_PRICING_CONFIG, calculateInternalPricingModel, isInternalPricingConfig, PRIOR_20_DAY_PRICING_CONFIG } from "../shared/internalPricingModel";
 import { repriceDraftQuoteLineItems } from "../shared/draftQuoteRepricing";
+import { buildNativeQuoteRevisionSnapshot, parseNativeQuoteRevisionSnapshot, type CustomerQuotePhotoReference } from "./quoteRevisionSnapshots";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -124,6 +125,31 @@ function buildDraftRepricePreview(
 function getIncludedRentalCustomerCharge(quote: { rentalEquipment: string | null; rentalMarkupPct: number | null }): number {
   const rentalCostCents = getQuoteRentalCostCents(parseQuoteSupportArtifactArray<QuoteRentalEquipment>(quote.rentalEquipment));
   return getQuoteTotalWithRentalCharge(0, rentalCostCents, quote.rentalMarkupPct ?? 15).rentalCustomerChargeCents;
+}
+
+function getCustomerPhotoReferences(raw: string | null): CustomerQuotePhotoReference[] {
+  return parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(raw)
+    .filter((attachment) => attachment.includeInCustomerPdf !== false && attachment.caption)
+    .map((attachment) => ({
+      url: attachment.url,
+      filename: attachment.filename,
+      caption: attachment.caption as string,
+      tags: attachment.tags ?? [],
+    }));
+}
+
+function isCustomerFacingQuoteChange(
+  quote: typeof nativeQuotes.$inferSelect,
+  input: Record<string, unknown>,
+): boolean {
+  const comparableFields: Array<keyof typeof nativeQuotes.$inferSelect> = [
+    "clientName", "clientEmail", "clientPhone", "propertyAddress", "title", "clientMessage",
+    "estimatedDuration", "acreage", "serviceType", "parcelId", "parcelCounty",
+  ];
+  if (["lineItems", "rentalEquipment", "rentalMarkupPct", "quoteEvidence", "quoteMeasurements"].some((field) => Object.prototype.hasOwnProperty.call(input, field))) {
+    return true;
+  }
+  return comparableFields.some((field) => Object.prototype.hasOwnProperty.call(input, field) && input[field] !== quote[field]);
 }
 
 // ─── Line item schema ─────────────────────────────────────────────────────────
@@ -558,12 +584,19 @@ export const nativeQuotesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
       const { id, lineItems, rentalEquipment, rentalMarkupPct, quoteEvidence, quoteMeasurements, insuranceDocuments, ...rest } = input;
+      const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
+      if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+      const hasCustomerFacingChange = isCustomerFacingQuoteChange(existingQuote, input);
+      if (hasCustomerFacingChange && (existingQuote.signedAt || existingQuote.clientAction === "approved" || existingQuote.status === "approved")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This accepted quote is revision-locked. Duplicate it to prepare a new scope or price without changing the signed agreement.",
+        });
+      }
       if (quoteEvidence !== undefined) assertOwnedAttachmentKeys(ctx.user.id, quoteEvidence);
       if (insuranceDocuments !== undefined) assertOwnedAttachmentKeys(ctx.user.id, insuranceDocuments);
       const updates: Record<string, unknown> = { ...rest };
       if (lineItems !== undefined || rest.serviceType !== undefined || Object.prototype.hasOwnProperty.call(rest, "acreage")) {
-        const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
-        if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
         const effectiveLineItems = lineItems !== undefined ? normalizeQuoteLineItems(lineItems) : parsePortalLineItems(existingQuote.lineItems);
         assertQuoteMeasurementConsistency(
           rest.serviceType ?? existingQuote.serviceType ?? undefined,
@@ -572,8 +605,6 @@ export const nativeQuotesRouter = router({
         );
       }
       if (lineItems !== undefined || rentalEquipment !== undefined || rentalMarkupPct !== undefined) {
-        const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
-        if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
         const normalized = lineItems !== undefined
           ? normalizeQuoteLineItems(lineItems)
           : parsePortalLineItems(existingQuote.lineItems);
@@ -590,6 +621,11 @@ export const nativeQuotesRouter = router({
       if (quoteEvidence !== undefined) updates.quoteEvidence = JSON.stringify(quoteEvidence);
       if (quoteMeasurements !== undefined) updates.quoteMeasurements = JSON.stringify(quoteMeasurements);
       if (insuranceDocuments !== undefined) updates.insuranceDocuments = JSON.stringify(insuranceDocuments);
+      if (hasCustomerFacingChange && existingQuote.portalSentAt) {
+        updates.proposalStatus = "draft";
+        updates.nextActionType = "send_revision";
+        updates.nextActionDueAt = new Date();
+      }
       // Remove undefined values
       Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
       if (Object.keys(updates).length === 0) return { success: true };
@@ -753,6 +789,9 @@ export const nativeQuotesRouter = router({
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
       if (!quote.clientEmail) throw new Error("No client email on this quote");
+      if (quote.signedAt || quote.clientAction === "approved" || quote.status === "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This accepted quote is locked. Duplicate it to prepare and send a new revision." });
+      }
       const insuranceDocuments = parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(quote.insuranceDocuments, []);
       const libraryRows = input.insuranceDocumentKeys?.length
         ? await db.select().from(quoteInsuranceLibrary)
@@ -774,10 +813,33 @@ export const nativeQuotesRouter = router({
         input.insuranceDocumentKeys ?? [],
       );
 
-      // Generate or reuse portal token
+      // Generate or reuse portal token. The public link will render the immutable
+      // revision snapshot created below, not future owner edits to this record.
       const token = quote.portalToken ?? randomBytes(32).toString("hex");
       const origin = input.origin ?? "https://nolandearth-pymczdcn.manus.space";
       const portalUrl = `${origin}/quote/${token}`;
+      const sentAt = new Date();
+      const latestRevision = await db.select({ revisionNumber: nativeQuoteRevisions.revisionNumber })
+        .from(nativeQuoteRevisions)
+        .where(eq(nativeQuoteRevisions.quoteId, quote.id))
+        .orderBy(desc(nativeQuoteRevisions.revisionNumber))
+        .limit(1);
+      const revisionNumber = (latestRevision[0]?.revisionNumber ?? 0) + 1;
+      const revisionSnapshot = buildNativeQuoteRevisionSnapshot({
+        revisionNumber,
+        sentAt: sentAt.toISOString(),
+        clientName: quote.clientName,
+        title: quote.title,
+        serviceType: quote.serviceType,
+        acreage: quote.acreage,
+        propertyAddress: quote.propertyAddress,
+        estimatedDuration: quote.estimatedDuration,
+        clientMessage: quote.clientMessage,
+        lineItems: parsePortalLineItems(quote.lineItems),
+        includedRentalCustomerChargeCents: getIncludedRentalCustomerCharge(quote),
+        totalCents: quote.totalCents,
+        sitePhotoReferences: getCustomerPhotoReferences(quote.quoteEvidence),
+      });
 
       // Send email
       const totalFormatted = `$${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
@@ -802,18 +864,30 @@ export const nativeQuotesRouter = router({
         </div>`;
 
       await sendEmail(quote.clientEmail, `Your Quote from Noland Earthworks — ${quote.title}`, html, insuranceAttachments);
-      // Only record the quote as sent after the customer email provider accepts it.
+      // Only record the quote revision as sent after the customer email provider accepts it.
+      await db.insert(nativeQuoteRevisions).values({
+        quoteId: quote.id,
+        revisionNumber,
+        snapshotJson: JSON.stringify(revisionSnapshot),
+        sentAt,
+      });
       await db.update(nativeQuotes).set({
         portalToken: token,
-        portalSentAt: new Date(),
+        portalSentAt: sentAt,
+        portalViewedAt: null,
         status: "sent",
+        proposalStatus: "sent",
+        clientAction: null,
+        clientActionAt: null,
+        nextActionType: "awaiting_portal_view",
+        nextActionDueAt: null,
       }).where(eq(nativeQuotes.id, input.id));
       await db.update(opsLeads).set({
         stage: "estimate_sent",
         updatedAt: new Date(),
       }).where(eq(opsLeads.nativeQuoteId, input.id));
       await notifyOwner({ title: "Quote Portal Sent", content: `Portal link sent to ${quote.clientName} (${quote.clientEmail}) for "${quote.title}"` });
-      return { success: true, portalUrl, insuranceAttachmentCount: insuranceAttachments.length };
+      return { success: true, portalUrl, revisionNumber, insuranceAttachmentCount: insuranceAttachments.length };
     }),
 
   convertToJob: ownerProcedure
@@ -1553,31 +1627,14 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
-      // Mark first view
-      if (!quote.portalViewedAt) {
-        await db
-          .update(nativeQuotes)
-          .set({ portalViewedAt: new Date(), status: quote.status === "sent" ? "sent" : quote.status })
-          .where(eq(nativeQuotes.id, quote.id));
-        await notifyOwner({
-          title: `Quote Opened — ${quote.clientName}`,
-          content: `${quote.clientName} just opened their quote portal link for "${quote.title}".`,
-        }).catch(() => {/* non-critical */});
-      }
-      const lineItems = parsePortalLineItems(quote.lineItems);
-      const includedRentalCustomerChargeCents = getIncludedRentalCustomerCharge(quote);
-      const phaseSummary = getQuotePortalPhaseSummary(lineItems, includedRentalCustomerChargeCents);
-      const sitePhotoReferences = parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(quote.quoteEvidence)
-        .filter((attachment) => attachment.includeInCustomerPdf !== false && attachment.caption)
-        .map((attachment) => ({
-          url: attachment.url,
-          filename: attachment.filename,
-          caption: attachment.caption as string,
-          tags: attachment.tags ?? [],
-        }));
-      return {
-        type: "native" as const,
-        id: quote.id,
+      const revisions = await db.select().from(nativeQuoteRevisions)
+        .where(eq(nativeQuoteRevisions.quoteId, quote.id))
+        .orderBy(desc(nativeQuoteRevisions.revisionNumber))
+        .limit(1);
+      const activeRevision = revisions[0];
+      const revisionSnapshot = parseNativeQuoteRevisionSnapshot(activeRevision?.snapshotJson) ?? buildNativeQuoteRevisionSnapshot({
+        revisionNumber: 0,
+        sentAt: (quote.portalSentAt ?? quote.createdAt).toISOString(),
         clientName: quote.clientName,
         title: quote.title,
         serviceType: quote.serviceType,
@@ -1585,12 +1642,52 @@ Rules:
         propertyAddress: quote.propertyAddress,
         estimatedDuration: quote.estimatedDuration,
         clientMessage: quote.clientMessage,
-        sitePhotoReferences,
+        lineItems: parsePortalLineItems(quote.lineItems),
+        includedRentalCustomerChargeCents: getIncludedRentalCustomerCharge(quote),
+        totalCents: quote.totalCents,
+        sitePhotoReferences: getCustomerPhotoReferences(quote.quoteEvidence),
+      });
+      // Mark first view
+      if (!quote.portalViewedAt) {
+        const viewedAt = new Date();
+        await db
+          .update(nativeQuotes)
+          .set({
+            portalViewedAt: viewedAt,
+            status: quote.status === "sent" ? "sent" : quote.status,
+            nextActionType: "follow_up_viewed_48h",
+            nextActionDueAt: new Date(viewedAt.getTime() + 48 * 60 * 60 * 1000),
+          })
+          .where(eq(nativeQuotes.id, quote.id));
+        if (activeRevision && !activeRevision.viewedAt) {
+          await db.update(nativeQuoteRevisions).set({ viewedAt }).where(eq(nativeQuoteRevisions.id, activeRevision.id));
+        }
+        await notifyOwner({
+          title: `Quote Opened — ${quote.clientName}`,
+          content: `${quote.clientName} just opened their quote portal link for "${quote.title}".`,
+        }).catch(() => {/* non-critical */});
+      }
+      const lineItems = revisionSnapshot.lineItems;
+      const includedRentalCustomerChargeCents = revisionSnapshot.includedRentalCustomerChargeCents;
+      const phaseSummary = getQuotePortalPhaseSummary(lineItems, includedRentalCustomerChargeCents);
+      return {
+        type: "native" as const,
+        id: quote.id,
+        clientName: revisionSnapshot.clientName,
+        title: revisionSnapshot.title,
+        serviceType: revisionSnapshot.serviceType,
+        acreage: revisionSnapshot.acreage,
+        propertyAddress: revisionSnapshot.propertyAddress,
+        estimatedDuration: revisionSnapshot.estimatedDuration,
+        clientMessage: revisionSnapshot.clientMessage,
+        sitePhotoReferences: revisionSnapshot.sitePhotoReferences,
         lineItems,
         phaseSummary,
         includesRequiredEquipmentCosts: includedRentalCustomerChargeCents > 0,
-        totalCents: quote.totalCents,
-        totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(quote.totalCents / 100),
+        totalCents: revisionSnapshot.totalCents,
+        totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(revisionSnapshot.totalCents / 100),
+        revisionNumber: revisionSnapshot.revisionNumber,
+        revisionSentAt: revisionSnapshot.sentAt,
         status: quote.status,
         clientAction: quote.clientAction,
         clientActionAt: quote.clientActionAt,
@@ -1616,7 +1713,7 @@ Rules:
   portalAction: publicProcedure
     .input(z.object({
       token: z.string().min(16),
-      action: z.enum(["approved", "declined", "changes_requested"]),
+      action: z.enum(["declined", "changes_requested"]),
       note: z.string().max(2000).optional(),
     }))
     .mutation(async ({ input }) => {
@@ -1628,10 +1725,8 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
-      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems), getIncludedRentalCustomerCharge(quote));
       // Sync status column so pipeline stage classifier stays consistent
-      const statusSync = input.action === "approved" ? "approved"
-        : input.action === "declined" ? "declined"
+      const statusSync = input.action === "declined" ? "declined"
         : quote.status; // changes_requested stays in current status
       await db
         .update(nativeQuotes)
@@ -1639,17 +1734,22 @@ Rules:
           clientAction: input.action,
           clientActionAt: new Date(),
           status: statusSync,
-          ...(input.action === "approved" ? {
-            phaseOneApprovedCents: phaseSummary.phaseOneTotalCents,
-            phaseOneApprovedAt: new Date(),
+          ...(input.action === "changes_requested" ? {
+            changeRequestNote: input.note ?? null,
+            changeRequestAt: new Date(),
+            nextActionType: "revise_quote",
+            nextActionDueAt: new Date(),
           } : {}),
-          ...(input.action === "changes_requested" ? { changeRequestNote: input.note ?? null, changeRequestAt: new Date() } : {}),
-          ...(input.action === "declined" ? { declineNote: input.note ?? null } : {}),
+          ...(input.action === "declined" ? {
+            declineNote: input.note ?? null,
+            nextActionType: "closed_declined",
+            nextActionDueAt: null,
+          } : {}),
         })
         .where(eq(nativeQuotes.id, quote.id));
       await notifyOwner({
-        title: `Quote ${input.action === "approved" ? "Approved" : input.action === "declined" ? "Declined" : "Changes Requested"} — ${quote.clientName}`,
-        content: `${quote.clientName} ${input.action === "approved" ? "approved" : input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
+        title: `Quote ${input.action === "declined" ? "Declined" : "Changes Requested"} — ${quote.clientName}`,
+        content: `${quote.clientName} ${input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
       }).catch(() => {/* non-critical */});
       return { success: true };
     }),
@@ -1667,7 +1767,16 @@ Rules:
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
       if (quote.clientAction === "declined") throw new TRPCError({ code: "BAD_REQUEST", message: "This quote was declined and cannot be accepted." });
-      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems), getIncludedRentalCustomerCharge(quote));
+      const revisions = await db.select().from(nativeQuoteRevisions)
+        .where(eq(nativeQuoteRevisions.quoteId, quote.id))
+        .orderBy(desc(nativeQuoteRevisions.revisionNumber))
+        .limit(1);
+      const activeRevision = revisions[0];
+      const snapshot = parseNativeQuoteRevisionSnapshot(activeRevision?.snapshotJson);
+      const phaseSummary = getQuotePortalPhaseSummary(
+        snapshot?.lineItems ?? parsePortalLineItems(quote.lineItems),
+        snapshot?.includedRentalCustomerChargeCents ?? getIncludedRentalCustomerCharge(quote),
+      );
       if (phaseSummary.phaseOneTotalCents <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Phase 1 must have a positive total before acceptance." });
       const acceptedAt = new Date();
       await db.update(nativeQuotes).set({
@@ -1681,7 +1790,12 @@ Rules:
         signedAt: acceptedAt,
         phaseOneSignatureConsentAt: acceptedAt,
         phaseOneAcceptanceScope: "phase_1",
+        nextActionType: "collect_deposit",
+        nextActionDueAt: acceptedAt,
       }).where(eq(nativeQuotes.id, quote.id));
+      if (activeRevision) {
+        await db.update(nativeQuoteRevisions).set({ acceptedAt }).where(eq(nativeQuoteRevisions.id, activeRevision.id));
+      }
       const linkedLeads = await db.select({ id: opsLeads.id })
         .from(opsLeads)
         .where(eq(opsLeads.nativeQuoteId, quote.id));

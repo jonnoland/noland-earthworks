@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
 const source = readFileSync(resolve(root, "noland-earthworks-mobile/src/pages/NewQuote.tsx"), "utf8");
+const manifest = readFileSync(resolve(root, "noland-earthworks-mobile/android/app/src/main/AndroidManifest.xml"), "utf8");
 
 describe("Noland Field GPS county detection", () => {
   it("detects device location, reverse geocodes the county, and selects only a configured service county", () => {
@@ -20,5 +21,10 @@ describe("Noland Field GPS county detection", () => {
     expect(source).toContain("countyDetectionError");
     expect(source).toContain("outside the configured service-area list");
     expect(source).toContain("select it manually");
+  });
+
+  it("declares the Android fine and coarse location permissions required by Capacitor geolocation", () => {
+    expect(manifest).toContain('android.permission.ACCESS_COARSE_LOCATION');
+    expect(manifest).toContain('android.permission.ACCESS_FINE_LOCATION');
   });
 });

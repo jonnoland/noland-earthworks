@@ -128,9 +128,7 @@ export default function NativeQuotePortal() {
   const actionMut = trpc.nativeQuotes.portalAction.useMutation({
     onSuccess: () => {
       toast.success(
-        pendingAction === "approved"
-          ? "Quote approved. Jon will be in touch shortly."
-          : pendingAction === "declined"
+        pendingAction === "declined"
           ? "Response recorded. Thank you for letting us know."
           : "Change request sent. Jon will follow up with a revised quote."
       );
@@ -217,6 +215,7 @@ export default function NativeQuotePortal() {
   const fmt = (cents: number) => formatQuoteCents(cents);
 
   const phaseSummary = quote.phaseSummary;
+  const revisionLabel = quote.revisionNumber > 0 ? `Revision ${quote.revisionNumber}` : null;
   const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
   const depositCents = roundQuoteCentsUp(phaseOneTotalCents * (depositPct / 100));
   const balanceCents = phaseOneTotalCents - depositCents;
@@ -267,7 +266,10 @@ export default function NativeQuotePortal() {
       {/* Header */}
       <div className="mb-8">
         <p className="text-amber-500 text-xs font-bold uppercase tracking-widest mb-1">Estimate</p>
-        <h1 className="text-2xl font-bold text-white">{quote.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-white">{quote.title}</h1>
+            {revisionLabel && <span className="print:border-zinc-400 rounded border border-zinc-600 px-2 py-0.5 text-xs font-semibold text-zinc-300">{revisionLabel}</span>}
+          </div>
         {quote.propertyAddress && (
           <div className="flex items-center gap-2 mt-2 text-zinc-400 text-sm">
             <MapPin className="w-4 h-4 shrink-0" />

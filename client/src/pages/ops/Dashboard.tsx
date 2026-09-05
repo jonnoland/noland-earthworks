@@ -258,10 +258,10 @@ export default function Dashboard() {
       tone: "attention",
       category: "quote",
     }));
-    sentQuotes.filter((quote: any) => now - new Date(quote.portalSentAt).getTime() >= 2 * day).slice(0, 2).forEach((quote: any) => actions.push({
+    sentQuotes.filter((quote: any) => quote.portalViewedAt && !quote.clientAction && now - new Date(quote.portalViewedAt).getTime() >= 2 * day).slice(0, 2).forEach((quote: any) => actions.push({
       id: `followup-${quote.id}`,
       title: `Follow up with ${quote.clientName}`,
-      detail: "Quote was sent more than two days ago and has not been accepted.",
+      detail: "Client viewed this quote more than 48 hours ago and has not made a decision.",
       href: `/ops/quotes?quote=${quote.id}`,
       tone: "followup",
       category: "quote",

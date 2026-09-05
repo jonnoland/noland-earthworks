@@ -4036,3 +4036,19 @@
 - [x] Verify onX Offroad’s Android import and direct-launch capabilities against the current GPX share workflow
 - [x] Improve direct onX discovery or provide the most reliable supported import fallback
 - [x] Validate the Android handoff and prepare an updated companion release if code changes are required
+
+## Quote Process Audit — Sep 2026
+- [x] Map the current quote workflow from lead intake through client approval and job handoff
+- [x] Inspect operational funnel data, quote safeguards, and client-facing failure states
+- [x] Identify prioritized quote-process improvements and measurement requirements
+- [x] Deliver a documented quote-process audit with recommended next actions
+
+## Quote Route, Revisions, and Follow-Up — Sep 2026
+- [x] Redirect the public `/request-a-site-visit` route to the working quote-request workflow
+- [x] Preserve immutable sent quote revisions and protect accepted revisions from untracked edits
+- [x] Surface viewed quotes without a decision as owner follow-up actions after 48 hours
+- [x] Add regression coverage and validate public routing, revision history, and follow-up queue behavior
+
+## Noland Field GPS Permission Repair — Sep 2026
+- [x] Add Android fine and coarse location permissions required by Detect My Location
+- [x] Validate the native permission declaration and build a signed replacement Noland Field APK
