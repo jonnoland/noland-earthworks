@@ -17,6 +17,9 @@ describe("native quote revision lifecycle", () => {
     expect(router).toContain("revisionSnapshot.totalCents");
     expect(router).toContain("portalViewedAt: null");
     expect(portal).toContain("Revision ${quote.revisionNumber}");
+    expect(portal).toContain("Locked {revisionLabel}");
+    expect(portal).toContain("exact scope and price sent for this revision");
+    expect(portal).toContain("Request Changes option below");
   });
 
   it("locks signed work against untracked edits and requires a typed Phase 1 acceptance", () => {

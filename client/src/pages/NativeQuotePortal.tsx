@@ -18,7 +18,7 @@ import { formatQuoteCents, roundQuoteCentsUp } from "@shared/quoteMoney";
 import { formatQuoteLineQuantity, isEstimatedLinearFootQuoteLine, isLinearFootQuoteLine, linearFootEstimateBasis } from "@shared/quoteLineItemMeasurements";
 import {
   CheckCircle, XCircle, CreditCard, MapPin, Briefcase,
-  Clock, AlertCircle, Loader2, Download, MessageSquareDiff,
+  Clock, AlertCircle, Loader2, Download, MessageSquareDiff, LockKeyhole,
 } from "lucide-react";
 
 type DepositPct = 25 | 33 | 50;
@@ -282,6 +282,16 @@ export default function NativeQuotePortal() {
           </p>
         )}
       </div>
+
+      {revisionLabel && (
+        <div className="print:border-zinc-400 print:bg-zinc-100 print:text-zinc-900 mb-6 flex items-start gap-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-amber-100">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-amber-400 print:text-zinc-700" />
+          <div>
+            <p className="text-sm font-semibold text-amber-200 print:text-zinc-900">Locked {revisionLabel}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-amber-100/80 print:text-zinc-700">You are viewing the exact scope and price sent for this revision. If you need changes, use the Request Changes option below so an updated quote can be prepared.</p>
+          </div>
+        </div>
+      )}
 
       {/* Approved / Declined banner */}
       {hasSignedPhaseOneAcceptance && (

@@ -4052,3 +4052,8 @@
 ## Noland Field GPS Permission Repair — Sep 2026
 - [x] Add Android fine and coarse location permissions required by Detect My Location
 - [x] Validate the native permission declaration and build a signed replacement Noland Field APK
+
+## Follow-Up Dashboard and Revision Indicator — Sep 2026
+- [x] Add an Operations dashboard widget for viewed quotes in the active 48-hour follow-up queue
+- [x] Add a clear client-portal indicator for locked quote revisions
+- [x] Add regression coverage and validate the dashboard and portal presentation

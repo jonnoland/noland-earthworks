@@ -151,6 +151,7 @@ export default function Dashboard() {
   const { data: invoices = [], isLoading: invoicesLoading } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60_000 });
   const { data: quotesData, isLoading: quotesLoading } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60_000 });
   const { data: leads = [], isLoading: leadsLoading } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15_000 });
+  const { data: viewedQuoteFollowUps = [], isLoading: viewedQuoteFollowUpsLoading } = trpc.ops.getStaleQuotes.useQuery(undefined, { refetchInterval: 60_000 });
   const { data: milestones } = trpc.ops.getLeadGenerationMilestones.useQuery(undefined, { staleTime: 60_000, refetchInterval: 300_000 });
   const { data: waitlistByCounty = [] } = trpc.emailSubscribe.getWaitlistByCounty.useQuery(undefined, { staleTime: 60_000, refetchInterval: 60_000 });
   const { data: reviewRequests = [] } = trpc.ops.getReviewRequests.useQuery(undefined, { staleTime: 300_000, retry: false });
@@ -360,6 +361,23 @@ export default function Dashboard() {
             {isLoading ? <div className="space-y-2 p-5">{[1, 2, 3].map((id) => <Skeleton key={id} className="h-16 w-full" />)}</div> : nextSevenDays.length === 0 ? <EmptyState message="No jobs are scheduled in the next 7 days." href="/ops/schedule" label="Open Schedule" /> : <div className="divide-y divide-border">{nextSevenDays.slice(0, 5).map((job) => <Link key={job.id} href="/ops/schedule" className="group flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-secondary/25"><div className="w-15 shrink-0 text-center"><p className="text-xs font-semibold text-primary">{formatShortDate(job.scheduledDate)}</p></div><span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="truncate text-sm font-medium text-foreground">{job.clientName}</span>{job.highPriority && <Flag className="h-3 w-3 shrink-0 text-red-400" />}</span><span className="block truncate text-xs text-muted-foreground">{job.serviceType}{job.acreage ? ` · ${job.acreage} ac` : ""}</span>{job.address && <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground/75"><MapPin className="h-3 w-3 shrink-0" />{job.address}</span>}</span><span className={cn("shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize", statusStyles[job.status] ?? "border-border bg-secondary text-muted-foreground")}>{job.status.replace(/_/g, " ")}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" /></Link>)}</div>}
           </section>
         </div>
+
+        <section className="overflow-hidden rounded-xl border border-amber-400/25 bg-card shadow-sm">
+          <header className="flex items-center justify-between gap-3 border-b border-border bg-amber-400/5 px-5 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-300"><Eye className="h-4 w-4" /></div>
+              <div className="min-w-0"><h2 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Viewed Quotes Requiring Follow-Up</h2><p className="truncate text-xs text-muted-foreground">Client viewed the quote more than 48 hours ago without a decision.</p></div>
+            </div>
+            <Link href="/ops/quotes" className="shrink-0 text-xs font-medium text-primary hover:underline">Open Quotes</Link>
+          </header>
+          {viewedQuoteFollowUpsLoading ? <div className="space-y-2 p-5">{[1, 2].map((id) => <Skeleton key={id} className="h-14 w-full" />)}</div> : viewedQuoteFollowUps.length === 0 ? (
+            <EmptyState message="No viewed quotes are waiting on a client decision." href="/ops/quotes" label="Open Quotes" />
+          ) : (
+            <div className="divide-y divide-border">
+              {viewedQuoteFollowUps.slice(0, 5).map((quote: any) => <Link key={quote.id} href={`/ops/quotes?quote=${quote.id}`} className="group flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-secondary/25"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-400/10 text-amber-300"><Clock3 className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{quote.clientName}</span><span className="block truncate text-xs text-muted-foreground">{quote.service}{quote.acreage ? ` · ${quote.acreage} ac` : ""} · viewed {quote.hoursSinceViewed} hours ago</span></span><span className="hidden text-[11px] font-medium text-amber-300 sm:inline">Follow up</span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" /></Link>)}
+            </div>
+          )}
+        </section>
 
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

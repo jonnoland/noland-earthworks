@@ -21,4 +21,10 @@ describe("Field Command Center dashboard", () => {
     expect(dashboard).toContain('href="/ops/invoices"');
     expect(dashboard).not.toContain('const cardHref = "/ops/quotes"');
   });
+
+  it("surfaces the server-derived 48-hour viewed-quote follow-up queue", () => {
+    expect(dashboard).toContain("trpc.ops.getStaleQuotes.useQuery");
+    expect(dashboard).toContain("Viewed Quotes Requiring Follow-Up");
+    expect(dashboard).toContain("viewed {quote.hoursSinceViewed} hours ago");
+  });
 });
