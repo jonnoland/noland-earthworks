@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, PlusCircle, FileText, User } from "lucide-react";
+import { Home, PlusCircle, FileText, CalendarDays, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/new-quote", icon: PlusCircle, label: "New Quote" },
   { to: "/quotes", icon: FileText, label: "My Quotes" },
+  { to: "/jobs", icon: CalendarDays, label: "Jobs" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
 

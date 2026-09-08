@@ -7,6 +7,7 @@ import Home from "@/pages/Home";
 import NewQuote from "@/pages/NewQuote";
 import QuotesList from "@/pages/QuotesList";
 import QuoteDetail from "@/pages/QuoteDetail";
+import Jobs from "@/pages/Jobs";
 import Profile from "@/pages/Profile";
 import PinLogin from "@/pages/PinLogin";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +68,7 @@ function AppShell() {
           <Route path="/new-quote" element={<NewQuote />} />
           <Route path="/quotes" element={<QuotesList />} />
           <Route path="/quotes/:id" element={<QuoteDetail />} />
+          <Route path="/jobs" element={<Jobs />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </div>

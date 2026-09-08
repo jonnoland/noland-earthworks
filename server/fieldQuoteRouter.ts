@@ -17,7 +17,7 @@ import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, createOpsLead, getOwnerUser, listNativeClientContacts, getPricingBenchmarks } from "./db";
-import { aiPricingSettings, fieldQuotes } from "../drizzle/schema";
+import { aiPricingSettings, fieldQuotes, nativeJobs } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
@@ -397,6 +397,53 @@ async function qualifyFieldLead(data: {
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const fieldQuoteRouter = router({
+  /**
+   * List active Operations jobs for the PIN-authenticated owner in Noland Field.
+   * Field notes use the same native_jobs.internalNotes record shown in Operations.
+   */
+  mobileJobs: requireAppToken
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(75) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Job records are unavailable right now." });
+
+      const rows = await db
+        .select()
+        .from(nativeJobs)
+        .orderBy(desc(nativeJobs.updatedAt))
+        .limit(input.limit);
+
+      const statusOrder: Record<(typeof nativeJobs.status.enumValues)[number], number> = {
+        in_progress: 0,
+        scheduled: 1,
+        completed: 2,
+        cancelled: 3,
+      };
+      return rows.sort((left, right) => {
+        const statusDifference = statusOrder[left.status] - statusOrder[right.status];
+        if (statusDifference !== 0) return statusDifference;
+        const leftDate = left.scheduledDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const rightDate = right.scheduledDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return leftDate - rightDate;
+      });
+    }),
+
+  /** Save an owner field note directly on the matching native Operations job. */
+  mobileUpdateJobNotes: requireAppToken
+    .input(z.object({ id: z.number().int().positive(), internalNotes: z.string().trim().max(5000) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Job records are unavailable right now." });
+
+      const [existing] = await db.select({ id: nativeJobs.id }).from(nativeJobs).where(eq(nativeJobs.id, input.id)).limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "That job could not be found." });
+
+      const nextNotes = input.internalNotes || null;
+      await db.update(nativeJobs).set({ internalNotes: nextNotes }).where(eq(nativeJobs.id, input.id));
+      const [updated] = await db.select().from(nativeJobs).where(eq(nativeJobs.id, input.id)).limit(1);
+      return updated;
+    }),
+
   /** Lookup a parcel for the signed-in Noland Field app user. */
   lookupParcel: requireAppToken
     .input(z.object({

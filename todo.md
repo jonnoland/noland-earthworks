@@ -4072,3 +4072,9 @@
 - [x] Trace the quote editor, saved line-item, and portal acreage values that can diverge
 - [x] Ensure client-facing acreage descriptions use the saved work-area quantity consistently
 - [x] Add regression coverage and validate portal totals remain unchanged
+
+## Noland Field Jobs Section — Sep 2026
+- [x] Inspect existing Operations job schedules, field notes, and companion navigation
+- [x] Add a synchronized Noland Field Jobs section for schedule and job-detail review
+- [x] Add a validated field-note workflow connected to existing Operations job records
+- [x] Add regression coverage, build a replacement APK, and publish the companion update
