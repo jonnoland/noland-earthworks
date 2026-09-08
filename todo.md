@@ -4067,3 +4067,8 @@
 - [x] Update generated client-message instructions to use first-person owner-operator language only
 - [x] Add regression coverage preventing team-implying language in generated message prompts
 - [x] Validate and publish the client-message voice update
+
+## Portal Acreage Consistency Repair — Sep 2026
+- [x] Trace the quote editor, saved line-item, and portal acreage values that can diverge
+- [x] Ensure client-facing acreage descriptions use the saved work-area quantity consistently
+- [x] Add regression coverage and validate portal totals remain unchanged

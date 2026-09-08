@@ -58,6 +58,7 @@ import { ensureQuotePhaseIds, getQuotePhaseSections, orderQuoteLineItemsWithDisc
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
+  formatAcreageServiceDescription,
   getQuoteLineServiceOption,
   inferQuoteLineServiceOption,
   isLinearFootQuoteLine,
@@ -436,11 +437,15 @@ function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
     const qty = Number.isFinite(quantity) ? Math.max(1, quantity) : 1;
     const unitPriceCents = roundQuoteCentsUp(Number.isFinite(unitPrice) ? unitPrice : 0);
 
-    return {
+    const normalizedItem = {
       ...item,
       qty,
       unitPriceCents,
       totalCents: roundQuoteCentsUp(qty * unitPriceCents),
+    };
+    return {
+      ...normalizedItem,
+      description: formatAcreageServiceDescription(normalizedItem),
     };
   });
   return orderQuoteLineItemsWithDiscountsLast(normalizedItems);

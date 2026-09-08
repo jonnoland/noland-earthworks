@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateLinearFeetFromAcreage,
   createQuoteServiceLineItem,
+  formatAcreageServiceDescription,
   formatQuoteLineQuantity,
   isEstimatedLinearFootQuoteLine,
   isLinearFootQuoteLine,
@@ -58,6 +59,28 @@ describe("quote service line measurements", () => {
     expect(quoteLineQuantityLabel(line)).toBe("Quantity");
   });
 
+  it("rebuilds acreage service descriptions from the saved quantity and rate instead of trusting stale embedded acreage", () => {
+    expect(formatAcreageServiceDescription({
+      description: "Forestry Mulching - 4.89 acres @ $6,362.78/acre",
+      serviceCode: "forestry-mulching",
+      qty: 4.39,
+      unitPriceCents: 587700,
+    })).toBe("Forestry Mulching - 4.39 acres @ $5,877.00/acre");
+    expect(formatAcreageServiceDescription({
+      description: "Mobilization Fee",
+      serviceCode: "mobilization",
+      qty: 1,
+      unitPriceCents: 45000,
+    })).toBe("Mobilization Fee");
+    expect(formatAcreageServiceDescription({
+      description: "Trail Cutting",
+      serviceCode: "trail-cutting",
+      measurementUnit: "linear_foot",
+      qty: 2000,
+      unitPriceCents: 450,
+    })).toBe("Trail Cutting");
+  });
+
   it("offers Mobilization as a normal quote item without making it a primary project service", () => {
     const line = createQuoteServiceLineItem("mobilization");
     expect(line.description).toBe("Mobilization");
@@ -86,7 +109,10 @@ describe("quote service line measurements", () => {
     const portal = source("client/src/pages/NativeQuotePortal.tsx");
     const invoice = source("server/nativeJobsRouter.ts");
     expect(router).toContain('measurementUnit: z.enum(["linear_foot"]).optional()');
+    expect(router).toContain("formatAcreageServiceDescription(normalizedItem)");
     expect(portal).toContain("formatQuoteLineQuantity");
+    expect(portal).toContain("customerLineDescription");
+    expect(portal.match(/customerLineDescription\(li\)/g)).toHaveLength(3);
     expect(invoice).toContain('li.measurementUnit === "linear_foot" ? " linear ft" : ""');
   });
 

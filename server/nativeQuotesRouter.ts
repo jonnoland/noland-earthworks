@@ -14,6 +14,7 @@
  */
 import { z } from "zod";
 import { roundQuoteCentsUp } from "@shared/quoteMoney";
+import { formatAcreageServiceDescription } from "@shared/quoteLineItemMeasurements";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
@@ -268,12 +269,18 @@ async function buildEvidenceContent(ownerId: number, evidence: QuoteEvidenceAtta
 }
 
 function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
-  const normalizedItems = items.map((item) => ({
-    ...item,
-    qty: Math.max(1, item.qty),
-    unitPriceCents: roundQuoteCentsUp(item.unitPriceCents),
-    totalCents: roundQuoteCentsUp(Math.max(1, item.qty) * roundQuoteCentsUp(item.unitPriceCents)),
-  }));
+  const normalizedItems = items.map((item) => {
+    const normalizedItem = {
+      ...item,
+      qty: Math.max(1, item.qty),
+      unitPriceCents: roundQuoteCentsUp(item.unitPriceCents),
+      totalCents: roundQuoteCentsUp(Math.max(1, item.qty) * roundQuoteCentsUp(item.unitPriceCents)),
+    };
+    return {
+      ...normalizedItem,
+      description: formatAcreageServiceDescription(normalizedItem),
+    };
+  });
   return orderQuoteLineItemsWithDiscountsLast(normalizedItems);
 }
 

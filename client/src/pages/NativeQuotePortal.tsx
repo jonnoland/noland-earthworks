@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatQuoteCents, roundQuoteCentsUp } from "@shared/quoteMoney";
-import { formatQuoteLineQuantity, isEstimatedLinearFootQuoteLine, isLinearFootQuoteLine, linearFootEstimateBasis } from "@shared/quoteLineItemMeasurements";
+import { formatAcreageServiceDescription, formatQuoteLineQuantity, isEstimatedLinearFootQuoteLine, isLinearFootQuoteLine, linearFootEstimateBasis } from "@shared/quoteLineItemMeasurements";
 import {
   CheckCircle, XCircle, CreditCard, MapPin, Briefcase,
   Clock, AlertCircle, Loader2, Download, MessageSquareDiff, LockKeyhole,
@@ -31,6 +31,10 @@ function formatWorkingDays(value: string | null | undefined) {
 
 function lineQuantityText(item: { description: string; qty: number; serviceCode?: string; measurementUnit?: "linear_foot"; quantitySource?: "measured" | "acreage_estimate"; sourceAcreage?: number; clearingWidthFeet?: number }) {
   return formatQuoteLineQuantity(item);
+}
+
+function customerLineDescription(item: { description: string; qty: number; unitPriceCents: number; serviceCode?: string; measurementUnit?: "linear_foot" }) {
+  return formatAcreageServiceDescription(item);
 }
 
 function isCustomerDiscount(item: { kind?: string; unitPriceCents: number; totalCents: number }) {
@@ -416,7 +420,7 @@ export default function NativeQuotePortal() {
                     {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-amber-500/30 bg-amber-500/[0.06] px-5 py-2 text-xs font-semibold text-zinc-200 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(section.subtotalCents)}</span></div>}
                     <div className={`flex items-start justify-between gap-4 border-t px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 border-t-emerald-400/30 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-zinc-800"}`}>
                       <div className="flex-1">
-                        <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>
+                        <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : customerLineDescription(li)}</p>
                         {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
                         <EstimatedFootageNotice item={li} />
                       </div>
@@ -441,7 +445,7 @@ export default function NativeQuotePortal() {
               <div key={`unassigned-${i}`}>
                 {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-amber-500/30 bg-amber-500/[0.06] px-5 py-2 text-xs font-semibold text-zinc-200 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(subtotalCents)}</span></div>}
                 <div className={`flex items-start justify-between gap-4 border-b px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-zinc-800"}`}>
-                  <div className="min-w-0"><p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>{(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}<EstimatedFootageNotice item={li} /></div>
+                  <div className="min-w-0"><p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-zinc-200"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : customerLineDescription(li)}</p>{(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}<EstimatedFootageNotice item={li} /></div>
                   <span className={isCustomerDiscount(li) ? "shrink-0 text-sm font-semibold text-emerald-200 print:text-emerald-900" : "shrink-0 text-sm font-medium text-amber-400"}>{fmt(li.qty * li.unitPriceCents)}</span>
                 </div>
               </div>
@@ -484,7 +488,7 @@ export default function NativeQuotePortal() {
                     {i === firstDiscountIndex && <div className="flex items-center justify-between border-t border-indigo-500/40 bg-indigo-500/[0.09] px-5 py-2 text-xs font-semibold text-indigo-100 print:border-zinc-300 print:bg-zinc-100 print:text-zinc-800"><span>Subtotal before discount</span><span>{fmt(section.subtotalCents)}</span></div>}
                     <div className={`flex items-start justify-between gap-4 border-t px-5 py-3 ${isCustomerDiscount(li) ? "border-emerald-400/45 border-l-2 border-t-emerald-400/30 bg-emerald-500/[0.10] print:border-emerald-700 print:bg-emerald-50" : "border-indigo-500/15"}`}>
                       <div className="flex-1">
-                        <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-indigo-50"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : li.description}</p>
+                      <p className={isCustomerDiscount(li) ? "text-sm font-semibold text-emerald-200 print:text-emerald-900" : "text-sm text-indigo-50"}>{isCustomerDiscount(li) ? `Discount applied — ${li.description}` : customerLineDescription(li)}</p>
                         {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-indigo-200/60">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
                         <EstimatedFootageNotice item={li} />
                       </div>

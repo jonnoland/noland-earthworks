@@ -95,6 +95,25 @@ export function formatQuoteLineQuantity(item: Pick<MeasuredQuoteLineItem, "servi
   return isLinearFootQuoteLine(item) ? `${Number(item.qty).toLocaleString()} linear ft` : Number(item.qty).toLocaleString();
 }
 
+/**
+ * Customer-facing acreage rows must use their structured quantity as the source
+ * of truth. This prevents a previous acreage embedded in an AI-generated or
+ * manually edited description from disagreeing with the saved quote quantity.
+ */
+export function formatAcreageServiceDescription(item: Pick<MeasuredQuoteLineItem, "description" | "qty" | "unitPriceCents" | "serviceCode" | "measurementUnit">): string {
+  const service = getQuoteLineServiceOption(item.serviceCode)
+    ?? inferQuoteLineServiceOption(item.description);
+  if (!service || service.measurementUnit === "linear_foot" || service.value === "mobilization") return item.description;
+
+  const quantity = Number(item.qty);
+  const unitPriceCents = Number(item.unitPriceCents);
+  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPriceCents) || unitPriceCents < 0) return item.description;
+
+  const formattedQuantity = quantity.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const formattedRate = (unitPriceCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${service.label} - ${formattedQuantity} acres @ $${formattedRate}/acre`;
+}
+
 export function createQuoteServiceLineItem(serviceCode: QuoteLineServiceCode = "forestry-mulching"): MeasuredQuoteLineItem {
   const service = getQuoteLineServiceOption(serviceCode)!;
   return {
