@@ -14,10 +14,11 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeJobs, nativeInvoices, nativeQuotes } from "../drizzle/schema";
+import { nativeJobs, nativeInvoices, nativeQuotes, nativeJobScheduleDates } from "../drizzle/schema";
 import { eq, desc, like, or, and } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
+import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -74,7 +75,7 @@ export const nativeJobsRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      return rows;
+      return attachJobScheduleDates(db, rows);
     }),
 
   /**
@@ -94,7 +95,7 @@ export const nativeJobsRouter = router({
       if (!job) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
       }
-      return job;
+      return (await attachJobScheduleDates(db, [job]))[0];
     }),
 
   /**
@@ -106,6 +107,7 @@ export const nativeJobsRouter = router({
         id: z.number().int(),
         status: z.enum(["scheduled", "in_progress", "completed", "cancelled"]).optional(),
         scheduledDate: z.date().nullable().optional(),
+        scheduledDates: z.array(z.date()).max(31).optional(),
         completedAt: z.date().nullable().optional(),
         internalNotes: z.string().max(5000).optional(),
         clientName: z.string().max(255).optional(),
@@ -123,12 +125,32 @@ export const nativeJobsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const { id, ...fields } = input;
+      const { id, scheduledDates, ...fields } = input;
+
+      const [existing] = await db
+        .select()
+        .from(nativeJobs)
+        .where(eq(nativeJobs.id, id))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
 
       // Auto-set completedAt when status changes to completed
       const updateData: Record<string, unknown> = { ...fields };
       if (fields.status === "completed" && fields.completedAt === undefined) {
         updateData.completedAt = new Date();
+      }
+
+      const explicitDates = scheduledDates !== undefined
+        ? scheduledDates
+        : fields.scheduledDate === undefined
+          ? undefined
+          : fields.scheduledDate
+            ? [fields.scheduledDate]
+            : [];
+      if (explicitDates !== undefined) {
+        const normalizedDates = await saveJobScheduleDates(db, id, explicitDates);
+        // Preserve the earliest work date for legacy schedule and invoice paths.
+        updateData.scheduledDate = normalizedDates[0] ?? null;
       }
 
       await db
@@ -142,7 +164,7 @@ export const nativeJobsRouter = router({
         .where(eq(nativeJobs.id, id))
         .limit(1);
 
-      return updated;
+      return (await attachJobScheduleDates(db, [updated]))[0];
     }),
 
   /**
@@ -153,6 +175,7 @@ export const nativeJobsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(nativeJobScheduleDates).where(eq(nativeJobScheduleDates.jobId, input.id));
       await db.delete(nativeJobs).where(eq(nativeJobs.id, input.id));
       return { success: true };
     }),

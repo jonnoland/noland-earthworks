@@ -2105,6 +2105,22 @@ export const nativeJobs = mysqlTable("native_jobs", {
 export type NativeJob = typeof nativeJobs.$inferSelect;
 export type InsertNativeJob = typeof nativeJobs.$inferInsert;
 
+/**
+ * Individual scheduled work dates for a native job. The earliest date remains
+ * mirrored to nativeJobs.scheduledDate for legacy calendar and invoice paths.
+ */
+export const nativeJobScheduleDates = mysqlTable("native_job_schedule_dates", {
+  id: int("id").primaryKey().autoincrement(),
+  jobId: int("jobId").notNull(),
+  scheduledDate: timestamp("scheduledDate").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("native_job_schedule_dates_job_date_unique").on(table.jobId, table.scheduledDate),
+  index("native_job_schedule_dates_date_idx").on(table.scheduledDate),
+]);
+export type NativeJobScheduleDate = typeof nativeJobScheduleDates.$inferSelect;
+export type InsertNativeJobScheduleDate = typeof nativeJobScheduleDates.$inferInsert;
+
 // ─── Native Invoices ──────────────────────────────────────────────────────────
 /**
  * Native invoices — generated from completed jobs.

@@ -30,6 +30,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { orderQuoteLineItemsWithDiscountsLast } from "../shared/quotePhaseSections";
+import { saveJobScheduleDates } from "./nativeJobScheduleDates";
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 import { ACTIVE_15_DAY_PRICING_CONFIG, calculateInternalPricingModel, isInternalPricingConfig, PRIOR_20_DAY_PRICING_CONFIG } from "../shared/internalPricingModel";
@@ -925,6 +926,10 @@ export const nativeQuotesRouter = router({
         internalNotes: quote.internalNotes ?? null,
       } as any);
       const jobId = (result as any).insertId ?? (result as any)[0]?.insertId;
+
+      if (input.scheduledDate && jobId) {
+        await saveJobScheduleDates(db, Number(jobId), [new Date(input.scheduledDate)]);
+      }
 
       await db.update(nativeQuotes).set({
         convertedJobId: Number(jobId),

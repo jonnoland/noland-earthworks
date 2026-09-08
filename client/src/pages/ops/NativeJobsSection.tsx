@@ -45,6 +45,7 @@ interface NativeJob {
   lineItems: string;
   status: "scheduled" | "in_progress" | "completed" | "cancelled";
   scheduledDate: Date | null;
+  scheduledDates?: Date[];
   completedAt: Date | null;
   internalNotes: string | null;
   invoicedCents: number | null;
@@ -86,6 +87,21 @@ function fmt(cents: number) {
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getScheduledDates(job: Pick<NativeJob, "scheduledDate" | "scheduledDates">): Date[] {
+  return job.scheduledDates?.length
+    ? job.scheduledDates.map((date) => new Date(date))
+    : job.scheduledDate
+      ? [new Date(job.scheduledDate)]
+      : [];
+}
+
+function fmtScheduledDates(job: Pick<NativeJob, "scheduledDate" | "scheduledDates">, compact = false) {
+  const dates = getScheduledDates(job);
+  if (dates.length === 0) return "—";
+  if (compact && dates.length > 1) return `${fmtDate(dates[0])} +${dates.length - 1}`;
+  return dates.map((date) => fmtDate(date)).join(", ");
 }
 
 // ─── Generate Invoice Dialog ──────────────────────────────────────────────────
@@ -199,9 +215,10 @@ function EditJobDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [scheduledDate, setScheduledDate] = useState(
-    job.scheduledDate ? new Date(job.scheduledDate).toISOString().split("T")[0] : ""
+  const [scheduledDates, setScheduledDates] = useState(() =>
+    getScheduledDates(job).map((date) => date.toISOString().split("T")[0]),
   );
+  const [scheduleDateInput, setScheduleDateInput] = useState("");
   const [notes, setNotes] = useState(job.internalNotes ?? "");
   const [status, setStatus] = useState(job.status);
   const utils = trpc.useUtils();
@@ -236,14 +253,48 @@ function EditJobDialog({
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-zinc-300 text-sm">Scheduled Date</Label>
-            <Input
-              type="date"
-              value={scheduledDate}
-              onChange={e => setScheduledDate(e.target.value)}
-              className="bg-zinc-800 border-zinc-700 text-sm"
-            />
+          <div className="space-y-2">
+            <Label className="text-zinc-300 text-sm">Scheduled Work Dates</Label>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={scheduleDateInput}
+                onChange={e => setScheduleDateInput(e.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="border-zinc-600 shrink-0"
+                disabled={!scheduleDateInput || scheduledDates.length >= 31}
+                onClick={() => {
+                  setScheduledDates((current) => current.includes(scheduleDateInput)
+                    ? current
+                    : [...current, scheduleDateInput].sort());
+                  setScheduleDateInput("");
+                }}
+              >
+                Add Date
+              </Button>
+            </div>
+            {scheduledDates.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {scheduledDates.map((date, index) => (
+                  <span key={date} className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+                    {fmtDate(new Date(`${date}T12:00:00`))}{index === 0 ? " (first)" : ""}
+                    <button
+                      type="button"
+                      onClick={() => setScheduledDates((current) => current.filter((item) => item !== date))}
+                      className="rounded p-0.5 text-amber-200 hover:bg-amber-500/20 hover:text-white"
+                      aria-label={`Remove ${date}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : <p className="text-xs text-zinc-500">Add every planned work date. The first date remains the primary schedule date for legacy records.</p>}
+            <p className="text-xs text-zinc-500">{scheduledDates.length}/31 dates selected. Use the × control to remove a date.</p>
           </div>
           <div className="space-y-1">
             <Label className="text-zinc-300 text-sm">Internal Notes</Label>
@@ -263,7 +314,7 @@ function EditJobDialog({
               updateMut.mutate({
                 id: job.id,
                 status,
-                scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
+                scheduledDates: scheduledDates.map((date) => new Date(`${date}T12:00:00`)),
                 internalNotes: notes,
               })
             }
@@ -391,7 +442,7 @@ export default function NativeJobsSection() {
                 j.serviceType ?? "",
                 j.acreage ?? "",
                 j.status,
-                j.scheduledDate ? new Date(j.scheduledDate).toLocaleDateString() : "",
+                fmtScheduledDates(j),
                 j.completedAt ? new Date(j.completedAt).toLocaleDateString() : "",
                 ((j.totalCents ?? 0) / 100).toFixed(2),
                 ((j.paidCents ?? 0) / 100).toFixed(2),
@@ -482,7 +533,8 @@ export default function NativeJobsSection() {
                       {job.acreage && <div className="text-xs text-zinc-500">{job.acreage} ac</div>}
                     </td>
                     <td className="px-4 py-3 text-zinc-400 text-xs whitespace-nowrap">
-                      {fmtDate(job.scheduledDate ?? job.createdAt)}
+                      <div>{fmtScheduledDates(job, true)}</div>
+                      {getScheduledDates(job).length > 1 && <div className="mt-0.5 text-[10px] text-amber-400/75">{getScheduledDates(job).length} work dates</div>}
                     </td>
                     <td className="px-4 py-3 text-amber-400 font-medium whitespace-nowrap">
                       {fmt(job.totalCents)}
@@ -558,13 +610,21 @@ export default function NativeJobsSection() {
                   <div className="text-zinc-200">{selectedJob.acreage ? `${selectedJob.acreage} acres` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-zinc-500 text-xs">Scheduled</div>
-                  <div className="text-zinc-200">{fmtDate(selectedJob.scheduledDate)}</div>
-                </div>
-                <div>
                   <div className="text-zinc-500 text-xs">Completed</div>
                   <div className="text-zinc-200">{fmtDate(selectedJob.completedAt)}</div>
                 </div>
+              </div>
+              <div className="pt-1">
+                <div className="text-zinc-500 text-xs mb-1.5">Scheduled Work Dates</div>
+                {getScheduledDates(selectedJob).length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {getScheduledDates(selectedJob).map((date) => (
+                      <span key={date.toISOString()} className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+                        {fmtDate(date)}
+                      </span>
+                    ))}
+                  </div>
+                ) : <div className="text-zinc-200">—</div>}
               </div>
             </div>
 

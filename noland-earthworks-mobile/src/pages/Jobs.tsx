@@ -17,10 +17,16 @@ function formatSchedule(date: Date | string | null) {
   return new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 }
 
-function jobLabel(job: { scheduledDate: Date | string | null; status: JobStatus }) {
+function getWorkDates(job: { scheduledDate: Date | string | null; scheduledDates?: Array<Date | string> }) {
+  return job.scheduledDates?.length ? job.scheduledDates : job.scheduledDate ? [job.scheduledDate] : [];
+}
+
+function jobLabel(job: { scheduledDate: Date | string | null; scheduledDates?: Array<Date | string>; status: JobStatus }) {
   if (job.status === "in_progress") return "Current job";
   if (job.status === "completed") return "Completed";
-  return job.scheduledDate ? formatSchedule(job.scheduledDate) : "Schedule not set";
+  const dates = getWorkDates(job);
+  if (dates.length === 0) return "Schedule not set";
+  return dates.length === 1 ? formatSchedule(dates[0]) : `${formatSchedule(dates[0])} +${dates.length - 1} more`;
 }
 
 export default function Jobs() {
@@ -76,6 +82,10 @@ export default function Jobs() {
         {expanded && (
           <div style={{ borderTop: "1px solid var(--ne-border)", padding: "14px 16px 16px" }}>
             {job.propertyAddress && <p style={{ display: "flex", alignItems: "flex-start", gap: 7, color: "var(--ne-muted)", fontSize: 13, lineHeight: 1.45, margin: "0 0 12px" }}><MapPin size={15} style={{ color: "var(--ne-amber)", flexShrink: 0, marginTop: 2 }} />{job.propertyAddress}</p>}
+            {getWorkDates(job).length > 0 && <div style={{ margin: "0 0 14px" }}>
+              <p style={{ color: "var(--ne-muted)", fontSize: 11, fontWeight: 700, letterSpacing: ".05em", margin: "0 0 7px" }}>SCHEDULED WORK DATES</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{getWorkDates(job).map((date) => <span key={String(date)} style={{ color: "var(--ne-amber)", background: "oklch(0.83 0.16 82 / 0.12)", border: "1px solid oklch(0.83 0.16 82 / 0.28)", borderRadius: 999, padding: "4px 8px", fontSize: 11, fontWeight: 700 }}>{formatSchedule(date)}</span>)}</div>
+            </div>}
             <label htmlFor={`field-notes-${job.id}`} style={{ display: "block", color: "var(--ne-cream)", fontSize: 12, fontWeight: 700, letterSpacing: ".04em", marginBottom: 7 }}>FIELD NOTES <span style={{ color: "var(--ne-muted)", fontWeight: 400, letterSpacing: 0 }}>— syncs with Operations</span></label>
             <textarea
               id={`field-notes-${job.id}`}

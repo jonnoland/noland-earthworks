@@ -174,6 +174,91 @@ describe("nativeJobs.update", () => {
     const result = await caller.nativeJobs.update({ id: 1, status: "in_progress" });
     expect(result.status).toBe("in_progress");
   });
+
+  it("stores every selected work date and retains the earliest date as the legacy primary date", async () => {
+    const workDates = [new Date("2026-09-18T12:00:00Z"), new Date("2026-09-15T12:00:00Z")];
+    const updatedJob = { ...SAMPLE_JOB, scheduledDate: workDates[1] };
+    const existingQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([SAMPLE_JOB]),
+    };
+    const updatedQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([updatedJob]),
+    };
+    const scheduleQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([
+        { jobId: 1, scheduledDate: workDates[0] },
+        { jobId: 1, scheduledDate: workDates[1] },
+      ]),
+    };
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    const mockDb = {
+      select: vi.fn()
+        .mockReturnValueOnce(existingQuery)
+        .mockReturnValueOnce(updatedQuery)
+        .mockReturnValueOnce(scheduleQuery),
+      delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+      insert: vi.fn().mockReturnValue({ values: insertValues }),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+
+    const result = await appRouter.createCaller(createOwnerContext()).nativeJobs.update({ id: 1, scheduledDates: workDates });
+
+    expect(insertValues).toHaveBeenCalledWith([
+      { jobId: 1, scheduledDate: new Date("2026-09-15T12:00:00.000Z") },
+      { jobId: 1, scheduledDate: new Date("2026-09-18T12:00:00.000Z") },
+    ]);
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ scheduledDate: new Date("2026-09-15T12:00:00.000Z") }));
+    expect(result.scheduledDates.map((date) => date.toISOString())).toEqual([
+      "2026-09-15T12:00:00.000Z",
+      "2026-09-18T12:00:00.000Z",
+    ]);
+  });
+
+  it("clears explicit and legacy schedule dates when the selected work-date list is emptied", async () => {
+    const updatedJob = { ...SAMPLE_JOB, scheduledDate: null };
+    const existingQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([SAMPLE_JOB]),
+    };
+    const updatedQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([updatedJob]),
+    };
+    const scheduleQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([]),
+    };
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    const mockDb = {
+      select: vi.fn()
+        .mockReturnValueOnce(existingQuery)
+        .mockReturnValueOnce(updatedQuery)
+        .mockReturnValueOnce(scheduleQuery),
+      delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+      insert: vi.fn().mockReturnValue({ values: insertValues }),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+
+    const result = await appRouter.createCaller(createOwnerContext()).nativeJobs.update({ id: 1, scheduledDates: [] });
+
+    expect(deleteWhere).toHaveBeenCalledOnce();
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ scheduledDate: null }));
+    expect(result.scheduledDates).toEqual([]);
+  });
 });
 
 describe("nativeJobs.delete", () => {

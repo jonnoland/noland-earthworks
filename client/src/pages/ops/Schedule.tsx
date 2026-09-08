@@ -94,10 +94,12 @@ interface ScheduledJob {
   total?: number | null;
   client?: { id?: string; name?: string | null; companyName?: string | null } | null;
   property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
+  scheduleDateKey?: string;
+  scheduleDateCount?: number;
 }
 // Native job adapted to ScheduledJob shape for calendar compatibility
-function nativeJobToScheduledJob(j: any): ScheduledJob {
-  const scheduledDate = j.scheduledDate ? new Date(j.scheduledDate) : null;
+function nativeJobToScheduledJob(j: any, workDate?: Date): ScheduledJob {
+  const scheduledDate = workDate ?? (j.scheduledDate ? new Date(j.scheduledDate) : null);
   const startAt = scheduledDate ? scheduledDate.toISOString() : null;
   return {
     id: String(j.id),
@@ -111,6 +113,8 @@ function nativeJobToScheduledJob(j: any): ScheduledJob {
     total: j.totalCents != null ? j.totalCents / 100 : (j.totalPrice != null ? Number(j.totalPrice) : null),
     client: (j.clientName || j.client) ? { name: j.clientName ?? j.client } : null,
     property: (j.propertyAddress || j.address) ? { address: { street1: j.propertyAddress ?? j.address, city: null } } : null,
+    scheduleDateKey: scheduledDate ? formatDateKey(scheduledDate) : undefined,
+    scheduleDateCount: Array.isArray(j.scheduledDates) && j.scheduledDates.length > 0 ? j.scheduledDates.length : scheduledDate ? 1 : 0,
   };
 }
 
@@ -156,12 +160,10 @@ function DraggableEntryCard({
 // ─── Draggable job banner ─────────────────────────────────────────────────────────
 function DraggableJobBanner({ job }: { job: ScheduledJob }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `job-${job.id}`,
+    id: `job-${job.id}-${job.scheduleDateKey ?? "unscheduled"}`,
   });
   const colorClass = getJobStatusColor(job.jobStatus);
   const clientName = job.client?.name || job.client?.companyName || "Unknown";
-  const isMultiDay = job.startAt && job.endAt &&
-    new Date(job.endAt).toDateString() !== new Date(job.startAt).toDateString();
 
   return (
     <div
@@ -180,8 +182,8 @@ function DraggableJobBanner({ job }: { job: ScheduledJob }) {
           {job.title || `Job #${job.jobNumber ?? "—"}`}
         </div>
         <div className="opacity-70 truncate">{clientName}</div>
-        {isMultiDay && (
-          <div className="opacity-50 text-[9px]">multi-day</div>
+        {(job.scheduleDateCount ?? 0) > 1 && (
+          <div className="opacity-50 text-[9px]">{job.scheduleDateCount} work dates</div>
         )}
       </div>
     </div>
@@ -358,6 +360,7 @@ function UpcomingJobCard({ job }: { job: ScheduledJob }) {
           {job.endAt && job.endAt !== job.startAt &&
             ` – ${new Date(job.endAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
           }
+          {(job.scheduleDateCount ?? 0) > 1 && ` · ${job.scheduleDateCount} work dates`}
         </div>
         {/* AI Schedule Note */}
         <div className="mt-2 pt-2 border-t border-border/50">
@@ -491,7 +494,12 @@ export default function Schedule() {
   } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
   // false removed — always using native jobs
   const scheduledJobs: ScheduledJob[] = useMemo(
-    () => (nativeJobsRaw as any[]).map(nativeJobToScheduledJob),
+    () => (nativeJobsRaw as any[]).flatMap((job) => {
+      const dates = Array.isArray(job.scheduledDates) && job.scheduledDates.length > 0
+        ? job.scheduledDates.map((date: Date | string) => new Date(date))
+        : job.scheduledDate ? [new Date(job.scheduledDate)] : [];
+      return dates.length > 0 ? dates.map((date: Date) => nativeJobToScheduledJob(job, date)) : [nativeJobToScheduledJob(job)];
+    }),
     [nativeJobsRaw]
   );
   // Jobs that have a startAt date — these are the ones we show on the calendar
@@ -499,6 +507,16 @@ export default function Schedule() {
     () => scheduledJobs.filter(j => j.startAt),
     [scheduledJobs]
   );
+  const upcomingJobs = useMemo(() => {
+    const firstUpcomingDateByJob = new Map<string, ScheduledJob>();
+    for (const job of scheduledJobsWithDates) {
+      const current = firstUpcomingDateByJob.get(job.id);
+      if (!current || new Date(job.startAt!).getTime() < new Date(current.startAt!).getTime()) {
+        firstUpcomingDateByJob.set(job.id, job);
+      }
+    }
+    return Array.from(firstUpcomingDateByJob.values());
+  }, [scheduledJobsWithDates]);
 
   // ── Build week days ──
   const weekDays = useMemo(() => {
@@ -525,16 +543,12 @@ export default function Schedule() {
 
     for (const job of scheduledJobsWithDates) {
       const startDate = new Date(job.startAt!);
-      // Use endAt if available, otherwise treat as single-day
-      const endDate = job.endAt ? new Date(job.endAt) : startDate;
 
       for (const day of weekDays) {
         // Normalize to midnight for comparison
         const dayDate = new Date(day.key + "T00:00:00");
         const startDay = new Date(startDate.toISOString().split("T")[0] + "T00:00:00");
-        const endDay = new Date(endDate.toISOString().split("T")[0] + "T00:00:00");
-
-        if (dayDate >= startDay && dayDate <= endDay) {
+        if (dayDate.getTime() === startDay.getTime()) {
           map[day.key].push(job);
         }
       }
@@ -626,7 +640,7 @@ export default function Schedule() {
   // ── Drag handlers ──
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
-    if (id.startsWith("job-")) setDraggingJobId(id.replace("job-", ""));
+    if (id.startsWith("job-")) setDraggingJobId(id.match(/^job-(\d+)-/)?.[1] ?? null);
     else if (id.startsWith("entry-")) setDraggingEntryId(Number(id.replace("entry-", "")));
     else if (id.startsWith("quote-")) setDraggingQuoteId(Number(id.replace("quote-", "")));
   };
@@ -646,12 +660,23 @@ export default function Schedule() {
     const dayOnlyMatch = overId.match(/^drop-(.+)$/);
 
     if (activeId.startsWith("job-")) {
-      // Native job drag — reschedule by updating scheduledDate
-      const jobId = Number(activeId.replace("job-", ""));
+      // Native job drag — move only the work date represented by this calendar card.
+      const jobMatch = activeId.match(/^job-(\d+)-(\d{4}-\d{2}-\d{2})$/);
+      const jobId = Number(jobMatch?.[1]);
+      const sourceDay = jobMatch?.[2];
       const targetDay = crewDayMatch ? crewDayMatch[2] : (dayOnlyMatch ? dayOnlyMatch[1] : null);
-      if (!targetDay || isNaN(jobId)) return;
-      updateNativeJob.mutate({ id: jobId, scheduledDate: new Date(targetDay + "T12:00:00") });
-      toast.success(`Job rescheduled to ${new Date(targetDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      if (!targetDay || !sourceDay || isNaN(jobId) || sourceDay === targetDay) return;
+      const nativeJob = (nativeJobsRaw as any[]).find((job) => Number(job.id) === jobId);
+      if (!nativeJob) return;
+      const sourceDates = Array.isArray(nativeJob.scheduledDates) && nativeJob.scheduledDates.length > 0
+        ? nativeJob.scheduledDates
+        : nativeJob.scheduledDate ? [nativeJob.scheduledDate] : [];
+      const nextDates = sourceDates
+        .map((date: Date | string) => formatDateKey(new Date(date)) === sourceDay ? targetDay : formatDateKey(new Date(date)))
+        .filter((date: string, index: number, values: string[]) => values.indexOf(date) === index)
+        .sort();
+      updateNativeJob.mutate({ id: jobId, scheduledDates: nextDates.map((date: string) => new Date(`${date}T12:00:00`)) });
+      toast.success(`Job rescheduled to ${new Date(`${targetDay}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
       return;
     }
 
@@ -974,7 +999,7 @@ export default function Schedule() {
 
         {/* Upcoming jobs list */}
         {!false && !jobsLoading && (
-          <UpcomingJobs jobs={scheduledJobs} />
+          <UpcomingJobs jobs={upcomingJobs} />
         )}
 
         {/* Manual schedule entries list */}

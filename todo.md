@@ -4078,3 +4078,9 @@
 - [x] Add a synchronized Noland Field Jobs section for schedule and job-detail review
 - [x] Add a validated field-note workflow connected to existing Operations job records
 - [x] Add regression coverage, build a replacement APK, and publish the companion update
+
+## Multi-Date Job Scheduling — Sep 2026
+- [x] Inspect current job date storage, Operations calendar behavior, and Noland Field job display
+- [x] Add multi-date work scheduling controls to Operations jobs and calendar events
+- [x] Display the complete scheduled-date list in Noland Field Jobs
+- [x] Add regression coverage, build a replacement APK, and publish the update

@@ -33,6 +33,7 @@ import {
   calculateOperationsQuotePricing,
   type OperationsQuotePricingSettings,
 } from "../shared/operationsQuotePricing";
+import { attachJobScheduleDates } from "./nativeJobScheduleDates";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -419,11 +420,12 @@ export const fieldQuoteRouter = router({
         completed: 2,
         cancelled: 3,
       };
-      return rows.sort((left, right) => {
+      const jobsWithDates = await attachJobScheduleDates(db, rows);
+      return jobsWithDates.sort((left, right) => {
         const statusDifference = statusOrder[left.status] - statusOrder[right.status];
         if (statusDifference !== 0) return statusDifference;
-        const leftDate = left.scheduledDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        const rightDate = right.scheduledDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const leftDate = left.scheduledDates[0]?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const rightDate = right.scheduledDates[0]?.getTime() ?? Number.MAX_SAFE_INTEGER;
         return leftDate - rightDate;
       });
     }),
