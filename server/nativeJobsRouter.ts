@@ -81,7 +81,7 @@ export const nativeJobsRouter = router({
     }),
 
   /**
-   * Active jobs for Operations map placement. Older converted jobs can retain
+   * Non-cancelled jobs for Operations map placement. Older converted jobs can retain
    * Parcel ID and work-area data on their source quote, so expose that data as
    * a non-destructive fallback rather than geocoding a broad rural address.
    */
@@ -91,7 +91,7 @@ export const nativeJobsRouter = router({
     const jobs = await db
       .select()
       .from(nativeJobs)
-      .where(or(eq(nativeJobs.status, "scheduled"), eq(nativeJobs.status, "in_progress")))
+      .where(or(eq(nativeJobs.status, "scheduled"), eq(nativeJobs.status, "in_progress"), eq(nativeJobs.status, "completed")))
       .orderBy(desc(nativeJobs.createdAt));
 
     const quoteIds = jobs.flatMap((job) => job.quoteId == null ? [] : [job.quoteId]);
@@ -107,6 +107,9 @@ export const nativeJobsRouter = router({
           workAreaPolygon: nativeQuotes.workAreaPolygon,
           workAreaMeasuredAt: nativeQuotes.workAreaMeasuredAt,
           acreage: nativeQuotes.acreage,
+          title: nativeQuotes.title,
+          status: nativeQuotes.status,
+          totalCents: nativeQuotes.totalCents,
         })
         .from(nativeQuotes)
         .where(inArray(nativeQuotes.id, quoteIds))
@@ -124,6 +127,9 @@ export const nativeJobsRouter = router({
         workAreaPolygon: job.workAreaPolygon ?? quote?.workAreaPolygon ?? null,
         workAreaMeasuredAt: job.workAreaMeasuredAt ?? quote?.workAreaMeasuredAt ?? null,
         acreage: job.acreage ?? quote?.acreage ?? null,
+        quoteTitle: quote?.title ?? null,
+        quoteStatus: quote?.status ?? null,
+        quoteTotalCents: quote?.totalCents ?? job.totalCents,
       };
     });
     return attachJobScheduleDates(db, effectiveJobs);

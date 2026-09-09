@@ -4121,3 +4121,8 @@
 - [x] Fall back to the linked quote's Parcel ID and county when a legacy converted job has no copied parcel fields
 - [x] Display the official parcel outline alongside any saved field-measured work area
 - [x] Add regression coverage and validate Parcel ID-first dispatch map placement
+
+## Interactive Dispatch Map Polygons — Sep 2026
+- [x] Add polygon-click popups with job, owner, current quote, and map-location details
+- [x] Add status-based polygon color coding and an Operations legend for pending, active, and completed jobs
+- [x] Add regression coverage and validate interactive polygon behavior

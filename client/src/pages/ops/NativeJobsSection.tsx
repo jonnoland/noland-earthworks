@@ -49,6 +49,9 @@ interface NativeJob {
   propertyViewerUrl: string | null;
   workAreaPolygon: string | null;
   workAreaMeasuredAt: Date | null;
+  quoteTitle?: string | null;
+  quoteStatus?: string | null;
+  quoteTotalCents?: number | null;
   totalCents: number;
   lineItems: string;
   status: "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -190,6 +193,12 @@ function workAreaCenter(points: WorkAreaPoint[]): WorkAreaPoint | null {
   );
 }
 
+function dispatchMapStatusStyle(status: NativeJob["status"]) {
+  if (status === "in_progress") return { label: "Active / in progress", color: "#3b82f6", lightColor: "#93c5fd" };
+  if (status === "completed") return { label: "Completed", color: "#10b981", lightColor: "#86efac" };
+  return { label: "Pending / scheduled", color: "#f59e0b", lightColor: "#fcd34d" };
+}
+
 function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJobSelect: (job: NativeJob) => void }) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -221,26 +230,35 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
         map.fitBounds(bounds, 52);
       }
     };
-    const addMarker = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng, locationSource: "parcel" | "work_area" | "address", hasParcelBoundary: boolean) => {
+    const openJobInfo = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng, locationSource: "parcel" | "work_area" | "address", hasParcelBoundary: boolean) => {
       if (cancelled) return;
-      const isInProgress = job.status === "in_progress";
-      const pin = document.createElement("div");
-      pin.style.cssText = `width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${isInProgress ? "#3b82f6" : "#f59e0b"};border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);cursor:pointer;`;
-      const marker = new window.google.maps.marker.AdvancedMarkerElement({
-        map,
-        position,
-        title: `${job.clientName} — ${job.status === "in_progress" ? "In Progress" : "Scheduled"}`,
-        content: pin,
-      });
+      const statusStyle = dispatchMapStatusStyle(job.status);
       const workArea = parseWorkAreaPolygon(job.workAreaPolygon);
       const scheduledLabel = fmtScheduledDates(job, true);
       const locationLabel = locationSource === "parcel" ? "Official Parcel ID location" : locationSource === "work_area" ? "Field-measured work-area location" : "Address geocode fallback";
-      const infoContent = `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;min-width:195px;font-family:system-ui,sans-serif;color:#f9fafb;"><div style="font-size:13px;font-weight:700;margin-bottom:4px;">${escapeMapHtml(job.clientName)}</div><div style="font-size:11px;color:${isInProgress ? "#93c5fd" : "#fcd34d"};margin-bottom:4px;">${isInProgress ? "In Progress" : "Scheduled"} · ${escapeMapHtml(scheduledLabel)}</div>${job.serviceType ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.serviceType)}</div>` : ""}${job.acreage ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.acreage)} acres</div>` : ""}${job.parcelId ? `<div style="font-size:10px;color:#7dd3fc;margin-bottom:4px;">Parcel ${escapeMapHtml(job.parcelId)}</div>` : ""}<div style="font-size:10px;color:${locationSource === "address" ? "#fcd34d" : "#bfdbfe"};margin-bottom:4px;">${locationLabel}</div>${hasParcelBoundary ? '<div style="font-size:10px;color:#7dd3fc;">Blue outline: official parcel boundary</div>' : ""}${workArea.length >= 3 ? '<div style="font-size:10px;color:#fdba74;">Orange outline: field-measured work area</div>' : ""}</div>`;
+      const quoteSummary = job.quoteId
+        ? `Quote #${job.quoteId}${job.quoteTitle ? ` · ${escapeMapHtml(job.quoteTitle)}` : ""}${job.quoteStatus ? ` · ${escapeMapHtml(job.quoteStatus)}` : ""} · ${fmt(job.quoteTotalCents ?? job.totalCents)}`
+        : `Job total · ${fmt(job.totalCents)}`;
+      const infoContent = `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;min-width:225px;font-family:system-ui,sans-serif;color:#f9fafb;"><div style="font-size:13px;font-weight:700;margin-bottom:4px;">${escapeMapHtml(job.clientName)}</div><div style="font-size:11px;color:${statusStyle.lightColor};margin-bottom:4px;">${statusStyle.label} · ${escapeMapHtml(scheduledLabel)}</div>${job.serviceType ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.serviceType)}</div>` : ""}${job.acreage ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.acreage)} acres</div>` : ""}${job.parcelOwner ? `<div style="font-size:10px;color:#e5e7eb;margin-bottom:4px;">Owner: ${escapeMapHtml(job.parcelOwner)}</div>` : ""}${job.parcelId ? `<div style="font-size:10px;color:#7dd3fc;margin-bottom:4px;">Parcel ${escapeMapHtml(job.parcelId)}</div>` : ""}<div style="font-size:10px;color:#fde68a;margin-bottom:4px;">${quoteSummary}</div><div style="font-size:10px;color:${locationSource === "address" ? "#fcd34d" : "#bfdbfe"};margin-bottom:4px;">${locationLabel}</div>${hasParcelBoundary ? '<div style="font-size:10px;color:#7dd3fc;">Blue outline: official parcel boundary</div>' : ""}${workArea.length >= 3 ? `<div style="font-size:10px;color:${statusStyle.lightColor};">${statusStyle.label} work area</div>` : ""}</div>`;
+      if (!infoWindowRef.current) infoWindowRef.current = new window.google.maps.InfoWindow({ disableAutoPan: false });
+      infoWindowRef.current.setContent(infoContent);
+      infoWindowRef.current.setPosition(position);
+      infoWindowRef.current.open({ map });
+      onJobSelect(job);
+    };
+    const addMarker = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng, locationSource: "parcel" | "work_area" | "address", hasParcelBoundary: boolean) => {
+      if (cancelled) return;
+      const statusStyle = dispatchMapStatusStyle(job.status);
+      const pin = document.createElement("div");
+      pin.style.cssText = `width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${statusStyle.color};border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);cursor:pointer;`;
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        map,
+        position,
+        title: `${job.clientName} — ${statusStyle.label}`,
+        content: pin,
+      });
       marker.addListener("click", () => {
-        if (!infoWindowRef.current) infoWindowRef.current = new window.google.maps.InfoWindow({ disableAutoPan: false });
-        infoWindowRef.current.setContent(infoContent);
-        infoWindowRef.current.open({ anchor: marker, map });
-        onJobSelect(job);
+        openJobInfo(job, position, locationSource, hasParcelBoundary);
       });
       markersRef.current.push(marker);
     };
@@ -259,15 +277,22 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
 
     const resolveJobLocation = async (job: NativeJob) => {
       const points = parseWorkAreaPolygon(job.workAreaPolygon);
+      let hasLoadedParcelBoundary = false;
       if (points.length >= 3) {
+        const statusStyle = dispatchMapStatusStyle(job.status);
         const polygon = new window.google.maps.Polygon({
           paths: points,
-          strokeColor: "#f97316",
+          strokeColor: statusStyle.color,
           strokeOpacity: 1,
           strokeWeight: 3,
-          fillColor: "#f97316",
-          fillOpacity: 0.24,
+          fillColor: statusStyle.color,
+          fillOpacity: 0.28,
+          clickable: true,
           map,
+        });
+        polygon.addListener("click", (event: google.maps.PolyMouseEvent) => {
+          const position = event.latLng ?? workAreaCenter(points);
+          if (position) openJobInfo(job, position, "work_area", hasLoadedParcelBoundary);
         });
         polygonsRef.current.push(polygon);
         points.forEach((point) => bounds.extend(point));
@@ -278,19 +303,26 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
           const parcel = await parcelBoundaryMutation.mutateAsync({ parcelId: job.parcelId, county: job.parcelCounty });
           if (cancelled) return;
           const rings = parcel.boundaryRings ?? [];
+          hasLoadedParcelBoundary = rings.length > 0;
+          const parcelCenter = parcel.centroid ?? workAreaCenter(rings[0] ?? []) ?? null;
           rings.forEach((ring) => {
             ring.forEach((point) => bounds.extend(point));
-            polygonsRef.current.push(new window.google.maps.Polygon({
+            const polygon = new window.google.maps.Polygon({
               paths: ring,
               strokeColor: "#38bdf8",
               strokeOpacity: 1,
               strokeWeight: 2,
               fillColor: "#38bdf8",
               fillOpacity: 0.08,
+              clickable: true,
               map,
-            }));
+            });
+            polygon.addListener("click", (event: google.maps.PolyMouseEvent) => {
+              const position = event.latLng ?? parcelCenter;
+              if (position) openJobInfo(job, position, "parcel", true);
+            });
+            polygonsRef.current.push(polygon);
           });
-          const parcelCenter = parcel.centroid ?? workAreaCenter(rings[0] ?? []) ?? null;
           if (parcelCenter) {
             extendBounds(parcelCenter);
             addMarker(job, parcelCenter, "parcel", rings.length > 0);
@@ -775,13 +807,15 @@ export default function NativeJobsSection() {
           <section className="border-b border-zinc-800 bg-zinc-950/45">
             <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-zinc-100">Active Job Map</p>
-                <p className="mt-0.5 text-[11px] text-zinc-500">Scheduled and in-progress work. Select a marker to open the job details.</p>
+                <p className="text-sm font-semibold text-zinc-100">Dispatch Job Map</p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">Pending, active, and completed jobs. Select a marker or polygon to open job, owner, and current quote details.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-400">
-                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Scheduled</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> In progress</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-orange-400 bg-orange-500/35" /> Measured work area</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Pending</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Active</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Completed</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-sky-400 bg-sky-500/15" /> Official parcel</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-current bg-current/35 text-zinc-300" /> Status-colored work area</span>
               </div>
               <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-800" onClick={() => setShowActiveMap((visible) => !visible)}>
                 {showActiveMap ? "Hide map" : "Show map"}
