@@ -4109,3 +4109,9 @@
 - [x] Add Operations Jobs filtering and sorting by acreage and Parcel ID for dispatch organization
 - [x] Add manual acreage-based adjustments and optional add-on services to the quote workflow
 - [x] Add regression coverage and validate the enhanced owner, dispatch, and quote workflows
+
+## Operations Active-Job Dispatch Map — Sep 2026
+- [x] Review active job location and saved work-area data for map rendering
+- [x] Add an Operations map view with active-job markers and measured work-area polygons
+- [x] Add a map-to-job selection flow and status legend for dispatch use
+- [x] Add regression coverage and validate the dispatch map behavior

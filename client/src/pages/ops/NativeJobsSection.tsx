@@ -172,6 +172,137 @@ function DispatchWorkAreaMap({ polygon }: { polygon: string | null }) {
   );
 }
 
+function escapeMapHtml(value: string | null | undefined) {
+  return (value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
+}
+
+function workAreaCenter(points: WorkAreaPoint[]): WorkAreaPoint | null {
+  if (points.length === 0) return null;
+  return points.reduce(
+    (value, point) => ({ lat: value.lat + point.lat / points.length, lng: value.lng + point.lng / points.length }),
+    { lat: 0, lng: 0 },
+  );
+}
+
+function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJobSelect: (job: NativeJob) => void }) {
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const polygonsRef = useRef<google.maps.Polygon[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    let cancelled = false;
+    markersRef.current.forEach((marker) => { marker.map = null; });
+    markersRef.current = [];
+    polygonsRef.current.forEach((polygon) => polygon.setMap(null));
+    polygonsRef.current = [];
+    infoWindowRef.current?.close();
+
+    const bounds = new window.google.maps.LatLngBounds();
+    let mappedLocations = 0;
+    const extendBounds = (location: WorkAreaPoint | google.maps.LatLng) => {
+      bounds.extend(location);
+      mappedLocations += 1;
+    };
+    const fitToActiveJobs = () => {
+      if (cancelled || mappedLocations === 0) return;
+      if (mappedLocations === 1) {
+        map.setCenter(bounds.getCenter());
+        map.setZoom(14);
+      } else {
+        map.fitBounds(bounds, 52);
+      }
+    };
+    const addMarker = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng) => {
+      if (cancelled) return;
+      const isInProgress = job.status === "in_progress";
+      const pin = document.createElement("div");
+      pin.style.cssText = `width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${isInProgress ? "#3b82f6" : "#f59e0b"};border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);cursor:pointer;`;
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        map,
+        position,
+        title: `${job.clientName} — ${job.status === "in_progress" ? "In Progress" : "Scheduled"}`,
+        content: pin,
+      });
+      const workArea = parseWorkAreaPolygon(job.workAreaPolygon);
+      const scheduledLabel = fmtScheduledDates(job, true);
+      const infoContent = `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;min-width:195px;font-family:system-ui,sans-serif;color:#f9fafb;"><div style="font-size:13px;font-weight:700;margin-bottom:4px;">${escapeMapHtml(job.clientName)}</div><div style="font-size:11px;color:${isInProgress ? "#93c5fd" : "#fcd34d"};margin-bottom:4px;">${isInProgress ? "In Progress" : "Scheduled"} · ${escapeMapHtml(scheduledLabel)}</div>${job.serviceType ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.serviceType)}</div>` : ""}${job.acreage ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.acreage)} acres</div>` : ""}${job.parcelId ? `<div style="font-size:10px;color:#7dd3fc;margin-bottom:4px;">Parcel ${escapeMapHtml(job.parcelId)}</div>` : ""}${workArea.length >= 3 ? '<div style="font-size:10px;color:#fdba74;">Orange outline: field-measured work area</div>' : ""}</div>`;
+      marker.addListener("click", () => {
+        if (!infoWindowRef.current) infoWindowRef.current = new window.google.maps.InfoWindow({ disableAutoPan: false });
+        infoWindowRef.current.setContent(infoContent);
+        infoWindowRef.current.open({ anchor: marker, map });
+        onJobSelect(job);
+      });
+      markersRef.current.push(marker);
+    };
+
+    const addressJobs: NativeJob[] = [];
+    jobs.forEach((job) => {
+      const points = parseWorkAreaPolygon(job.workAreaPolygon);
+      if (points.length >= 3) {
+        const polygon = new window.google.maps.Polygon({
+          paths: points,
+          strokeColor: "#f97316",
+          strokeOpacity: 1,
+          strokeWeight: 3,
+          fillColor: "#f97316",
+          fillOpacity: 0.24,
+          map,
+        });
+        polygonsRef.current.push(polygon);
+        points.forEach((point) => bounds.extend(point));
+        const center = workAreaCenter(points);
+        if (center) {
+          extendBounds(center);
+          addMarker(job, center);
+        }
+      } else if (job.propertyAddress) {
+        addressJobs.push(job);
+      }
+    });
+
+    if (addressJobs.length === 0) {
+      fitToActiveJobs();
+    } else {
+      const geocoder = new window.google.maps.Geocoder();
+      let completedGeocodes = 0;
+      addressJobs.forEach((job) => {
+        geocoder.geocode({ address: job.propertyAddress! }, (results, status) => {
+          if (!cancelled && status === "OK" && results?.[0]) {
+            const location = results[0].geometry.location;
+            extendBounds(location);
+            addMarker(job, location);
+          }
+          completedGeocodes += 1;
+          if (completedGeocodes === addressJobs.length) fitToActiveJobs();
+        });
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      markersRef.current.forEach((marker) => { marker.map = null; });
+      markersRef.current = [];
+      polygonsRef.current.forEach((polygon) => polygon.setMap(null));
+      polygonsRef.current = [];
+      infoWindowRef.current?.close();
+    };
+  }, [jobs, map, onJobSelect]);
+
+  return <MapView className="h-[340px] w-full overflow-hidden rounded-b-lg" initialCenter={{ lat: 36.131, lng: -87.45 }} initialZoom={9} onMapReady={(readyMap) => {
+    readyMap.setMapTypeId("satellite");
+    readyMap.addListener("click", () => infoWindowRef.current?.close());
+    setMap(readyMap);
+  }} />;
+}
+
 // ─── Generate Invoice Dialog ──────────────────────────────────────────────────
 
 function GenerateInvoiceDialog({
@@ -404,6 +535,7 @@ export default function NativeJobsSection() {
   const [statusFilter, setStatusFilter] = useState<"all" | "scheduled" | "in_progress" | "completed" | "cancelled">("all");
   const [acreageFilter, setAcreageFilter] = useState<"all" | "under_5" | "5_to_10" | "10_plus" | "has_parcel">("all");
   const [sortBy, setSortBy] = useState<"scheduled" | "acreage_asc" | "acreage_desc" | "parcel">("scheduled");
+  const [showActiveMap, setShowActiveMap] = useState(true);
   const [selectedJob, setSelectedJob] = useState<NativeJob | null>(null);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -416,6 +548,7 @@ export default function NativeJobsSection() {
     status: statusFilter,
     limit: 100,
   });
+  const { data: allJobs = [] } = trpc.nativeJobs.list.useQuery({ status: "all", limit: 200 });
 
   const { data: invoices = [] } = trpc.nativeJobs.listInvoices.useQuery({});
 
@@ -442,6 +575,11 @@ export default function NativeJobsSection() {
       return leftDate - rightDate;
     });
   }, [acreageFilter, jobs, sortBy]);
+
+  const activeMapJobs = useMemo(
+    () => allJobs.filter((job) => job.status === "scheduled" || job.status === "in_progress"),
+    [allJobs],
+  );
 
   const deleteMut = trpc.nativeJobs.delete.useMutation({
     onSuccess: () => {
@@ -611,6 +749,26 @@ export default function NativeJobsSection() {
           </select>
           <span className="ml-auto text-xs text-zinc-500">{dispatchJobs.length} job{dispatchJobs.length === 1 ? "" : "s"} shown</span>
         </div>
+
+        {activeMapJobs.length > 0 && (
+          <section className="border-b border-zinc-800 bg-zinc-950/45">
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-zinc-100">Active Job Map</p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">Scheduled and in-progress work. Select a marker to open the job details.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-400">
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Scheduled</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> In progress</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-orange-400 bg-orange-500/35" /> Measured work area</span>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-800" onClick={() => setShowActiveMap((visible) => !visible)}>
+                {showActiveMap ? "Hide map" : "Show map"}
+              </Button>
+            </div>
+            {showActiveMap && <ActiveJobsDispatchMap jobs={activeMapJobs as NativeJob[]} onJobSelect={setSelectedJob} />}
+          </section>
+        )}
 
         {/* Table */}
         <div className="flex-1 overflow-y-auto">
