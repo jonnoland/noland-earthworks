@@ -4136,3 +4136,7 @@
 - [x] Show Parcel ID-based property context, official parcel boundary, and saved work-area polygon in Noland Field Jobs
 - [x] Show synchronized owner, quote, acreage, schedule, and status details for each companion job
 - [x] Add regression coverage, build, sign, and dual-publish the Noland Field update
+
+## Noland Field Jobs Map Rendering Fix — Sep 2026
+- [x] Diagnose and fix the blank embedded satellite-map panel in expanded companion Jobs
+- [x] Add regression coverage and build a signed replacement Noland Field update

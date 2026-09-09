@@ -41,5 +41,6 @@ describe("Noland Field Jobs section", () => {
     expect(page).toContain("measured work area");
     expect(page).toContain("PROPERTY OWNER");
     expect(page).toContain("CURRENT QUOTE");
+    expect(page).toContain("html,body,#map{margin:0;padding:0;width:100%;height:100%;}");
   });
 });

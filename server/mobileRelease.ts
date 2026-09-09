@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.26",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.26_5c29a396.apk",
+  version: "0.4.27",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.27_3c3b1362.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.26: Jobs now shows a Parcel ID-first satellite map with the official parcel boundary, any saved measured work area, synchronized owner and current quote details, acreage, status, and schedule.",
+  notes: "Noland Field v0.4.27: Fixes the Jobs map panel so the Parcel ID satellite map, official parcel boundary, and saved work-area overlay render correctly instead of appearing as a white panel.",
   highlights: [
     "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
@@ -17,6 +17,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.27",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.27: Fixes the Jobs map panel so the Parcel ID satellite map, official parcel boundary, and saved work-area overlay render correctly instead of appearing as a white panel.",
+    },
     {
       version: "0.4.26",
       title: "Noland Field update",
