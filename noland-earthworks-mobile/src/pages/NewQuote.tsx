@@ -35,7 +35,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
 import { calculateLinearFeetFromAcreage, LINEAR_FOOT_CLEARING_WIDTH_OPTIONS } from "../../../shared/quoteLineItemMeasurements";
 import { buildOnxSiteWalkWaypointGpx, onxSiteWalkWaypointFileName } from "@/lib/onxSiteWalk";
-import WorkAreaMeasureMap from "@/components/WorkAreaMeasureMap";
+import WorkAreaMeasureMap, { type WorkAreaMapPoint } from "@/components/WorkAreaMeasureMap";
 import {
   calculateCachedFieldEstimate,
   readFieldPricingSnapshot,
@@ -336,6 +336,14 @@ export default function NewQuote() {
   const [onxOpening, setOnxOpening] = useState(false);
   const [isWorkAreaMeasureOpen, setIsWorkAreaMeasureOpen] = useState(false);
   const [workAreaMeasurementMessage, setWorkAreaMeasurementMessage] = useState<string | null>(null);
+  const [measuredWorkAreaPolygon, setMeasuredWorkAreaPolygon] = useState<WorkAreaMapPoint[]>([]);
+  const [selectedParcelReference, setSelectedParcelReference] = useState<{
+    parcelId: string;
+    county: string;
+    owner: string | null;
+    deedAcreage: number | null;
+    propertyViewerUrl: string | null;
+  } | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExistingClientContact | null>(null);
@@ -432,7 +440,7 @@ export default function NewQuote() {
     }).catch(() => setRateStatus("unavailable"));
   }, [pricingSnapshotQuery.data, pricingSnapshotQuery.isError]);
 
-  async function useCachedRateFallback(): Promise<boolean> {
+  async function useCachedRateFallback(measuredAcreage?: number): Promise<boolean> {
     const snapshot = cachedPricingRef.current ?? cachedPricing ?? await readFieldPricingSnapshot();
     if (!snapshot) {
       setRateStatus("unavailable");
@@ -442,7 +450,7 @@ export default function NewQuote() {
     const sourceAcreage = parseFloat(form.sourceAcreage);
     const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
     const linearFeet = parseFloat(form.linearFeet);
-    const acreage = parseFloat(form.workAreaAcreage);
+    const acreage = measuredAcreage ?? parseFloat(form.workAreaAcreage);
     const cachedEstimate = calculateCachedFieldEstimate({
       service: form.serviceType,
       acreage: Number.isFinite(acreage) ? acreage : undefined,
@@ -519,7 +527,7 @@ export default function NewQuote() {
       setRateStatus("live");
       setEstimate({ ...(data as EstimateResult), pricingSource: "live", pricingSyncedAt: syncedAt });
     },
-    onError: (err) => {
+    onError: (err, variables) => {
       const code = err.data?.code;
       const availabilityFailure = !isOnline
         || ["INTERNAL_SERVER_ERROR", "TIMEOUT", "TOO_MANY_REQUESTS", "CLIENT_CLOSED_REQUEST"].includes(code ?? "")
@@ -528,7 +536,7 @@ export default function NewQuote() {
         setEstimateError(err.message || "Unable to calculate the estimate.");
         return;
       }
-      void useCachedRateFallback().then((usedCache) => {
+      void useCachedRateFallback(variables.acreage).then((usedCache) => {
         if (!usedCache) setEstimateError(err.message || "Live Operations pricing is unavailable and no cached rates are stored on this device.");
       });
     },
@@ -549,7 +557,16 @@ export default function NewQuote() {
     setOnxHandoffPrepared(false);
     setOnxHandoffMessage(null);
     setOnxHandoffError(null);
+    setMeasuredWorkAreaPolygon([]);
+    setWorkAreaMeasurementMessage(null);
     setSelectedParcelBoundary(match.boundaryRings);
+    setSelectedParcelReference({
+      parcelId: match.parcelId,
+      county: match.county,
+      owner: match.owner,
+      deedAcreage: match.deedAcreage,
+      propertyViewerUrl: match.propertyViewerUrl,
+    });
     setForm((current) => ({
       ...current,
       parcelId: match.parcelId,
@@ -945,11 +962,14 @@ export default function NewQuote() {
 
   // ─── AI Estimate ─────────────────────────────────────────────────────────
 
-  const handleGetEstimate = (discountCode: string | null | undefined = selectedDiscountCode) => {
+  const handleGetEstimate = (
+    discountCode: string | null | undefined = selectedDiscountCode,
+    measuredAcreage?: number,
+  ) => {
     if (!form.serviceType) return;
     setEstimate(null);
     setEstimateError(null);
-    const acreage = parseFloat(form.workAreaAcreage);
+    const acreage = measuredAcreage ?? parseFloat(form.workAreaAcreage);
     const linearFeet = parseFloat(form.linearFeet);
     const sourceAcreage = parseFloat(form.sourceAcreage);
     const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
@@ -966,7 +986,7 @@ export default function NewQuote() {
       return;
     }
     if (!isOnline) {
-      void useCachedRateFallback().then((usedCache) => {
+      void useCachedRateFallback(measuredAcreage).then((usedCache) => {
         if (!usedCache) setEstimateError("You are offline and this device has no saved Operations rates yet. Connect once to sync current rates.");
       });
       return;
@@ -1038,6 +1058,9 @@ export default function NewQuote() {
       form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
       isLinearFootQuote ? `${form.serviceType} measurement: ${Math.round(effectiveLinearFeet).toLocaleString()} linear feet${form.quantitySource === "acreage_estimate" ? ` estimated from ${sourceAcreage} acres at ${clearingWidthFeet} feet wide — verify on site.` : "."}` : "",
       form.parcelId ? `TN Property Viewer reference: Parcel ${form.parcelId} · ${normalizeCountyName(form.county) || form.county}.` : "",
+      measuredWorkAreaPolygon.length >= 3 && Number.isFinite(acreage)
+        ? `Map-measured work area: ${acreage} acres from a ${measuredWorkAreaPolygon.length}-point polygon. Verify final scope on site before sending.`
+        : "",
       onxHandoffPrepared && Number.isFinite(acreage) ? `onX Offroad waypoint prepared; work-area acreage entered: ${acreage} acres. Confirm the final scope before sending.` : "",
       estimate?.selectedDiscount ? `Selected quote discount: ${estimate.selectedDiscount.label} (${estimate.selectedDiscount.percent}% — ${estimate.selectedDiscount.eligibility}).` : "",
     ].filter(Boolean).join("\n");
@@ -1049,8 +1072,20 @@ export default function NewQuote() {
       address: form.address || undefined,
       lat: form.lat ?? undefined,
       lng: form.lng ?? undefined,
+      parcelId: selectedParcelReference?.parcelId || form.parcelId || undefined,
+      parcelCounty: selectedParcelReference?.county || normalizeCountyName(form.county) || form.county || undefined,
+      parcelOwner: selectedParcelReference?.owner || undefined,
+      parcelDeededAcreage: selectedParcelReference?.deedAcreage ?? undefined,
+      propertyViewerUrl: selectedParcelReference?.propertyViewerUrl || undefined,
       serviceType: form.serviceType,
       acreage: isNaN(acreage) ? undefined : acreage,
+      workAreaPolygon: measuredWorkAreaPolygon.length >= 3 ? measuredWorkAreaPolygon : undefined,
+      estimatedPriceLowCents: estimate?.customerPriceLow !== null && estimate?.customerPriceLow !== undefined
+        ? Math.round(estimate.customerPriceLow * 100)
+        : undefined,
+      estimatedPriceHighCents: estimate?.customerPriceHigh !== null && estimate?.customerPriceHigh !== undefined
+        ? Math.round(estimate.customerPriceHigh * 100)
+        : undefined,
       linearFeet: isLinearFootQuote && Number.isFinite(effectiveLinearFeet) ? effectiveLinearFeet : undefined,
       quantitySource: isLinearFootQuote ? form.quantitySource : undefined,
       sourceAcreage: isLinearFootQuote && form.quantitySource === "acreage_estimate" && Number.isFinite(sourceAcreage) ? sourceAcreage : undefined,
@@ -1122,6 +1157,10 @@ export default function NewQuote() {
             setQueuedOffline(false);
             setPhotos([]);
             setEstimate(null);
+            setMeasuredWorkAreaPolygon([]);
+            setSelectedParcelBoundary(null);
+            setSelectedParcelReference(null);
+            setWorkAreaMeasurementMessage(null);
             clearExistingClient();
             setForm({
               name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", parcelId: "", lat: null, lng: null,
@@ -1973,12 +2012,14 @@ export default function NewQuote() {
           lng={form.lng}
           parcelBoundary={selectedParcelBoundary}
           onClose={() => setIsWorkAreaMeasureOpen(false)}
-          onApply={(measuredAcres) => {
+          onApply={(measuredAcres, polygon) => {
             const value = measuredAcres.toFixed(2);
             setEstimate(null);
             setEstimateError(null);
+            setMeasuredWorkAreaPolygon(polygon);
             setForm((current) => ({ ...current, acreage: value, workAreaAcreage: value }));
-            setWorkAreaMeasurementMessage(`${value} measured acres applied to this quote. Verify the final work boundary and site conditions before sending.`);
+            setWorkAreaMeasurementMessage(`${value} measured acres applied to this quote. Calculating an estimate from the current Operations rates now; verify the final work boundary and site conditions before sending.`);
+            handleGetEstimate(undefined, measuredAcres);
             setIsWorkAreaMeasureOpen(false);
           }}
         />

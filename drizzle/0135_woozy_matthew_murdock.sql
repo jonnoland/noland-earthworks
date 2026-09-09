@@ -1,0 +1,23 @@
+ALTER TABLE `field_quotes` ADD `parcelId` varchar(100);--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `parcelCounty` varchar(100);--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `parcelOwner` varchar(500);--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `parcelDeededAcreage` decimal(10,2);--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `propertyViewerUrl` text;--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `workAreaPolygon` text;--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `workAreaMeasuredAt` timestamp;--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `estimatedPriceLowCents` int;--> statement-breakpoint
+ALTER TABLE `field_quotes` ADD `estimatedPriceHighCents` int;--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `parcelId` varchar(100);--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `parcelCounty` varchar(100);--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `parcelOwner` varchar(500);--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `parcelDeededAcreage` decimal(10,2);--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `propertyViewerUrl` text;--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `workAreaPolygon` text;--> statement-breakpoint
+ALTER TABLE `native_jobs` ADD `workAreaMeasuredAt` timestamp;--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `parcelOwner` varchar(500);--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `parcelDeededAcreage` decimal(10,2);--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `propertyViewerUrl` text;--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `workAreaPolygon` text;--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `workAreaMeasuredAt` timestamp;--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `estimatedPriceLowCents` int;--> statement-breakpoint
+ALTER TABLE `native_quotes` ADD `estimatedPriceHighCents` int;

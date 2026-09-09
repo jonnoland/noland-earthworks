@@ -36,7 +36,7 @@ type WorkAreaMeasureMapProps = {
   lat: number;
   lng: number;
   parcelBoundary?: WorkAreaMapPoint[][] | null;
-  onApply: (acres: number) => void;
+  onApply: (acres: number, points: WorkAreaMapPoint[]) => void;
   onClose: () => void;
 };
 
@@ -109,7 +109,7 @@ export default function WorkAreaMeasureMap({
 
   const applyMeasurement = () => {
     if (!hasPolygon) return;
-    onApply(Math.round(acres * 100) / 100);
+    onApply(Math.round(acres * 100) / 100, points);
   };
 
   return (

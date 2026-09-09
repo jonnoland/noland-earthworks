@@ -4096,3 +4096,10 @@
 - [x] Add unit coverage for polygon acreage calculation and quote application
 - [x] Attempt browser preview verification; external Vite preview host was blocked, while the production mobile build completed successfully
 - [x] Validate, build, sign, and dual-publish the Noland Field update
+
+## Work-Area Quote and Operations Sync — Sep 2026
+- [x] Persist a measured work-area polygon and acreage with a Noland Field quote
+- [x] Use a measured work area as the quote estimate acreage while retaining manual verification controls
+- [x] Associate measured work areas with the selected Parcel ID and county reference data
+- [x] Display the synchronized work-area measurement and polygon in Operations for quote and dispatch review
+- [x] Add regression coverage and release the Noland Field update

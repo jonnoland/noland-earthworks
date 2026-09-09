@@ -9,8 +9,16 @@ export type OfflineFieldQuotePayload = {
   address?: string;
   lat?: number;
   lng?: number;
+  parcelId?: string;
+  parcelCounty?: string;
+  parcelOwner?: string;
+  parcelDeededAcreage?: number;
+  propertyViewerUrl?: string;
   serviceType?: string;
   acreage?: number;
+  workAreaPolygon?: Array<{ lat: number; lng: number }>;
+  estimatedPriceLowCents?: number;
+  estimatedPriceHighCents?: number;
   linearFeet?: number;
   quantitySource?: "measured" | "acreage_estimate";
   sourceAcreage?: number;

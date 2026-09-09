@@ -14,8 +14,9 @@
  *   - Mark invoice as paid
  *   - Delete job
  */
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { MapView } from "@/components/Map";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,13 @@ interface NativeJob {
   propertyAddress: string | null;
   serviceType: string | null;
   acreage: string | null;
+  parcelId: string | null;
+  parcelCounty: string | null;
+  parcelOwner: string | null;
+  parcelDeededAcreage: string | null;
+  propertyViewerUrl: string | null;
+  workAreaPolygon: string | null;
+  workAreaMeasuredAt: Date | null;
   totalCents: number;
   lineItems: string;
   status: "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -102,6 +110,66 @@ function fmtScheduledDates(job: Pick<NativeJob, "scheduledDate" | "scheduledDate
   if (dates.length === 0) return "—";
   if (compact && dates.length > 1) return `${fmtDate(dates[0])} +${dates.length - 1}`;
   return dates.map((date) => fmtDate(date)).join(", ");
+}
+
+type WorkAreaPoint = { lat: number; lng: number };
+
+function parseWorkAreaPolygon(value: string | null): WorkAreaPoint[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((point) => {
+      if (!point || typeof point !== "object") return [];
+      const { lat, lng } = point as Partial<WorkAreaPoint>;
+      return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)
+        ? [{ lat, lng }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function DispatchWorkAreaMap({ polygon }: { polygon: string | null }) {
+  const points = useMemo(() => parseWorkAreaPolygon(polygon), [polygon]);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const polygonRef = useRef<google.maps.Polygon | null>(null);
+  const center = useMemo(() => points.reduce(
+    (value, point) => ({ lat: value.lat + point.lat / points.length, lng: value.lng + point.lng / points.length }),
+    { lat: 0, lng: 0 },
+  ), [points]);
+
+  useEffect(() => {
+    if (!map || points.length < 3) return;
+    polygonRef.current?.setMap(null);
+    const bounds = new window.google.maps.LatLngBounds();
+    points.forEach((point) => bounds.extend(point));
+    polygonRef.current = new window.google.maps.Polygon({
+      paths: points,
+      strokeColor: "#f97316",
+      strokeOpacity: 1,
+      strokeWeight: 3,
+      fillColor: "#f97316",
+      fillOpacity: 0.24,
+      map,
+    });
+    map.fitBounds(bounds, 28);
+    return () => { polygonRef.current?.setMap(null); };
+  }, [map, points]);
+
+  if (points.length < 3) return null;
+  return (
+    <MapView
+      className="h-48 w-full overflow-hidden rounded border border-orange-500/30"
+      initialCenter={center}
+      initialZoom={17}
+      onMapReady={(readyMap) => {
+        readyMap.setMapTypeId("satellite");
+        setMap(readyMap);
+      }}
+    />
+  );
 }
 
 // ─── Generate Invoice Dialog ──────────────────────────────────────────────────
@@ -627,6 +695,27 @@ export default function NativeJobsSection() {
                 ) : <div className="text-zinc-200">—</div>}
               </div>
             </div>
+
+            {parseWorkAreaPolygon(selectedJob.workAreaPolygon).length >= 3 && (
+              <div className="rounded-lg border border-orange-500/30 bg-zinc-800 p-3">
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-orange-200">Field-Measured Work Area</div>
+                    <div className="mt-1 text-sm text-zinc-200">
+                      <span className="font-semibold text-orange-300">{selectedJob.acreage ?? "—"} acres</span>
+                      {selectedJob.parcelId ? ` · Parcel ${selectedJob.parcelId}${selectedJob.parcelCounty ? ` · ${selectedJob.parcelCounty}` : ""}` : ""}
+                    </div>
+                  </div>
+                  {selectedJob.propertyViewerUrl && (
+                    <a href={selectedJob.propertyViewerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200">
+                      Parcel Viewer <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                <DispatchWorkAreaMap polygon={selectedJob.workAreaPolygon} />
+                <p className="mt-2 text-[11px] text-zinc-500">Orange outline is the field-measured work scope. It is not a legal property boundary.</p>
+              </div>
+            )}
 
             {/* Financial summary */}
             <div className="bg-zinc-800 rounded-lg p-3">

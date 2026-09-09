@@ -146,7 +146,8 @@ function isCustomerFacingQuoteChange(
 ): boolean {
   const comparableFields: Array<keyof typeof nativeQuotes.$inferSelect> = [
     "clientName", "clientEmail", "clientPhone", "propertyAddress", "title", "clientMessage",
-    "estimatedDuration", "acreage", "serviceType", "parcelId", "parcelCounty",
+    "estimatedDuration", "acreage", "serviceType", "parcelId", "parcelCounty", "parcelOwner",
+    "parcelDeededAcreage", "propertyViewerUrl", "workAreaPolygon", "workAreaMeasuredAt",
   ];
   if (["lineItems", "rentalEquipment", "rentalMarkupPct", "quoteEvidence", "quoteMeasurements"].some((field) => Object.prototype.hasOwnProperty.call(input, field))) {
     return true;
@@ -171,6 +172,11 @@ const lineItemSchema = z.object({
   sourceAcreage: z.number().positive().max(500).optional(),
   clearingWidthFeet: z.number().positive().max(200).optional(),
 });
+
+const workAreaPolygonSchema = z.array(z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+})).min(3).max(200);
 
 const rentalEquipmentSchema = z.object({
   equipmentName: z.string().trim().min(1).max(160),
@@ -437,6 +443,12 @@ export const nativeQuotesRouter = router({
       serviceType: z.string().optional(),
       parcelId: z.string().trim().max(100).optional(),
       parcelCounty: z.string().trim().max(100).optional(),
+      parcelOwner: z.string().trim().max(500).optional(),
+      parcelDeededAcreage: z.number().positive().max(100000).optional(),
+      propertyViewerUrl: z.string().url().optional(),
+      workAreaPolygon: workAreaPolygonSchema.nullable().optional(),
+      estimatedPriceLowCents: z.number().int().min(0).optional(),
+      estimatedPriceHighCents: z.number().int().min(0).optional(),
       sourceDetail: z.string().max(100).optional(),
       fitDecision: z.enum(["unreviewed", "owner_review", "pursue", "pass", "refer_out"]).optional(),
       nextActionType: z.string().max(100).optional(),
@@ -490,6 +502,13 @@ export const nativeQuotesRouter = router({
         serviceType: input.serviceType || null,
         parcelId: input.parcelId || null,
         parcelCounty: input.parcelCounty || null,
+        parcelOwner: input.parcelOwner || null,
+        parcelDeededAcreage: input.parcelDeededAcreage !== undefined ? String(input.parcelDeededAcreage) : null,
+        propertyViewerUrl: input.propertyViewerUrl || null,
+        workAreaPolygon: input.workAreaPolygon ? JSON.stringify(input.workAreaPolygon) : null,
+        workAreaMeasuredAt: input.workAreaPolygon ? new Date() : null,
+        estimatedPriceLowCents: input.estimatedPriceLowCents ?? null,
+        estimatedPriceHighCents: input.estimatedPriceHighCents ?? null,
         sourceDetail: input.sourceDetail || "manual",
         fitDecision: input.fitDecision || "unreviewed",
         nextActionType: input.nextActionType || "review_request",
@@ -558,6 +577,12 @@ export const nativeQuotesRouter = router({
       id: z.number().int(),
       clientName: z.string().min(1).optional(),
       clientEmail: z.string().email().optional().or(z.literal("")),
+      parcelOwner: z.string().trim().max(500).optional(),
+      parcelDeededAcreage: z.number().positive().max(100000).optional(),
+      propertyViewerUrl: z.string().url().optional(),
+      workAreaPolygon: workAreaPolygonSchema.nullable().optional(),
+      estimatedPriceLowCents: z.number().int().min(0).optional(),
+      estimatedPriceHighCents: z.number().int().min(0).optional(),
       clientPhone: z.string().optional(),
       propertyAddress: z.string().optional(),
       title: z.string().min(1).optional(),
@@ -591,7 +616,7 @@ export const nativeQuotesRouter = router({
     .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { id, lineItems, rentalEquipment, rentalMarkupPct, quoteEvidence, quoteMeasurements, insuranceDocuments, ...rest } = input;
+      const { id, lineItems, rentalEquipment, rentalMarkupPct, quoteEvidence, quoteMeasurements, insuranceDocuments, workAreaPolygon, ...rest } = input;
       const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
       if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
       const hasCustomerFacingChange = isCustomerFacingQuoteChange(existingQuote, input);
@@ -629,6 +654,10 @@ export const nativeQuotesRouter = router({
       if (quoteEvidence !== undefined) updates.quoteEvidence = JSON.stringify(quoteEvidence);
       if (quoteMeasurements !== undefined) updates.quoteMeasurements = JSON.stringify(quoteMeasurements);
       if (insuranceDocuments !== undefined) updates.insuranceDocuments = JSON.stringify(insuranceDocuments);
+      if (workAreaPolygon !== undefined) {
+        updates.workAreaPolygon = workAreaPolygon ? JSON.stringify(workAreaPolygon) : null;
+        updates.workAreaMeasuredAt = workAreaPolygon ? new Date() : null;
+      }
       if (hasCustomerFacingChange && existingQuote.portalSentAt) {
         updates.proposalStatus = "draft";
         updates.nextActionType = "send_revision";
@@ -700,6 +729,13 @@ export const nativeQuotesRouter = router({
         serviceType: src.serviceType,
         parcelId: src.parcelId,
         parcelCounty: src.parcelCounty,
+        parcelOwner: src.parcelOwner,
+        parcelDeededAcreage: src.parcelDeededAcreage,
+        propertyViewerUrl: src.propertyViewerUrl,
+        workAreaPolygon: src.workAreaPolygon,
+        workAreaMeasuredAt: src.workAreaMeasuredAt,
+        estimatedPriceLowCents: src.estimatedPriceLowCents,
+        estimatedPriceHighCents: src.estimatedPriceHighCents,
         status: "draft",
         leadId: src.leadId,
         // Intentionally omitted: portalToken, portalSentAt, portalViewedAt,
@@ -919,6 +955,13 @@ export const nativeQuotesRouter = router({
         propertyAddress: quote.propertyAddress ?? null,
         serviceType: quote.serviceType ?? null,
         acreage: quote.acreage ?? null,
+        parcelId: quote.parcelId ?? null,
+        parcelCounty: quote.parcelCounty ?? null,
+        parcelOwner: quote.parcelOwner ?? null,
+        parcelDeededAcreage: quote.parcelDeededAcreage ?? null,
+        propertyViewerUrl: quote.propertyViewerUrl ?? null,
+        workAreaPolygon: quote.workAreaPolygon ?? null,
+        workAreaMeasuredAt: quote.workAreaMeasuredAt ?? null,
         totalCents: quote.totalCents,
         lineItems: quote.lineItems ?? "[]",
         status: "scheduled",

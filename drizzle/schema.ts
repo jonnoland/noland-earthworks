@@ -1138,9 +1138,21 @@ export const fieldQuotes = mysqlTable("field_quotes", {
   address: text("address"),
   lat: decimal("lat", { precision: 10, scale: 7 }),
   lng: decimal("lng", { precision: 10, scale: 7 }),
+  /** Official Tennessee/Davidson Parcel ID reference selected in Noland Field. */
+  parcelId: varchar("parcelId", { length: 100 }),
+  parcelCounty: varchar("parcelCounty", { length: 100 }),
+  parcelOwner: varchar("parcelOwner", { length: 500 }),
+  parcelDeededAcreage: decimal("parcelDeededAcreage", { precision: 10, scale: 2 }),
+  propertyViewerUrl: text("propertyViewerUrl"),
   /** Job details */
   serviceType: varchar("serviceType", { length: 100 }),
   acreage: decimal("acreage", { precision: 8, scale: 2 }),
+  /** JSON polygon for the measured work area, separate from the reference parcel boundary. */
+  workAreaPolygon: text("workAreaPolygon"),
+  workAreaMeasuredAt: timestamp("workAreaMeasuredAt"),
+  /** Pricing preview captured from current Operations rates at field submission time. */
+  estimatedPriceLowCents: int("estimatedPriceLowCents"),
+  estimatedPriceHighCents: int("estimatedPriceHighCents"),
   /** Linear Foot quantity for Trail Cutting and Fence Line Clearing */
   linearFeet: decimal("linearFeet", { precision: 10, scale: 2 }),
   /** Whether Linear Foot quantity was measured or estimated from acreage */
@@ -1979,6 +1991,14 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   /** Tennessee parcel reference selected while preparing this quote. */
   parcelId: varchar("parcelId", { length: 100 }),
   parcelCounty: varchar("parcelCounty", { length: 100 }),
+  parcelOwner: varchar("parcelOwner", { length: 500 }),
+  parcelDeededAcreage: decimal("parcelDeededAcreage", { precision: 10, scale: 2 }),
+  propertyViewerUrl: text("propertyViewerUrl"),
+  /** Field-measured work scope stored independently from the legal/reference parcel outline. */
+  workAreaPolygon: text("workAreaPolygon"),
+  workAreaMeasuredAt: timestamp("workAreaMeasuredAt"),
+  estimatedPriceLowCents: int("estimatedPriceLowCents"),
+  estimatedPriceHighCents: int("estimatedPriceHighCents"),
   /** AI estimate reliability carried from a website quote request for sorting and triage */
   aiRangeConfidence: varchar("aiRangeConfidence", { length: 16 }),
   aiRangeConfidenceScore: int("aiRangeConfidenceScore"),
@@ -2083,6 +2103,14 @@ export const nativeJobs = mysqlTable("native_jobs", {
   propertyAddress: varchar("propertyAddress", { length: 500 }),
   serviceType: varchar("serviceType", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
+  /** Parcel reference and measured work scope carried forward from the approved quote. */
+  parcelId: varchar("parcelId", { length: 100 }),
+  parcelCounty: varchar("parcelCounty", { length: 100 }),
+  parcelOwner: varchar("parcelOwner", { length: 500 }),
+  parcelDeededAcreage: decimal("parcelDeededAcreage", { precision: 10, scale: 2 }),
+  propertyViewerUrl: text("propertyViewerUrl"),
+  workAreaPolygon: text("workAreaPolygon"),
+  workAreaMeasuredAt: timestamp("workAreaMeasuredAt"),
   /** Total job value in cents — copied from quote at conversion time */
   totalCents: int("totalCents").notNull().default(0),
   /** Line items snapshot from the quote — JSON array: [{description, qty, unitPriceCents, totalCents}] */

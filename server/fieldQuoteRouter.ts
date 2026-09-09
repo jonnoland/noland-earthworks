@@ -58,6 +58,29 @@ function buildFieldCountyMapParcelWhere(county: string, parcelId: string): strin
 }
 
 type ParcelBoundaryRing = Array<{ lat: number; lng: number }>;
+type WorkAreaPoint = { lat: number; lng: number };
+
+const workAreaPolygonSchema = z.array(z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+})).min(3).max(200);
+
+function parseWorkAreaPolygon(value: string | null): WorkAreaPoint[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((point) => {
+      if (!point || typeof point !== "object") return [];
+      const { lat, lng } = point as Partial<WorkAreaPoint>;
+      return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)
+        ? [{ lat, lng }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
+}
 
 function toParcelBoundaryRings(geometry: unknown): ParcelBoundaryRing[] | null {
   if (!geometry || typeof geometry !== "object" || !Array.isArray((geometry as { rings?: unknown }).rings)) return null;
@@ -623,6 +646,7 @@ export const fieldQuoteRouter = router({
         ...r,
         photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
         aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+        workAreaPolygon: parseWorkAreaPolygon(r.workAreaPolygon),
       }));
     }),
 
@@ -645,6 +669,7 @@ export const fieldQuoteRouter = router({
         ...r,
         photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
         aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+        workAreaPolygon: parseWorkAreaPolygon(r.workAreaPolygon),
       };
     }),
 
@@ -667,6 +692,7 @@ export const fieldQuoteRouter = router({
         ...r,
         photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
         aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+        workAreaPolygon: parseWorkAreaPolygon(r.workAreaPolygon),
       };
     }),
 
@@ -688,6 +714,7 @@ export const fieldQuoteRouter = router({
         ...r,
         photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
         aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+        workAreaPolygon: parseWorkAreaPolygon(r.workAreaPolygon),
       }));
     }),
 
@@ -704,8 +731,16 @@ export const fieldQuoteRouter = router({
         address: z.string().optional(),
         lat: z.number().optional(),
         lng: z.number().optional(),
+        parcelId: z.string().trim().max(100).optional(),
+        parcelCounty: z.string().trim().max(100).optional(),
+        parcelOwner: z.string().trim().max(500).optional(),
+        parcelDeededAcreage: z.number().positive().max(100000).optional(),
+        propertyViewerUrl: z.string().url().optional(),
         serviceType: z.string().optional(),
         acreage: z.number().positive().optional(),
+        workAreaPolygon: workAreaPolygonSchema.optional(),
+        estimatedPriceLowCents: z.number().int().min(0).optional(),
+        estimatedPriceHighCents: z.number().int().min(0).optional(),
         linearFeet: z.number().positive().max(50000).optional(),
         quantitySource: z.enum(["measured", "acreage_estimate"]).optional(),
         sourceAcreage: z.number().positive().max(500).optional(),
@@ -757,8 +792,17 @@ export const fieldQuoteRouter = router({
           address: input.address ?? null,
           lat: input.lat !== undefined ? String(input.lat) : null,
           lng: input.lng !== undefined ? String(input.lng) : null,
+          parcelId: input.parcelId ?? null,
+          parcelCounty: input.parcelCounty ?? null,
+          parcelOwner: input.parcelOwner ?? null,
+          parcelDeededAcreage: input.parcelDeededAcreage !== undefined ? String(input.parcelDeededAcreage) : null,
+          propertyViewerUrl: input.propertyViewerUrl ?? null,
           serviceType: input.serviceType ?? null,
           acreage: input.acreage !== undefined ? String(input.acreage) : null,
+          workAreaPolygon: input.workAreaPolygon ? JSON.stringify(input.workAreaPolygon) : null,
+          workAreaMeasuredAt: input.workAreaPolygon ? new Date() : null,
+          estimatedPriceLowCents: input.estimatedPriceLowCents ?? null,
+          estimatedPriceHighCents: input.estimatedPriceHighCents ?? null,
           linearFeet: input.linearFeet !== undefined ? String(input.linearFeet) : null,
           quantitySource: input.quantitySource ?? null,
           sourceAcreage: input.sourceAcreage !== undefined ? String(input.sourceAcreage) : null,
@@ -819,6 +863,13 @@ export const fieldQuoteRouter = router({
               input.acreage ? `Acreage: ${input.acreage} acres` : "",
               input.address ? `Address: ${input.address}` : "",
               input.lat && input.lng ? `GPS: ${input.lat}, ${input.lng}` : "",
+              input.parcelId ? `Parcel reference: ${input.parcelId}${input.parcelCounty ? ` · ${input.parcelCounty}` : ""}` : "",
+              input.parcelOwner ? `Parcel owner record: ${input.parcelOwner}` : "",
+              input.parcelDeededAcreage ? `Parcel deeded acreage: ${input.parcelDeededAcreage} acres (reference only)` : "",
+              input.workAreaPolygon ? `Measured work area: ${input.acreage ?? "—"} acres from a ${input.workAreaPolygon.length}-point map polygon. Verify final scope on site.` : "",
+              input.estimatedPriceLowCents !== undefined && input.estimatedPriceHighCents !== undefined
+                ? `Field estimate range: ${formatQuoteCents(input.estimatedPriceLowCents)}–${formatQuoteCents(input.estimatedPriceHighCents)} from current Operations rates.`
+                : "",
               input.terrainType ? `Terrain: ${input.terrainType}` : "",
               input.vegetationDensity ? `Vegetation: ${input.vegetationDensity}` : "",
               input.slopeCondition ? `Slope: ${input.slopeCondition}` : "",
@@ -1274,6 +1325,15 @@ Return JSON matching the schema exactly.`;
         totalCents: 0,
         acreage: fq.acreage ?? null,
         serviceType: fq.serviceType ?? null,
+        parcelId: fq.parcelId ?? null,
+        parcelCounty: fq.parcelCounty ?? null,
+        parcelOwner: fq.parcelOwner ?? null,
+        parcelDeededAcreage: fq.parcelDeededAcreage ?? null,
+        propertyViewerUrl: fq.propertyViewerUrl ?? null,
+        workAreaPolygon: fq.workAreaPolygon ?? null,
+        workAreaMeasuredAt: fq.workAreaMeasuredAt ?? null,
+        estimatedPriceLowCents: fq.estimatedPriceLowCents ?? null,
+        estimatedPriceHighCents: fq.estimatedPriceHighCents ?? null,
         status: "draft",
         fieldQuoteId: fq.id,
       });

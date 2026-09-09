@@ -136,6 +136,13 @@ interface NativeQuote {
   serviceType: string | null;
   parcelId: string | null;
   parcelCounty: string | null;
+  parcelOwner: string | null;
+  parcelDeededAcreage: string | null;
+  propertyViewerUrl: string | null;
+  workAreaPolygon: string | null;
+  workAreaMeasuredAt: Date | null;
+  estimatedPriceLowCents: number | null;
+  estimatedPriceHighCents: number | null;
   aiRangeConfidence: string | null;
   aiRangeConfidenceScore: number | null;
   sourceDetail: string;
@@ -163,6 +170,23 @@ interface NativeQuote {
   convertedJobId: number | null;
   convertedToJobAt: Date | null;
   createdAt: Date;
+}
+
+function parseWorkAreaPolygon(value: string | null): Array<{ lat: number; lng: number }> {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((point) => {
+      if (!point || typeof point !== "object") return [];
+      const { lat, lng } = point as { lat?: unknown; lng?: unknown };
+      return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)
+        ? [{ lat, lng }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -2360,6 +2384,7 @@ function NativeQuoteDetailPanel({
 
   let lineItems: LineItem[] = [];
   try { lineItems = JSON.parse(quote.lineItems); } catch { lineItems = []; }
+  const savedWorkAreaPolygon = parseWorkAreaPolygon(quote.workAreaPolygon);
 
   const portalUrl = quote.portalToken ? `${window.location.origin}/quote/${quote.portalToken}` : null;
 
@@ -2446,6 +2471,32 @@ function NativeQuoteDetailPanel({
                 {quote.propertyAddress}
               </div>
             )}
+          </div>
+        )}
+
+        {savedWorkAreaPolygon.length >= 3 && (
+          <div className="shrink-0 border-b border-border bg-secondary/20 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Field-Measured Work Area</p>
+                <p className="mt-0.5 text-xs text-foreground">
+                  <span className="font-semibold text-orange-300">{quote.acreage ?? "—"} acres</span>
+                  {quote.parcelId ? ` · Parcel ${quote.parcelId}${quote.parcelCounty ? ` · ${quote.parcelCounty}` : ""}` : ""}
+                </p>
+              </div>
+              {quote.estimatedPriceLowCents !== null && quote.estimatedPriceHighCents !== null && (
+                <span className="text-[10px] text-muted-foreground">
+                  Field estimate {formatQuoteCents(quote.estimatedPriceLowCents)}–{formatQuoteCents(quote.estimatedPriceHighCents)}
+                </span>
+              )}
+            </div>
+            <WebReqInteractiveMap
+              address={quote.propertyAddress ?? undefined}
+              parcelId={quote.parcelId}
+              parcelCounty={quote.parcelCounty}
+              workAreaPolygon={savedWorkAreaPolygon}
+              workAreaAcres={quote.acreage}
+            />
           </div>
         )}
 
@@ -2888,13 +2939,15 @@ function NativeQuoteDetailPanel({
 // ─── Interactive Web Request Map ──────────────────────────────────────────────
 // Replaces the static satellite thumbnail with a zoomable/pannable Google Map.
 function WebReqInteractiveMap({
-  lat, lng, address, parcelId, parcelCounty,
+  lat, lng, address, parcelId, parcelCounty, workAreaPolygon, workAreaAcres,
 }: {
   lat?: number;
   lng?: number;
   address?: string;
   parcelId?: string | null;
   parcelCounty?: string | null;
+  workAreaPolygon?: Array<{ lat: number; lng: number }> | null;
+  workAreaAcres?: string | number | null;
 }) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
@@ -2911,14 +2964,17 @@ function WebReqInteractiveMap({
   // boundary cannot be retrieved from the public Tennessee data service.
   const geocodeQuery = trpc.ops.quotes.satelliteImage.useQuery(
     { address: address! },
-    { enabled: lat == null && !!address, retry: false, staleTime: 1000 * 60 * 30 }
+    { enabled: lat == null && !workAreaPolygon?.length && !!address, retry: false, staleTime: 1000 * 60 * 30 }
   );
 
-  const resolvedLat = parcelBoundary.data?.centroid?.lat ?? lat ?? geocodeQuery.data?.lat ?? null;
-  const resolvedLng = parcelBoundary.data?.centroid?.lng ?? lng ?? geocodeQuery.data?.lng ?? null;
+  const polygonCenter = workAreaPolygon?.length
+    ? workAreaPolygon.reduce((center, point) => ({ lat: center.lat + point.lat / workAreaPolygon.length, lng: center.lng + point.lng / workAreaPolygon.length }), { lat: 0, lng: 0 })
+    : null;
+  const resolvedLat = parcelBoundary.data?.centroid?.lat ?? lat ?? polygonCenter?.lat ?? geocodeQuery.data?.lat ?? null;
+  const resolvedLng = parcelBoundary.data?.centroid?.lng ?? lng ?? polygonCenter?.lng ?? geocodeQuery.data?.lng ?? null;
   const isResolving = hasLinkedParcel
     ? parcelBoundary.isPending || (!parcelBoundary.data && !parcelBoundary.error && geocodeQuery.isLoading)
-    : lat == null && geocodeQuery.isLoading;
+    : lat == null && !polygonCenter && geocodeQuery.isLoading;
 
   useEffect(() => {
     if (!map || resolvedLat == null || resolvedLng == null) return;
@@ -2927,21 +2983,38 @@ function WebReqInteractiveMap({
     polygonRefs.current.forEach((polygon) => polygon.setMap(null));
     polygonRefs.current = [];
 
+    const bounds = new window.google.maps.LatLngBounds();
+    let hasGeometry = false;
     const rings = parcelBoundary.data?.boundaryRings;
     if (rings?.length) {
-      const bounds = new window.google.maps.LatLngBounds();
       polygonRefs.current = rings.map((ring) => {
         ring.forEach((point) => bounds.extend(point));
         return new window.google.maps.Polygon({
           paths: ring,
-          strokeColor: "#f59e0b",
+          strokeColor: "#38bdf8",
           strokeOpacity: 1,
           strokeWeight: 2,
-          fillColor: "#f59e0b",
-          fillOpacity: 0.14,
+          fillColor: "#38bdf8",
+          fillOpacity: 0.08,
           map,
         });
       });
+      hasGeometry = true;
+    }
+    if (workAreaPolygon && workAreaPolygon.length >= 3) {
+      workAreaPolygon.forEach((point) => bounds.extend(point));
+      polygonRefs.current.push(new window.google.maps.Polygon({
+        paths: workAreaPolygon,
+        strokeColor: "#f97316",
+        strokeOpacity: 1,
+        strokeWeight: 3,
+        fillColor: "#f97316",
+        fillOpacity: 0.24,
+        map,
+      }));
+      hasGeometry = true;
+    }
+    if (hasGeometry) {
       map.fitBounds(bounds, 28);
     } else {
       markerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
@@ -2956,7 +3029,7 @@ function WebReqInteractiveMap({
       polygonRefs.current.forEach((polygon) => polygon.setMap(null));
       polygonRefs.current = [];
     };
-  }, [map, parcelBoundary.data, parcelId, resolvedLat, resolvedLng]);
+  }, [map, parcelBoundary.data, parcelId, resolvedLat, resolvedLng, workAreaPolygon]);
 
   if (isResolving) {
     return (
@@ -2977,8 +3050,13 @@ function WebReqInteractiveMap({
   return (
     <div className="w-full rounded overflow-hidden border border-border">
       {parcelBoundary.data && parcelId && (
-        <div className="border-b border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-100">
+        <div className="border-b border-sky-500/25 bg-sky-500/10 px-2.5 py-1.5 text-[10px] text-sky-100">
           Parcel boundary: <span className="font-semibold">{parcelId}</span> · {parcelBoundary.data.county}
+        </div>
+      )}
+      {workAreaPolygon && workAreaPolygon.length >= 3 && (
+        <div className="border-b border-orange-500/25 bg-orange-500/10 px-2.5 py-1.5 text-[10px] text-orange-100">
+          Measured work area: <span className="font-semibold">{workAreaAcres ?? "—"} acres</span> · orange outline
         </div>
       )}
       {hasLinkedParcel && parcelBoundary.error && (
