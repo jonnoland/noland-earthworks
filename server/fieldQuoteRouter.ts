@@ -12,12 +12,12 @@
  */
 
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, createOpsLead, getOwnerUser, listNativeClientContacts, getPricingBenchmarks } from "./db";
-import { aiPricingSettings, fieldQuotes, nativeJobs } from "../drizzle/schema";
+import { aiPricingSettings, fieldQuotes, nativeJobs, nativeQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
@@ -437,13 +437,51 @@ export const fieldQuoteRouter = router({
         .orderBy(desc(nativeJobs.updatedAt))
         .limit(input.limit);
 
+      const quoteIds = rows.flatMap((job) => job.quoteId == null ? [] : [job.quoteId]);
+      const linkedQuotes = quoteIds.length > 0
+        ? await db
+          .select({
+            id: nativeQuotes.id,
+            parcelId: nativeQuotes.parcelId,
+            parcelCounty: nativeQuotes.parcelCounty,
+            parcelOwner: nativeQuotes.parcelOwner,
+            parcelDeededAcreage: nativeQuotes.parcelDeededAcreage,
+            propertyViewerUrl: nativeQuotes.propertyViewerUrl,
+            workAreaPolygon: nativeQuotes.workAreaPolygon,
+            workAreaMeasuredAt: nativeQuotes.workAreaMeasuredAt,
+            acreage: nativeQuotes.acreage,
+            title: nativeQuotes.title,
+            status: nativeQuotes.status,
+            totalCents: nativeQuotes.totalCents,
+          })
+          .from(nativeQuotes)
+          .where(inArray(nativeQuotes.id, quoteIds))
+        : [];
+      const quoteById = new Map(linkedQuotes.map((quote) => [quote.id, quote]));
+      const effectiveRows = rows.map((job) => {
+        const quote = job.quoteId == null ? undefined : quoteById.get(job.quoteId);
+        return {
+          ...job,
+          parcelId: job.parcelId ?? quote?.parcelId ?? null,
+          parcelCounty: job.parcelCounty ?? quote?.parcelCounty ?? null,
+          parcelOwner: job.parcelOwner ?? quote?.parcelOwner ?? null,
+          parcelDeededAcreage: job.parcelDeededAcreage ?? quote?.parcelDeededAcreage ?? null,
+          propertyViewerUrl: job.propertyViewerUrl ?? quote?.propertyViewerUrl ?? null,
+          workAreaPolygon: job.workAreaPolygon ?? quote?.workAreaPolygon ?? null,
+          workAreaMeasuredAt: job.workAreaMeasuredAt ?? quote?.workAreaMeasuredAt ?? null,
+          acreage: job.acreage ?? quote?.acreage ?? null,
+          quoteTitle: quote?.title ?? null,
+          quoteStatus: quote?.status ?? null,
+          quoteTotalCents: quote?.totalCents ?? job.totalCents,
+        };
+      });
       const statusOrder: Record<(typeof nativeJobs.status.enumValues)[number], number> = {
         in_progress: 0,
         scheduled: 1,
         completed: 2,
         cancelled: 3,
       };
-      const jobsWithDates = await attachJobScheduleDates(db, rows);
+      const jobsWithDates = await attachJobScheduleDates(db, effectiveRows);
       return jobsWithDates.sort((left, right) => {
         const statusDifference = statusOrder[left.status] - statusOrder[right.status];
         if (statusDifference !== 0) return statusDifference;

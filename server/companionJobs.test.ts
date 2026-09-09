@@ -27,4 +27,19 @@ describe("Noland Field Jobs section", () => {
     expect(page).toContain("trpc.fieldQuote.mobileUpdateJobNotes.useMutation");
     expect(page).toContain("syncs with Operations");
   });
+
+  it("shows Parcel ID map context, measured work-area status, owner, and current quote details for field dispatch", () => {
+    const router = source("server/fieldQuoteRouter.ts");
+    const page = source("noland-earthworks-mobile/src/pages/Jobs.tsx");
+
+    expect(router).toContain("const effectiveRows = rows.map");
+    expect(router).toContain("parcelId: job.parcelId ?? quote?.parcelId ?? null");
+    expect(router).toContain("quoteTotalCents: quote?.totalCents ?? job.totalCents");
+    expect(page).toContain("function JobPropertyMap");
+    expect(page).toContain("trpc.fieldQuote.lookupParcel.useMutation");
+    expect(page).toContain("BLUE");
+    expect(page).toContain("measured work area");
+    expect(page).toContain("PROPERTY OWNER");
+    expect(page).toContain("CURRENT QUOTE");
+  });
 });

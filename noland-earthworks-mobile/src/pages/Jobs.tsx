@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, ChevronUp, ClipboardList, LoaderCircle, MapPin, RefreshCw, Save } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { trpc } from "@/lib/trpc";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+type MapPoint = { lat: number; lng: number };
 
 const statusDisplay: Record<JobStatus, { label: string; color: string; background: string }> = {
   scheduled: { label: "Scheduled", color: "oklch(0.83 0.16 82)", background: "oklch(0.83 0.16 82 / 0.14)" },
@@ -27,6 +28,73 @@ function jobLabel(job: { scheduledDate: Date | string | null; scheduledDates?: A
   const dates = getWorkDates(job);
   if (dates.length === 0) return "Schedule not set";
   return dates.length === 1 ? formatSchedule(dates[0]) : `${formatSchedule(dates[0])} +${dates.length - 1} more`;
+}
+
+function formatMoney(cents: number | null | undefined) {
+  if (typeof cents !== "number") return "—";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+}
+
+function parseWorkAreaPolygon(value: string | null | undefined): MapPoint[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((point) => {
+      if (!point || typeof point !== "object") return [];
+      const { lat, lng } = point as Partial<MapPoint>;
+      return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng) ? [{ lat, lng }] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function JobPropertyMap({
+  parcelId,
+  parcelCounty,
+  workAreaPolygon,
+  status,
+}: {
+  parcelId: string | null | undefined;
+  parcelCounty: string | null | undefined;
+  workAreaPolygon: string | null | undefined;
+  status: JobStatus;
+}) {
+  const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation();
+  const workArea = useMemo(() => parseWorkAreaPolygon(workAreaPolygon), [workAreaPolygon]);
+
+  useEffect(() => {
+    if (!parcelId || !parcelCounty) return;
+    parcelLookup.mutate({ parcelId, county: parcelCounty });
+    // Lookup only when this expanded job's Parcel ID changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parcelId, parcelCounty]);
+
+  if (!parcelId || !parcelCounty) {
+    return <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "0 0 12px" }}>No Parcel ID is linked to this job yet, so a verified property map is not available.</p>;
+  }
+  if (parcelLookup.isPending) {
+    return <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "0 0 12px" }}>Loading official Parcel ID boundary…</p>;
+  }
+  const parcel = parcelLookup.data?.matches[0];
+  if (!parcel?.lat || !parcel?.lng) {
+    return <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "0 0 12px" }}>Official Parcel ID map is unavailable right now. Refresh or check the Parcel ID details.</p>;
+  }
+
+  const statusColor = status === "in_progress" ? "#3b82f6" : status === "completed" ? "#10b981" : "#f59e0b";
+  const parcelBoundaryJson = JSON.stringify(parcel.boundaryRings ?? []);
+  const workAreaJson = JSON.stringify(workArea);
+  const serverBase = "https://nolandearth-pymczdcn.manus.space";
+  const srcdoc = `<!DOCTYPE html><html style="margin:0;padding:0;height:100%"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><div id="map" style="width:100%;height:100%"></div><script>(async function(){const script=document.createElement('script');script.src='${serverBase}/api/maps/js?v=weekly&loading=async';script.async=true;document.head.appendChild(script);await new Promise(function(resolve){script.onload=resolve;});let attempts=0;while(typeof google==='undefined'||!google.maps||!google.maps.Map){if(++attempts>100)return;await new Promise(function(resolve){setTimeout(resolve,50);});}const center={lat:${parcel.lat},lng:${parcel.lng}};const map=new google.maps.Map(document.getElementById('map'),{center:center,zoom:17,mapTypeId:'satellite',disableDefaultUI:true,zoomControl:true,gestureHandling:'greedy'});const bounds=new google.maps.LatLngBounds();let hasShape=false;const parcelRings=${parcelBoundaryJson};parcelRings.forEach(function(ring){new google.maps.Polygon({map:map,paths:ring,strokeColor:'#49a7e8',strokeOpacity:.95,strokeWeight:2,fillColor:'#49a7e8',fillOpacity:.06});ring.forEach(function(point){bounds.extend(point);});hasShape=true;});const workArea=${workAreaJson};if(workArea.length>=3){new google.maps.Polygon({map:map,paths:workArea,strokeColor:'${statusColor}',strokeOpacity:1,strokeWeight:3,fillColor:'${statusColor}',fillOpacity:.30});workArea.forEach(function(point){bounds.extend(point);});hasShape=true;}new google.maps.Marker({map:map,position:center,title:'Official Parcel ID location',icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:'#ffffff',fillOpacity:1,strokeColor:'#1f2937',strokeWeight:2,scale:6}});if(hasShape){bounds.extend(center);map.fitBounds(bounds,28);}})();<\/script></body></html>`;
+
+  return <div style={{ margin: "0 0 14px", borderRadius: 11, overflow: "hidden", border: "1px solid var(--ne-border)", background: "var(--ne-ground)" }}>
+    <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--ne-border)", fontSize: 10, lineHeight: 1.35 }}>
+      <span style={{ color: "#49a7e8", fontWeight: 800 }}>BLUE</span><span style={{ color: "var(--ne-muted)" }}> official parcel</span>
+      {workArea.length >= 3 && <><span style={{ color: "var(--ne-muted)" }}> · </span><span style={{ color: statusColor, fontWeight: 800 }}>COLORED</span><span style={{ color: "var(--ne-muted)" }}> measured work area</span></>}
+    </div>
+    <iframe title={`Parcel map for ${parcelId}`} srcDoc={srcdoc} sandbox="allow-scripts allow-same-origin" style={{ display: "block", width: "100%", height: 230, border: 0 }} />
+  </div>;
 }
 
 export default function Jobs() {
@@ -82,6 +150,12 @@ export default function Jobs() {
         {expanded && (
           <div style={{ borderTop: "1px solid var(--ne-border)", padding: "14px 16px 16px" }}>
             {job.propertyAddress && <p style={{ display: "flex", alignItems: "flex-start", gap: 7, color: "var(--ne-muted)", fontSize: 13, lineHeight: 1.45, margin: "0 0 12px" }}><MapPin size={15} style={{ color: "var(--ne-amber)", flexShrink: 0, marginTop: 2 }} />{job.propertyAddress}</p>}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
+              <div style={{ borderRadius: 9, padding: "9px 10px", background: "var(--ne-ground)", border: "1px solid var(--ne-border)" }}><p style={{ color: "var(--ne-muted)", fontSize: 9, fontWeight: 800, letterSpacing: ".05em", margin: 0 }}>PROPERTY OWNER</p><p style={{ color: "var(--ne-cream)", fontSize: 12, fontWeight: 700, margin: "4px 0 0", lineHeight: 1.35 }}>{job.parcelOwner || "Not available"}</p></div>
+              <div style={{ borderRadius: 9, padding: "9px 10px", background: "var(--ne-ground)", border: "1px solid var(--ne-border)" }}><p style={{ color: "var(--ne-muted)", fontSize: 9, fontWeight: 800, letterSpacing: ".05em", margin: 0 }}>CURRENT QUOTE</p><p style={{ color: "var(--ne-amber)", fontSize: 12, fontWeight: 700, margin: "4px 0 0", lineHeight: 1.35 }}>{job.quoteId ? `#${job.quoteId} · ${formatMoney(job.quoteTotalCents ?? job.totalCents)}` : formatMoney(job.totalCents)}</p>{job.quoteStatus && <p style={{ color: "var(--ne-muted)", fontSize: 10, margin: "3px 0 0", textTransform: "capitalize" }}>{job.quoteStatus}</p>}</div>
+            </div>
+            {job.parcelId && <p style={{ color: "#7dd3fc", fontSize: 11, fontWeight: 700, margin: "0 0 10px" }}>Parcel {job.parcelId}{job.parcelCounty ? ` · ${job.parcelCounty} County` : ""}</p>}
+            <JobPropertyMap parcelId={job.parcelId} parcelCounty={job.parcelCounty} workAreaPolygon={job.workAreaPolygon} status={job.status as JobStatus} />
             {getWorkDates(job).length > 0 && <div style={{ margin: "0 0 14px" }}>
               <p style={{ color: "var(--ne-muted)", fontSize: 11, fontWeight: 700, letterSpacing: ".05em", margin: "0 0 7px" }}>SCHEDULED WORK DATES</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{getWorkDates(job).map((date) => <span key={String(date)} style={{ color: "var(--ne-amber)", background: "oklch(0.83 0.16 82 / 0.12)", border: "1px solid oklch(0.83 0.16 82 / 0.28)", borderRadius: 999, padding: "4px 8px", fontSize: 11, fontWeight: 700 }}>{formatSchedule(date)}</span>)}</div>

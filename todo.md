@@ -4130,3 +4130,9 @@
 ## Dispatch Map Polygon Popup Fix — Sep 2026
 - [x] Prevent the map-background click handler from immediately closing a polygon-selected popup
 - [x] Add regression coverage and validate clicks on official parcel and measured work-area polygons
+
+## Noland Field Jobs Map and Dispatch Details — Sep 2026
+- [x] Review the companion Jobs data contract and current mobile map components
+- [x] Show Parcel ID-based property context, official parcel boundary, and saved work-area polygon in Noland Field Jobs
+- [x] Show synchronized owner, quote, acreage, schedule, and status details for each companion job
+- [x] Add regression coverage, build, sign, and dual-publish the Noland Field update
