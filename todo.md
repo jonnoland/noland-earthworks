@@ -4084,3 +4084,8 @@
 - [x] Add multi-date work scheduling controls to Operations jobs and calendar events
 - [x] Display the complete scheduled-date list in Noland Field Jobs
 - [x] Add regression coverage, build a replacement APK, and publish the update
+
+## Parcel and Work-Area Measurement Review — Sep 2026
+- [x] Compare the photographed parcel-and-zone workflow with current Operations capabilities
+- [x] Compare the photographed parcel-and-zone workflow with current Noland Field capabilities
+- [x] Recommend prioritized operational improvements without slowing the field workflow
