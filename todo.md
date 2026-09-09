@@ -4089,3 +4089,10 @@
 - [x] Compare the photographed parcel-and-zone workflow with current Operations capabilities
 - [x] Compare the photographed parcel-and-zone workflow with current Noland Field capabilities
 - [x] Recommend prioritized operational improvements without slowing the field workflow
+
+## Noland Field Work-Area Measurement — Sep 2026
+- [x] Design the map-based polygon drawing flow and acreage calculation
+- [x] Add a Measure Work Area control to Noland Field quotes with deliberate apply-to-quote behavior
+- [x] Add unit coverage for polygon acreage calculation and quote application
+- [x] Attempt browser preview verification; external Vite preview host was blocked, while the production mobile build completed successfully
+- [x] Validate, build, sign, and dual-publish the Noland Field update

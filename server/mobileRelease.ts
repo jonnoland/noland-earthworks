@@ -1,9 +1,10 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.22",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.22_f382f4d8.apk",
+  version: "0.4.23",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.23_15557e58.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.22 adds multi-date job scheduling. Jobs now show every planned work date from Operations so field schedules stay aligned.",
+  notes: "Noland Field v0.4.23 adds Measure Work Area. Draw the actual work boundary on the satellite map, see the calculated acreage, and choose when to apply it to the quote.",
   highlights: [
+    "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
     "Detect My Location requests device location, identifies the current Tennessee county, and selects it when it is in the configured service area.",
     "Select any of the standard service-area counties directly in a quote before looking up a Parcel ID.",
@@ -16,6 +17,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.23",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.23 adds Measure Work Area. Draw the actual work boundary on the satellite map, see the calculated acreage, and choose when to apply it to the quote.",
+    },
     {
       version: "0.4.22",
       title: "Noland Field update",

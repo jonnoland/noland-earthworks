@@ -35,6 +35,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
 import { calculateLinearFeetFromAcreage, LINEAR_FOOT_CLEARING_WIDTH_OPTIONS } from "../../../shared/quoteLineItemMeasurements";
 import { buildOnxSiteWalkWaypointGpx, onxSiteWalkWaypointFileName } from "@/lib/onxSiteWalk";
+import WorkAreaMeasureMap from "@/components/WorkAreaMeasureMap";
 import {
   calculateCachedFieldEstimate,
   readFieldPricingSnapshot,
@@ -333,6 +334,8 @@ export default function NewQuote() {
   const [onxHandoffError, setOnxHandoffError] = useState<string | null>(null);
   const [onxHandoffPrepared, setOnxHandoffPrepared] = useState(false);
   const [onxOpening, setOnxOpening] = useState(false);
+  const [isWorkAreaMeasureOpen, setIsWorkAreaMeasureOpen] = useState(false);
+  const [workAreaMeasurementMessage, setWorkAreaMeasurementMessage] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExistingClientContact | null>(null);
@@ -1157,6 +1160,7 @@ export default function NewQuote() {
     const value = event.target.value;
     setEstimate(null);
     setEstimateError(null);
+    setWorkAreaMeasurementMessage(null);
     setForm((current) => ({ ...current, acreage: value, workAreaAcreage: value }));
   };
 
@@ -1553,6 +1557,12 @@ export default function NewQuote() {
                 <label style={labelStyle}>Work-Area Acreage *</label>
                 <input value={form.workAreaAcreage} onChange={updateWorkAreaAcreage} placeholder="e.g. 5.5" type="number" inputMode="decimal" step="0.01" min="0.1" style={inputStyle} />
                 <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "5px 0 0" }}>{onxHandoffPrepared ? "Enter the acres measured for the actual work boundary in onX—not the entire deeded parcel." : "Enter only the portion of the property included in the quoted work."}</p>
+                {form.lat != null && form.lng != null ? (
+                  <button type="button" onClick={() => setIsWorkAreaMeasureOpen(true)} style={{ width: "100%", marginTop: 9, border: "1px solid var(--ne-amber)", borderRadius: 8, background: "oklch(0.65 0.18 50 / 0.12)", color: "var(--ne-amber)", padding: "10px 11px", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Measure Work Area on Map</button>
+                ) : (
+                  <p style={{ color: "var(--ne-muted)", fontSize: 10, lineHeight: 1.35, margin: "8px 0 0" }}>Find the parcel, enter an address, or use GPS to enable map measurement.</p>
+                )}
+                {workAreaMeasurementMessage && <p role="status" style={{ color: "oklch(0.70 0.18 145)", fontSize: 11, lineHeight: 1.4, margin: "7px 0 0" }}>{workAreaMeasurementMessage}</p>}
                 {workAreaPricePreview && (
                   <div role="status" style={{ marginTop: 8, borderRadius: 8, border: "1px solid oklch(0.70 0.18 145 / 0.45)", background: "oklch(0.70 0.18 145 / 0.08)", padding: "9px 10px" }}>
                     <p style={{ color: "oklch(0.75 0.18 145)", fontSize: 12, fontWeight: 700, margin: 0 }}>Automatic estimated total: {formatQuoteCents(Math.ceil(workAreaPricePreview.customerPriceMid) * 100)}</p>
@@ -1957,6 +1967,22 @@ export default function NewQuote() {
           }
         </button>
       </div>
+      {isWorkAreaMeasureOpen && form.lat != null && form.lng != null && (
+        <WorkAreaMeasureMap
+          lat={form.lat}
+          lng={form.lng}
+          parcelBoundary={selectedParcelBoundary}
+          onClose={() => setIsWorkAreaMeasureOpen(false)}
+          onApply={(measuredAcres) => {
+            const value = measuredAcres.toFixed(2);
+            setEstimate(null);
+            setEstimateError(null);
+            setForm((current) => ({ ...current, acreage: value, workAreaAcreage: value }));
+            setWorkAreaMeasurementMessage(`${value} measured acres applied to this quote. Verify the final work boundary and site conditions before sending.`);
+            setIsWorkAreaMeasureOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
