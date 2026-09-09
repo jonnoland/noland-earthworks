@@ -4115,3 +4115,9 @@
 - [x] Add an Operations map view with active-job markers and measured work-area polygons
 - [x] Add a map-to-job selection flow and status legend for dispatch use
 - [x] Add regression coverage and validate the dispatch map behavior
+
+## Active-Job Map Parcel ID Location Correction — Sep 2026
+- [x] Resolve active-job markers from stored Parcel ID and county geometry before address geocoding
+- [x] Fall back to the linked quote's Parcel ID and county when a legacy converted job has no copied parcel fields
+- [x] Display the official parcel outline alongside any saved field-measured work area
+- [x] Add regression coverage and validate Parcel ID-first dispatch map placement

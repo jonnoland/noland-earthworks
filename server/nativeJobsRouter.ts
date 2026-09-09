@@ -15,7 +15,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { nativeJobs, nativeInvoices, nativeQuotes, nativeJobScheduleDates } from "../drizzle/schema";
-import { eq, desc, like, or, and } from "drizzle-orm";
+import { eq, desc, like, or, and, inArray } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
@@ -79,6 +79,55 @@ export const nativeJobsRouter = router({
 
       return attachJobScheduleDates(db, rows);
     }),
+
+  /**
+   * Active jobs for Operations map placement. Older converted jobs can retain
+   * Parcel ID and work-area data on their source quote, so expose that data as
+   * a non-destructive fallback rather than geocoding a broad rural address.
+   */
+  activeMap: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const jobs = await db
+      .select()
+      .from(nativeJobs)
+      .where(or(eq(nativeJobs.status, "scheduled"), eq(nativeJobs.status, "in_progress")))
+      .orderBy(desc(nativeJobs.createdAt));
+
+    const quoteIds = jobs.flatMap((job) => job.quoteId == null ? [] : [job.quoteId]);
+    const linkedQuotes = quoteIds.length > 0
+      ? await db
+        .select({
+          id: nativeQuotes.id,
+          parcelId: nativeQuotes.parcelId,
+          parcelCounty: nativeQuotes.parcelCounty,
+          parcelOwner: nativeQuotes.parcelOwner,
+          parcelDeededAcreage: nativeQuotes.parcelDeededAcreage,
+          propertyViewerUrl: nativeQuotes.propertyViewerUrl,
+          workAreaPolygon: nativeQuotes.workAreaPolygon,
+          workAreaMeasuredAt: nativeQuotes.workAreaMeasuredAt,
+          acreage: nativeQuotes.acreage,
+        })
+        .from(nativeQuotes)
+        .where(inArray(nativeQuotes.id, quoteIds))
+      : [];
+    const quoteById = new Map(linkedQuotes.map((quote) => [quote.id, quote]));
+    const effectiveJobs = jobs.map((job) => {
+      const quote = job.quoteId == null ? undefined : quoteById.get(job.quoteId);
+      return {
+        ...job,
+        parcelId: job.parcelId ?? quote?.parcelId ?? null,
+        parcelCounty: job.parcelCounty ?? quote?.parcelCounty ?? null,
+        parcelOwner: job.parcelOwner ?? quote?.parcelOwner ?? null,
+        parcelDeededAcreage: job.parcelDeededAcreage ?? quote?.parcelDeededAcreage ?? null,
+        propertyViewerUrl: job.propertyViewerUrl ?? quote?.propertyViewerUrl ?? null,
+        workAreaPolygon: job.workAreaPolygon ?? quote?.workAreaPolygon ?? null,
+        workAreaMeasuredAt: job.workAreaMeasuredAt ?? quote?.workAreaMeasuredAt ?? null,
+        acreage: job.acreage ?? quote?.acreage ?? null,
+      };
+    });
+    return attachJobScheduleDates(db, effectiveJobs);
+  }),
 
   /**
    * Get a single job by ID.

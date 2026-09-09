@@ -195,6 +195,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const parcelBoundaryMutation = trpc.parcel.boundary.useMutation();
 
   useEffect(() => {
     if (!map) return;
@@ -220,7 +221,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
         map.fitBounds(bounds, 52);
       }
     };
-    const addMarker = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng) => {
+    const addMarker = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng, locationSource: "parcel" | "work_area" | "address", hasParcelBoundary: boolean) => {
       if (cancelled) return;
       const isInProgress = job.status === "in_progress";
       const pin = document.createElement("div");
@@ -233,7 +234,8 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
       });
       const workArea = parseWorkAreaPolygon(job.workAreaPolygon);
       const scheduledLabel = fmtScheduledDates(job, true);
-      const infoContent = `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;min-width:195px;font-family:system-ui,sans-serif;color:#f9fafb;"><div style="font-size:13px;font-weight:700;margin-bottom:4px;">${escapeMapHtml(job.clientName)}</div><div style="font-size:11px;color:${isInProgress ? "#93c5fd" : "#fcd34d"};margin-bottom:4px;">${isInProgress ? "In Progress" : "Scheduled"} · ${escapeMapHtml(scheduledLabel)}</div>${job.serviceType ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.serviceType)}</div>` : ""}${job.acreage ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.acreage)} acres</div>` : ""}${job.parcelId ? `<div style="font-size:10px;color:#7dd3fc;margin-bottom:4px;">Parcel ${escapeMapHtml(job.parcelId)}</div>` : ""}${workArea.length >= 3 ? '<div style="font-size:10px;color:#fdba74;">Orange outline: field-measured work area</div>' : ""}</div>`;
+      const locationLabel = locationSource === "parcel" ? "Official Parcel ID location" : locationSource === "work_area" ? "Field-measured work-area location" : "Address geocode fallback";
+      const infoContent = `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;min-width:195px;font-family:system-ui,sans-serif;color:#f9fafb;"><div style="font-size:13px;font-weight:700;margin-bottom:4px;">${escapeMapHtml(job.clientName)}</div><div style="font-size:11px;color:${isInProgress ? "#93c5fd" : "#fcd34d"};margin-bottom:4px;">${isInProgress ? "In Progress" : "Scheduled"} · ${escapeMapHtml(scheduledLabel)}</div>${job.serviceType ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.serviceType)}</div>` : ""}${job.acreage ? `<div style="font-size:11px;color:#d1d5db;margin-bottom:4px;">${escapeMapHtml(job.acreage)} acres</div>` : ""}${job.parcelId ? `<div style="font-size:10px;color:#7dd3fc;margin-bottom:4px;">Parcel ${escapeMapHtml(job.parcelId)}</div>` : ""}<div style="font-size:10px;color:${locationSource === "address" ? "#fcd34d" : "#bfdbfe"};margin-bottom:4px;">${locationLabel}</div>${hasParcelBoundary ? '<div style="font-size:10px;color:#7dd3fc;">Blue outline: official parcel boundary</div>' : ""}${workArea.length >= 3 ? '<div style="font-size:10px;color:#fdba74;">Orange outline: field-measured work area</div>' : ""}</div>`;
       marker.addListener("click", () => {
         if (!infoWindowRef.current) infoWindowRef.current = new window.google.maps.InfoWindow({ disableAutoPan: false });
         infoWindowRef.current.setContent(infoContent);
@@ -243,8 +245,19 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
       markersRef.current.push(marker);
     };
 
-    const addressJobs: NativeJob[] = [];
-    jobs.forEach((job) => {
+    const geocodeAddress = (job: NativeJob) => new Promise<void>((resolve) => {
+      if (!job.propertyAddress) { resolve(); return; }
+      new window.google.maps.Geocoder().geocode({ address: job.propertyAddress }, (results, status) => {
+        if (!cancelled && status === "OK" && results?.[0]) {
+          const location = results[0].geometry.location;
+          extendBounds(location);
+          addMarker(job, location, "address", false);
+        }
+        resolve();
+      });
+    });
+
+    const resolveJobLocation = async (job: NativeJob) => {
       const points = parseWorkAreaPolygon(job.workAreaPolygon);
       if (points.length >= 3) {
         const polygon = new window.google.maps.Polygon({
@@ -258,33 +271,46 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
         });
         polygonsRef.current.push(polygon);
         points.forEach((point) => bounds.extend(point));
-        const center = workAreaCenter(points);
-        if (center) {
-          extendBounds(center);
-          addMarker(job, center);
-        }
-      } else if (job.propertyAddress) {
-        addressJobs.push(job);
       }
-    });
 
-    if (addressJobs.length === 0) {
-      fitToActiveJobs();
-    } else {
-      const geocoder = new window.google.maps.Geocoder();
-      let completedGeocodes = 0;
-      addressJobs.forEach((job) => {
-        geocoder.geocode({ address: job.propertyAddress! }, (results, status) => {
-          if (!cancelled && status === "OK" && results?.[0]) {
-            const location = results[0].geometry.location;
-            extendBounds(location);
-            addMarker(job, location);
+      if (job.parcelId && job.parcelCounty) {
+        try {
+          const parcel = await parcelBoundaryMutation.mutateAsync({ parcelId: job.parcelId, county: job.parcelCounty });
+          if (cancelled) return;
+          const rings = parcel.boundaryRings ?? [];
+          rings.forEach((ring) => {
+            ring.forEach((point) => bounds.extend(point));
+            polygonsRef.current.push(new window.google.maps.Polygon({
+              paths: ring,
+              strokeColor: "#38bdf8",
+              strokeOpacity: 1,
+              strokeWeight: 2,
+              fillColor: "#38bdf8",
+              fillOpacity: 0.08,
+              map,
+            }));
+          });
+          const parcelCenter = parcel.centroid ?? workAreaCenter(rings[0] ?? []) ?? null;
+          if (parcelCenter) {
+            extendBounds(parcelCenter);
+            addMarker(job, parcelCenter, "parcel", rings.length > 0);
+            return;
           }
-          completedGeocodes += 1;
-          if (completedGeocodes === addressJobs.length) fitToActiveJobs();
-        });
-      });
-    }
+        } catch {
+          // If Tennessee parcel geometry is unavailable, continue through the saved field scope then address fallback.
+        }
+      }
+
+      const workAreaCenterPoint = workAreaCenter(points);
+      if (workAreaCenterPoint) {
+        extendBounds(workAreaCenterPoint);
+        addMarker(job, workAreaCenterPoint, "work_area", false);
+        return;
+      }
+      await geocodeAddress(job);
+    };
+
+    void Promise.all(jobs.map((job) => resolveJobLocation(job))).then(fitToActiveJobs);
 
     return () => {
       cancelled = true;
@@ -294,7 +320,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
       polygonsRef.current = [];
       infoWindowRef.current?.close();
     };
-  }, [jobs, map, onJobSelect]);
+  }, [jobs, map, onJobSelect, parcelBoundaryMutation.mutateAsync]);
 
   return <MapView className="h-[340px] w-full overflow-hidden rounded-b-lg" initialCenter={{ lat: 36.131, lng: -87.45 }} initialZoom={9} onMapReady={(readyMap) => {
     readyMap.setMapTypeId("satellite");
@@ -548,7 +574,7 @@ export default function NativeJobsSection() {
     status: statusFilter,
     limit: 100,
   });
-  const { data: allJobs = [] } = trpc.nativeJobs.list.useQuery({ status: "all", limit: 200 });
+  const { data: activeMapJobs = [] } = trpc.nativeJobs.activeMap.useQuery();
 
   const { data: invoices = [] } = trpc.nativeJobs.listInvoices.useQuery({});
 
@@ -575,11 +601,6 @@ export default function NativeJobsSection() {
       return leftDate - rightDate;
     });
   }, [acreageFilter, jobs, sortBy]);
-
-  const activeMapJobs = useMemo(
-    () => allJobs.filter((job) => job.status === "scheduled" || job.status === "in_progress"),
-    [allJobs],
-  );
 
   const deleteMut = trpc.nativeJobs.delete.useMutation({
     onSuccess: () => {
