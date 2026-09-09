@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronUp, ClipboardList, LoaderCircle, MapPin, RefreshCw, Save } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, ClipboardList, LoaderCircle, LocateFixed, MapPin, RefreshCw, Save } from "lucide-react";
+import { Geolocation } from "@capacitor/geolocation";
 import PageHeader from "@/components/PageHeader";
 import { trpc } from "@/lib/trpc";
 
@@ -63,6 +64,22 @@ function JobPropertyMap({
 }) {
   const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation();
   const workArea = useMemo(() => parseWorkAreaPolygon(workAreaPolygon), [workAreaPolygon]);
+  const [currentLocation, setCurrentLocation] = useState<MapPoint | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const showCurrentLocation = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+    try {
+      const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15_000 });
+      setCurrentLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+    } catch (error: any) {
+      setLocationError(error?.message ?? "Could not get your current location. Check location permission and try again.");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!parcelId || !parcelCounty) return;
@@ -85,15 +102,17 @@ function JobPropertyMap({
   const statusColor = status === "in_progress" ? "#3b82f6" : status === "completed" ? "#10b981" : "#f59e0b";
   const parcelBoundaryJson = JSON.stringify(parcel.boundaryRings ?? []);
   const workAreaJson = JSON.stringify(workArea);
+  const currentLocationJson = JSON.stringify(currentLocation);
   const serverBase = "https://nolandearth-pymczdcn.manus.space";
-  const srcdoc = `<!DOCTYPE html><html style="margin:0;padding:0;height:100%"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style></head><body><div id="map"></div><script>(async function(){const script=document.createElement('script');script.src='${serverBase}/api/maps/js?v=weekly&loading=async';script.async=true;document.head.appendChild(script);await new Promise(function(resolve){script.onload=resolve;});let attempts=0;while(typeof google==='undefined'||!google.maps||!google.maps.Map){if(++attempts>100)return;await new Promise(function(resolve){setTimeout(resolve,50);});}const center={lat:${parcel.lat},lng:${parcel.lng}};const map=new google.maps.Map(document.getElementById('map'),{center:center,zoom:17,mapTypeId:'satellite',disableDefaultUI:true,zoomControl:true,gestureHandling:'greedy'});const bounds=new google.maps.LatLngBounds();let hasShape=false;const parcelRings=${parcelBoundaryJson};parcelRings.forEach(function(ring){new google.maps.Polygon({map:map,paths:ring,strokeColor:'#49a7e8',strokeOpacity:.95,strokeWeight:2,fillColor:'#49a7e8',fillOpacity:.06});ring.forEach(function(point){bounds.extend(point);});hasShape=true;});const workArea=${workAreaJson};if(workArea.length>=3){new google.maps.Polygon({map:map,paths:workArea,strokeColor:'${statusColor}',strokeOpacity:1,strokeWeight:3,fillColor:'${statusColor}',fillOpacity:.30});workArea.forEach(function(point){bounds.extend(point);});hasShape=true;}new google.maps.Marker({map:map,position:center,title:'Official Parcel ID location',icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:'#ffffff',fillOpacity:1,strokeColor:'#1f2937',strokeWeight:2,scale:6}});if(hasShape){bounds.extend(center);map.fitBounds(bounds,28);}})();<\/script></body></html>`;
+  const srcdoc = `<!DOCTYPE html><html style="margin:0;padding:0;height:100%"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style></head><body><div id="map"></div><script>(async function(){const script=document.createElement('script');script.src='${serverBase}/api/maps/js?v=weekly&loading=async';script.async=true;document.head.appendChild(script);await new Promise(function(resolve){script.onload=resolve;});let attempts=0;while(typeof google==='undefined'||!google.maps||!google.maps.Map){if(++attempts>100)return;await new Promise(function(resolve){setTimeout(resolve,50);});}const center={lat:${parcel.lat},lng:${parcel.lng}};const map=new google.maps.Map(document.getElementById('map'),{center:center,zoom:17,mapTypeId:'satellite',disableDefaultUI:true,zoomControl:true,gestureHandling:'greedy'});const bounds=new google.maps.LatLngBounds();let hasShape=false;const parcelRings=${parcelBoundaryJson};parcelRings.forEach(function(ring){new google.maps.Polygon({map:map,paths:ring,strokeColor:'#49a7e8',strokeOpacity:.95,strokeWeight:2,fillColor:'#49a7e8',fillOpacity:.06});ring.forEach(function(point){bounds.extend(point);});hasShape=true;});const workArea=${workAreaJson};if(workArea.length>=3){new google.maps.Polygon({map:map,paths:workArea,strokeColor:'${statusColor}',strokeOpacity:1,strokeWeight:3,fillColor:'${statusColor}',fillOpacity:.30});workArea.forEach(function(point){bounds.extend(point);});hasShape=true;}new google.maps.Marker({map:map,position:center,title:'Official Parcel ID location',icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:'#ffffff',fillOpacity:1,strokeColor:'#1f2937',strokeWeight:2,scale:6}});const currentLocation=${currentLocationJson};if(currentLocation){new google.maps.Marker({map:map,position:currentLocation,title:'Your current location',icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:'#2563eb',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2,scale:8}});bounds.extend(currentLocation);hasShape=true;}if(hasShape){bounds.extend(center);map.fitBounds(bounds,28);}})();<\/script></body></html>`;
 
   return <div style={{ margin: "0 0 14px", borderRadius: 11, overflow: "hidden", border: "1px solid var(--ne-border)", background: "var(--ne-ground)" }}>
-    <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--ne-border)", fontSize: 10, lineHeight: 1.35 }}>
-      <span style={{ color: "#49a7e8", fontWeight: 800 }}>BLUE</span><span style={{ color: "var(--ne-muted)" }}> official parcel</span>
-      {workArea.length >= 3 && <><span style={{ color: "var(--ne-muted)" }}> · </span><span style={{ color: statusColor, fontWeight: 800 }}>COLORED</span><span style={{ color: "var(--ne-muted)" }}> measured work area</span></>}
+    <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--ne-border)", fontSize: 10, lineHeight: 1.35, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+      <span><span style={{ color: "#49a7e8", fontWeight: 800 }}>BLUE</span><span style={{ color: "var(--ne-muted)" }}> official parcel</span>{workArea.length >= 3 && <><span style={{ color: "var(--ne-muted)" }}> · </span><span style={{ color: statusColor, fontWeight: 800 }}>COLORED</span><span style={{ color: "var(--ne-muted)" }}> work area</span></>}</span>
+      <button type="button" onClick={showCurrentLocation} disabled={locationLoading} style={{ border: "1px solid var(--ne-border)", background: currentLocation ? "oklch(0.62 0.18 250 / 0.2)" : "var(--ne-clay)", color: currentLocation ? "#93c5fd" : "var(--ne-cream)", borderRadius: 7, padding: "5px 7px", cursor: locationLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><LocateFixed size={12} />{locationLoading ? "Locating…" : "Current location"}</button>
     </div>
     <iframe title={`Parcel map for ${parcelId}`} srcDoc={srcdoc} sandbox="allow-scripts allow-same-origin" style={{ display: "block", width: "100%", height: 230, border: 0 }} />
+    {locationError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 10, lineHeight: 1.4, margin: "7px 9px 8px" }}>{locationError}</p>}
   </div>;
 }
 
@@ -102,11 +121,18 @@ export default function Jobs() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [statusSavedId, setStatusSavedId] = useState<number | null>(null);
   const { data: jobs, isLoading, isFetching, refetch } = trpc.fieldQuote.mobileJobs.useQuery({ limit: 75 }, { retry: false });
   const saveNotes = trpc.fieldQuote.mobileUpdateJobNotes.useMutation({
     onSuccess: async (job) => {
       setSavedId(job.id);
       setNoteDrafts((current) => ({ ...current, [job.id]: job.internalNotes ?? "" }));
+      await utils.fieldQuote.mobileJobs.invalidate();
+    },
+  });
+  const updateStatus = trpc.fieldQuote.mobileUpdateJobStatus.useMutation({
+    onSuccess: async (job) => {
+      setStatusSavedId(job.id);
       await utils.fieldQuote.mobileJobs.invalidate();
     },
   });
@@ -126,6 +152,12 @@ export default function Jobs() {
     const noteDraft = noteDrafts[job.id] ?? job.internalNotes ?? "";
     const hasChanged = noteDraft !== (job.internalNotes ?? "");
     const isSaving = saveNotes.isPending && saveNotes.variables?.id === job.id;
+    const isUpdatingStatus = updateStatus.isPending && updateStatus.variables?.id === job.id;
+    const statusActions: Array<{ value: Extract<JobStatus, "scheduled" | "in_progress" | "completed">; label: string; color: string }> = [
+      { value: "scheduled", label: "Scheduled", color: "var(--ne-amber)" },
+      { value: "in_progress", label: "Start job", color: "#60a5fa" },
+      { value: "completed", label: "Complete", color: "#34d399" },
+    ];
 
     return (
       <article key={job.id} style={{ background: "var(--ne-clay)", border: "1px solid var(--ne-border)", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
@@ -156,6 +188,14 @@ export default function Jobs() {
             </div>
             {job.parcelId && <p style={{ color: "#7dd3fc", fontSize: 11, fontWeight: 700, margin: "0 0 10px" }}>Parcel {job.parcelId}{job.parcelCounty ? ` · ${job.parcelCounty} County` : ""}</p>}
             <JobPropertyMap parcelId={job.parcelId} parcelCounty={job.parcelCounty} workAreaPolygon={job.workAreaPolygon} status={job.status as JobStatus} />
+            <div style={{ margin: "0 0 14px", borderRadius: 10, padding: "11px 10px", background: "var(--ne-ground)", border: "1px solid var(--ne-border)" }}>
+              <p style={{ color: "var(--ne-cream)", fontSize: 11, fontWeight: 800, letterSpacing: ".05em", margin: "0 0 8px" }}>UPDATE JOB STATUS</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{statusActions.map((action) => {
+                const selected = job.status === action.value;
+                return <button key={action.value} type="button" disabled={selected || isUpdatingStatus} onClick={() => { setStatusSavedId(null); updateStatus.mutate({ id: job.id, status: action.value }); }} style={{ border: `1px solid ${selected ? action.color : "var(--ne-border)"}`, borderRadius: 7, padding: "7px 9px", background: selected ? `${action.color}22` : "var(--ne-clay)", color: selected ? action.color : "var(--ne-cream)", cursor: selected || isUpdatingStatus ? "not-allowed" : "pointer", fontSize: 11, fontWeight: 700 }}>{isUpdatingStatus ? "Updating…" : selected ? `${action.label} now` : action.label}</button>;
+              })}</div>
+              <p style={{ color: statusSavedId === job.id ? "oklch(0.72 0.17 150)" : "var(--ne-muted)", fontSize: 10, lineHeight: 1.4, margin: "8px 0 0" }}>{statusSavedId === job.id ? "Job status updated in Operations." : "Status updates sync immediately with Operations."}</p>
+            </div>
             {getWorkDates(job).length > 0 && <div style={{ margin: "0 0 14px" }}>
               <p style={{ color: "var(--ne-muted)", fontSize: 11, fontWeight: 700, letterSpacing: ".05em", margin: "0 0 7px" }}>SCHEDULED WORK DATES</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{getWorkDates(job).map((date) => <span key={String(date)} style={{ color: "var(--ne-amber)", background: "oklch(0.83 0.16 82 / 0.12)", border: "1px solid oklch(0.83 0.16 82 / 0.28)", borderRadius: 999, padding: "4px 8px", fontSize: 11, fontWeight: 700 }}>{formatSchedule(date)}</span>)}</div>

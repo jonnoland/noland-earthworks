@@ -507,6 +507,24 @@ export const fieldQuoteRouter = router({
       return updated;
     }),
 
+  /** Update the matching Operations job status from the PIN-authenticated field companion. */
+  mobileUpdateJobStatus: requireAppToken
+    .input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(["scheduled", "in_progress", "completed", "cancelled"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Job records are unavailable right now." });
+
+      const [existing] = await db.select({ id: nativeJobs.id }).from(nativeJobs).where(eq(nativeJobs.id, input.id)).limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "That job could not be found." });
+
+      await db.update(nativeJobs).set({ status: input.status }).where(eq(nativeJobs.id, input.id));
+      const [updated] = await db.select().from(nativeJobs).where(eq(nativeJobs.id, input.id)).limit(1);
+      return updated;
+    }),
+
   /** Lookup a parcel for the signed-in Noland Field app user. */
   lookupParcel: requireAppToken
     .input(z.object({

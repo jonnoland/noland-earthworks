@@ -12,6 +12,8 @@ describe("Noland Field Jobs section", () => {
     expect(router).toContain("mobileJobs: requireAppToken");
     expect(router).toContain("from(nativeJobs)");
     expect(router).toContain("mobileUpdateJobNotes: requireAppToken");
+    expect(router).toContain("mobileUpdateJobStatus: requireAppToken");
+    expect(router).toContain('status: z.enum(["scheduled", "in_progress", "completed", "cancelled"])');
     expect(router).toContain('internalNotes: z.string().trim().max(5000)');
     expect(router).toContain("internalNotes: nextNotes");
   });
@@ -38,9 +40,13 @@ describe("Noland Field Jobs section", () => {
     expect(page).toContain("function JobPropertyMap");
     expect(page).toContain("trpc.fieldQuote.lookupParcel.useMutation");
     expect(page).toContain("BLUE");
-    expect(page).toContain("measured work area");
+    expect(page).toContain("work area");
     expect(page).toContain("PROPERTY OWNER");
     expect(page).toContain("CURRENT QUOTE");
     expect(page).toContain("html,body,#map{margin:0;padding:0;width:100%;height:100%;}");
+    expect(page).toContain("Geolocation.getCurrentPosition");
+    expect(page).toContain("Current location");
+    expect(page).toContain("UPDATE JOB STATUS");
+    expect(page).toContain("trpc.fieldQuote.mobileUpdateJobStatus.useMutation");
   });
 });

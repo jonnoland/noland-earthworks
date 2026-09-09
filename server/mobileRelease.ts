@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.27",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.27_3c3b1362.apk",
+  version: "0.4.28",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.28_97e24ed9.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.27: Fixes the Jobs map panel so the Parcel ID satellite map, official parcel boundary, and saved work-area overlay render correctly instead of appearing as a white panel.",
+  notes: "Noland Field v0.4.28: Jobs now has a Current Location control that places your GPS position relative to the Parcel ID boundary and work area. Expanded jobs also let you mark a job Scheduled, Start Job, or Complete directly from the field, with status updates synced to Operations.",
   highlights: [
     "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
@@ -17,6 +17,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.28",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.28: Jobs now has a Current Location control that places your GPS position relative to the Parcel ID boundary and work area. Expanded jobs also let you mark a job Scheduled, Start Job, or Complete directly from the field, with status updates synced to Operations.",
+    },
     {
       version: "0.4.27",
       title: "Noland Field update",

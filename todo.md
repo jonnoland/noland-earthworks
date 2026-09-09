@@ -4140,3 +4140,8 @@
 ## Noland Field Jobs Map Rendering Fix — Sep 2026
 - [x] Diagnose and fix the blank embedded satellite-map panel in expanded companion Jobs
 - [x] Add regression coverage and build a signed replacement Noland Field update
+
+## Noland Field GPS and Job Status Controls — Sep 2026
+- [x] Add a Current Location control to the companion job map with clear GPS permission and failure feedback
+- [x] Add a PIN-protected field job-status update action that synchronizes with Operations
+- [x] Add regression coverage and build, sign, and dual-publish the companion update
