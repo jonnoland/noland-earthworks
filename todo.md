@@ -4103,3 +4103,9 @@
 - [x] Associate measured work areas with the selected Parcel ID and county reference data
 - [x] Display the synchronized work-area measurement and polygon in Operations for quote and dispatch review
 - [x] Add regression coverage and release the Noland Field update
+
+## Parcel Owner, Dispatch Organization, and Acreage Quote Adjustments — Sep 2026
+- [x] Automatically display and apply available property-owner details after Parcel ID lookup
+- [x] Add Operations Jobs filtering and sorting by acreage and Parcel ID for dispatch organization
+- [x] Add manual acreage-based adjustments and optional add-on services to the quote workflow
+- [x] Add regression coverage and validate the enhanced owner, dispatch, and quote workflows

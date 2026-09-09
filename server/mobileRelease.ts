@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.24",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.24_f853b8b3.apk",
+  version: "0.4.25",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.25_9a133930.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.24: Measured work areas now calculate a current-rate estimate automatically, retain their Parcel ID reference and property details, and synchronize as an orange scope map in Operations quote and Jobs dispatch views.",
+  notes: "Noland Field v0.4.25: A valid county and Parcel ID now retrieves the property record automatically. Noland Field shows the available owner record, applies it only when the client field is blank, and clears stale property details when the county or Parcel ID changes.",
   highlights: [
     "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
@@ -17,6 +17,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.25",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.25: A valid county and Parcel ID now retrieves the property record automatically. Noland Field shows the available owner record, applies it only when the client field is blank, and clears stale property details when the county or Parcel ID changes.",
+    },
     {
       version: "0.4.24",
       title: "Noland Field update",

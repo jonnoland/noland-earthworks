@@ -111,7 +111,8 @@ export function formatAcreageServiceDescription(item: Pick<MeasuredQuoteLineItem
 
   const formattedQuantity = quantity.toLocaleString("en-US", { maximumFractionDigits: 2 });
   const formattedRate = (unitPriceCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${service.label} - ${formattedQuantity} acres @ $${formattedRate}/acre`;
+  const additionalScopePrefix = item.description.trim().toLocaleLowerCase().startsWith("additional ") ? "Additional " : "";
+  return `${additionalScopePrefix}${service.label} - ${formattedQuantity} acres @ $${formattedRate}/acre`;
 }
 
 export function createQuoteServiceLineItem(serviceCode: QuoteLineServiceCode = "forestry-mulching"): MeasuredQuoteLineItem {

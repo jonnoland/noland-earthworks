@@ -542,6 +542,7 @@ export default function NewQuote() {
     },
   });
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
+  const parcelAutoLookupKeyRef = React.useRef<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string; county: string; address: string | null; city: string | null; zip: string | null;
     owner: string | null; deedAcreage: number | null; lat: number | null; lng: number | null;
@@ -569,6 +570,7 @@ export default function NewQuote() {
     });
     setForm((current) => ({
       ...current,
+      name: current.name.trim() ? current.name : (match.owner || current.name),
       parcelId: match.parcelId,
       address: match.address || current.address,
       city: match.city || current.city,
@@ -595,10 +597,28 @@ export default function NewQuote() {
           setParcelIdError("No matching parcel was found. Verify the county and Parcel ID, or enter the address manually.");
           return;
         }
+        if (result.matches.length === 1) {
+          applyParcelMatch(result.matches[0]);
+          return;
+        }
         setParcelMatches(result.matches);
       },
     });
   };
+
+  React.useEffect(() => {
+    const county = form.county.trim();
+    const parcelId = form.parcelId.trim();
+    const validation = validateTennesseeParcelId(parcelId);
+    if (!county || !validation.valid || parcelLookup.isPending) return;
+    const lookupKey = `${county.toLowerCase()}|${parcelId.toLowerCase()}`;
+    if (parcelAutoLookupKeyRef.current === lookupKey) return;
+    const timeout = window.setTimeout(() => {
+      parcelAutoLookupKeyRef.current = lookupKey;
+      lookupParcel();
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [form.county, form.parcelId, parcelLookup.isPending]);
 
   const saveOnxSiteWalkWaypoint = async () => {
     const latitude = form.lat;
@@ -1479,7 +1499,12 @@ export default function NewQuote() {
             />
             <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(0, 1.15fr) auto 0.75fr", gap: 8, marginTop: 10, alignItems: "end" }}>
               <input value={form.city} onChange={set("city")} placeholder="City" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
-              <select value={form.county} onChange={set("county")} style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }}>
+                <select value={form.county} onChange={(event) => {
+                  setForm((current) => ({ ...current, county: event.target.value }));
+                  setSelectedParcelReference(null);
+                  setSelectedParcelBoundary(null);
+                  parcelAutoLookupKeyRef.current = null;
+                }} style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }}>
                 <option value="">Select service county</option>
                 {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}
               </select>
@@ -1503,7 +1528,13 @@ export default function NewQuote() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
                 <input
                   value={form.parcelId}
-                  onChange={(event) => { setForm((current) => ({ ...current, parcelId: event.target.value })); if (parcelIdError) setParcelIdError(null); }}
+                  onChange={(event) => {
+                    setForm((current) => ({ ...current, parcelId: event.target.value }));
+                    setSelectedParcelReference(null);
+                    setSelectedParcelBoundary(null);
+                    parcelAutoLookupKeyRef.current = null;
+                    if (parcelIdError) setParcelIdError(null);
+                  }}
                   onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
                   placeholder="Parcel ID, map/group/parcel"
                   aria-invalid={Boolean(parcelIdError)}
@@ -1524,6 +1555,12 @@ export default function NewQuote() {
                     {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" style={{ color: "var(--ne-amber)", fontSize: 11 }}>Open TN Property Viewer</a>}
                   </div>
                 </div>)}
+              </div>}
+              {selectedParcelReference && <div style={{ marginTop: 9, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 8, padding: 9, backgroundColor: "oklch(0.65 0.18 50 / 0.08)" }} aria-live="polite">
+                <p style={{ color: "var(--ne-amber)", fontSize: 11, fontWeight: 700, margin: 0 }}>Property record applied</p>
+                <p style={{ color: "var(--ne-cream)", fontSize: 12, margin: "4px 0 0" }}>Owner record: {selectedParcelReference.owner || "Unavailable from this assessor record"}</p>
+                <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>Parcel {selectedParcelReference.parcelId} · {selectedParcelReference.county}{selectedParcelReference.deedAcreage ? ` · ${selectedParcelReference.deedAcreage} acres reported` : ""}</p>
+                {selectedParcelReference.propertyViewerUrl && <a href={selectedParcelReference.propertyViewerUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", color: "var(--ne-amber)", fontSize: 11, marginTop: 7 }}>Open official property viewer</a>}
               </div>}
             </div>
             {form.county && <p style={{ color: isServedCounty(form.county) ? "oklch(0.70 0.18 145)" : "oklch(0.75 0.16 75)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.45 }}>

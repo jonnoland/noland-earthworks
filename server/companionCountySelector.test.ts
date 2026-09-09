@@ -11,7 +11,8 @@ describe("Noland Field county selector", () => {
     expect(newQuoteSource).toContain("SERVICE_AREA_COUNTIES");
     expect(newQuoteSource).toContain('Select service county');
     expect(newQuoteSource).toContain("SERVICE_AREA_COUNTIES.map");
-    expect(newQuoteSource).toContain('onChange={set("county")}');
+    expect(newQuoteSource).toContain('county: event.target.value');
+    expect(newQuoteSource).toContain("setSelectedParcelReference(null)");
     expect(serviceAreaSource).toContain('"Cheatham County"');
     expect(serviceAreaSource).toContain('"Dickson County"');
   });

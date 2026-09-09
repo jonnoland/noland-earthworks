@@ -61,6 +61,8 @@ export const nativeJobsRouter = router({
             like(nativeJobs.clientName, term),
             like(nativeJobs.propertyAddress, term),
             like(nativeJobs.serviceType, term),
+            like(nativeJobs.parcelId, term),
+            like(nativeJobs.parcelOwner, term),
             like(nativeJobs.clientEmail, term),
             like(nativeJobs.clientPhone, term)
           )

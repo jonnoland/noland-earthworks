@@ -655,6 +655,7 @@ function QuoteFormModal({
   useEffect(() => () => resizeCleanupRef.current?.(), []);
   const [parcelCounty, setParcelCounty] = useState(editQuote?.parcelCounty ?? "");
   const [parcelId, setParcelId] = useState(editQuote?.parcelId ?? "");
+  const parcelAutoLookupKeyRef = useRef<string | null>(null);
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string;
@@ -862,6 +863,20 @@ function QuoteFormModal({
     });
   };
 
+  useEffect(() => {
+    const county = parcelCounty.trim();
+    const id = parcelId.trim();
+    const validation = validateTennesseeParcelId(id);
+    if (!open || !county || !validation.valid || parcelLookupMutation.isPending) return;
+    const lookupKey = `${county.toLowerCase()}|${id.toLowerCase()}`;
+    if (parcelAutoLookupKeyRef.current === lookupKey) return;
+    const timeout = window.setTimeout(() => {
+      parcelAutoLookupKeyRef.current = lookupKey;
+      lookupParcel();
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [open, parcelCounty, parcelId, parcelLookupMutation.isPending]);
+
   const costBreakdown = useMemo(() => buildQuoteCostBreakdown(form.lineItems), [form.lineItems]);
   const phaseSections = useMemo(() => getQuotePhaseSections(form.lineItems), [form.lineItems]);
   const phaseOptions = useMemo(
@@ -935,6 +950,7 @@ function QuoteFormModal({
     : -1;
   const quoteHeaderLinearFeet = quoteHeaderLineIndex >= 0 ? form.lineItems[quoteHeaderLineIndex]?.qty ?? "" : "";
   const [quoteHeaderLinearFeetInput, setQuoteHeaderLinearFeetInput] = useState(String(quoteHeaderLinearFeet || ""));
+  const [acreageAdjustmentInput, setAcreageAdjustmentInput] = useState("");
   useEffect(() => {
     setQuoteHeaderLinearFeetInput(quoteHeaderUsesLinearFeet ? String(quoteHeaderLinearFeet || "") : "");
   }, [quoteHeaderUsesLinearFeet, quoteHeaderLinearFeet]);
@@ -1222,6 +1238,33 @@ function QuoteFormModal({
       ...prev,
       lineItems: [...prev.lineItems, ...(kind === "phase" ? [{ ...nextItem, phaseId: createQuotePhaseId() }] : [nextItem])],
     }));
+  };
+
+  const addAcreageAdjustmentLine = (phaseId?: string) => {
+    const adjustmentAcreage = Number.parseFloat(acreageAdjustmentInput || form.acreage);
+    if (!Number.isFinite(adjustmentAcreage) || adjustmentAcreage <= 0) {
+      toast.error("Enter the additional acreage before adding a manual adjustment.");
+      return;
+    }
+    const primaryService = QUOTE_LINE_SERVICE_OPTIONS.find((service) => service.label === form.serviceType)
+      ?? QUOTE_LINE_SERVICE_OPTIONS.find((service) => service.value === form.lineItems.find((item) => item.serviceCode)?.serviceCode)
+      ?? QUOTE_LINE_SERVICE_OPTIONS[0]!;
+    if (primaryService.measurementUnit === "linear_foot") {
+      toast.error(`${primaryService.label} is priced by measured Linear Feet. Add a service line with measured footage instead.`);
+      return;
+    }
+    const item: LineItem = {
+      ...createQuoteServiceLineItem(primaryService.value),
+      description: `Additional ${primaryService.label} work — ${adjustmentAcreage.toLocaleString("en-US", { maximumFractionDigits: 2 })} acres`,
+      qty: adjustmentAcreage,
+      unitPriceCents: 0,
+      totalCents: 0,
+      kind: "service",
+      phaseId,
+    };
+    setForm((current) => ({ ...current, lineItems: [...current.lineItems, item] }));
+    setAcreageAdjustmentInput("");
+    toast.success("Acreage adjustment added. Enter the approved per-acre rate before sending the quote.");
   };
 
   const convertNormalQuoteToPhase = () => {
@@ -1541,14 +1584,23 @@ function QuoteFormModal({
                 <Input
                   list="service-area-county-options"
                   value={parcelCounty}
-                  onChange={(event) => setParcelCounty(event.target.value)}
+                  onChange={(event) => {
+                    setParcelCounty(event.target.value);
+                    setSelectedParcel(null);
+                    parcelAutoLookupKeyRef.current = null;
+                  }}
                   className="bg-zinc-800 border-zinc-700"
                   placeholder="County, e.g. Houston"
                   aria-label="Tennessee parcel county"
                 />
                 <Input
                   value={parcelId}
-                  onChange={(event) => { setParcelId(event.target.value); if (parcelIdError) setParcelIdError(null); }}
+                  onChange={(event) => {
+                    setParcelId(event.target.value);
+                    setSelectedParcel(null);
+                    parcelAutoLookupKeyRef.current = null;
+                    if (parcelIdError) setParcelIdError(null);
+                  }}
                   onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
                   className={`bg-zinc-800 ${parcelIdError ? "border-red-500" : "border-zinc-700"}`}
                   placeholder="Parcel ID or Davidson APN"
@@ -1603,6 +1655,20 @@ function QuoteFormModal({
                         <a href={selectedParcel.assessmentDataUrl} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded border border-sky-500/40 px-2 text-sky-200 hover:bg-sky-500/15">
                           <ExternalLink className="mr-1 h-3.5 w-3.5" /> Official Assessment Record
                         </a>
+                      )}
+                      {selectedParcel.owner && selectedParcel.owner.trim() !== form.clientName.trim() && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 border-sky-500/40 text-sky-200 hover:bg-sky-500/15"
+                          onClick={() => {
+                            setForm((current) => ({ ...current, clientName: selectedParcel.owner || current.clientName }));
+                            toast.success("Property owner copied into the client name field.");
+                          }}
+                        >
+                          <User className="mr-1 h-3.5 w-3.5" /> Use owner as client
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -1978,6 +2044,30 @@ function QuoteFormModal({
                 </Button>
               </div>
             </div>
+            {!quoteHeaderUsesLinearFeet && (
+              <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-orange-500/30 bg-orange-500/[0.06] p-2.5">
+                <div className="min-w-[190px] flex-1">
+                  <Label className="mb-1 block text-[11px] font-semibold text-orange-100">Manual acreage adjustment or add-on</Label>
+                  <p className="mb-1.5 text-[10px] leading-relaxed text-zinc-400">Use the field-measured or parcel-reported acreage as a starting point, then enter the additional scope you want to price. The new line stays editable before it affects the quote total.</p>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={acreageAdjustmentInput}
+                    onChange={(event) => setAcreageAdjustmentInput(event.target.value)}
+                    placeholder={form.acreage ? `Current measured area: ${form.acreage} acres` : "Additional acres"}
+                    className="h-8 border-orange-500/35 bg-zinc-900 text-xs"
+                    aria-label="Additional work-area acreage"
+                  />
+                </div>
+                <Button type="button" size="sm" variant="outline" className="h-8 border-orange-500/45 text-xs text-orange-100 hover:bg-orange-500/15" onClick={() => addAcreageAdjustmentLine()}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add acreage line
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="h-8 border-zinc-600 text-xs text-zinc-200 hover:bg-zinc-800" onClick={() => setForm((current) => ({ ...current, lineItems: [...current.lineItems, { ...createQuoteServiceLineItem(), kind: "service" }] }))}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add-on service
+                </Button>
+              </div>
+            )}
             {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">This quote starts as a normal job. Use <strong>+ Phase</strong> only when the customer needs separately approved work sections.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Optional Phase Sample</Button></div>}
             {phaseSections.length > 0 && <p className="mb-3 text-[11px] leading-relaxed text-zinc-400">Each phase is its own work section. Add services, mobilization, and eligible discounts inside the intended phase so its subtotal and customer portal amount remain accurate.</p>}
             <div className="space-y-3">
@@ -1998,6 +2088,7 @@ function QuoteFormModal({
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5 border-t border-zinc-800 pt-3">
                     <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteServiceLineItem(), kind: "service" })}><Plus className="mr-1 h-3 w-3" />Service</Button>
+                    {!quoteHeaderUsesLinearFeet && <Button type="button" size="sm" variant="outline" className="h-7 border-orange-500/40 text-[11px] text-orange-100 hover:bg-orange-500/10" onClick={() => addAcreageAdjustmentLine(phaseId)}><Plus className="mr-1 h-3 w-3" />Measured Acres</Button>}
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { description: "Mobilization", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "mobilization" })}>+ Mobilization</Button>
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("full_operating_day") })}>+ Full Day</Button>
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("half_operating_day") })}>+ Half Day</Button>

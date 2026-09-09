@@ -402,6 +402,8 @@ function EditJobDialog({
 export default function NativeJobsSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "scheduled" | "in_progress" | "completed" | "cancelled">("all");
+  const [acreageFilter, setAcreageFilter] = useState<"all" | "under_5" | "5_to_10" | "10_plus" | "has_parcel">("all");
+  const [sortBy, setSortBy] = useState<"scheduled" | "acreage_asc" | "acreage_desc" | "parcel">("scheduled");
   const [selectedJob, setSelectedJob] = useState<NativeJob | null>(null);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -416,6 +418,30 @@ export default function NativeJobsSection() {
   });
 
   const { data: invoices = [] } = trpc.nativeJobs.listInvoices.useQuery({});
+
+  const dispatchJobs = useMemo(() => {
+    const filtered = jobs.filter((job) => {
+      const acreage = Number.parseFloat(job.acreage ?? "");
+      if (acreageFilter === "under_5") return Number.isFinite(acreage) && acreage < 5;
+      if (acreageFilter === "5_to_10") return Number.isFinite(acreage) && acreage >= 5 && acreage < 10;
+      if (acreageFilter === "10_plus") return Number.isFinite(acreage) && acreage >= 10;
+      if (acreageFilter === "has_parcel") return Boolean(job.parcelId);
+      return true;
+    });
+    return [...filtered].sort((left, right) => {
+      if (sortBy === "acreage_asc" || sortBy === "acreage_desc") {
+        const leftAcreage = Number.parseFloat(left.acreage ?? "");
+        const rightAcreage = Number.parseFloat(right.acreage ?? "");
+        const normalizedLeft = Number.isFinite(leftAcreage) ? leftAcreage : Number.POSITIVE_INFINITY;
+        const normalizedRight = Number.isFinite(rightAcreage) ? rightAcreage : Number.POSITIVE_INFINITY;
+        return sortBy === "acreage_asc" ? normalizedLeft - normalizedRight : normalizedRight - normalizedLeft;
+      }
+      if (sortBy === "parcel") return (left.parcelId ?? "~").localeCompare(right.parcelId ?? "~", undefined, { numeric: true });
+      const leftDate = getScheduledDates(left)[0]?.getTime() ?? Number.POSITIVE_INFINITY;
+      const rightDate = getScheduledDates(right)[0]?.getTime() ?? Number.POSITIVE_INFINITY;
+      return leftDate - rightDate;
+    });
+  }, [acreageFilter, jobs, sortBy]);
 
   const deleteMut = trpc.nativeJobs.delete.useMutation({
     onSuccess: () => {
@@ -499,9 +525,9 @@ export default function NativeJobsSection() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              if (jobs.length === 0) return;
-              const headers = ["ID", "Client", "Phone", "Email", "Address", "Service", "Acreage", "Status", "Scheduled Date", "Completed At", "Total ($)", "Deposit Paid ($)", "Balance Due ($)", "Notes"];
-              const rows = jobs.map(j => [
+              if (dispatchJobs.length === 0) return;
+              const headers = ["ID", "Client", "Phone", "Email", "Address", "Service", "Acreage", "Parcel ID", "Parcel County", "Property Owner", "Status", "Scheduled Date", "Completed At", "Total ($)", "Deposit Paid ($)", "Balance Due ($)", "Notes"];
+              const rows = dispatchJobs.map(j => [
                 j.id,
                 j.clientName,
                 j.clientPhone ?? "",
@@ -509,6 +535,9 @@ export default function NativeJobsSection() {
                 j.propertyAddress ?? "",
                 j.serviceType ?? "",
                 j.acreage ?? "",
+                j.parcelId ?? "",
+                j.parcelCounty ?? "",
+                j.parcelOwner ?? "",
                 j.status,
                 fmtScheduledDates(j),
                 j.completedAt ? new Date(j.completedAt).toLocaleDateString() : "",
@@ -555,15 +584,43 @@ export default function NativeJobsSection() {
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 px-4 py-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Dispatch view</span>
+          <select
+            value={acreageFilter}
+            onChange={(event) => setAcreageFilter(event.target.value as typeof acreageFilter)}
+            className="h-8 rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-200"
+            aria-label="Filter jobs by acreage or Parcel ID"
+          >
+            <option value="all">All acreage</option>
+            <option value="under_5">Under 5 acres</option>
+            <option value="5_to_10">5–10 acres</option>
+            <option value="10_plus">10+ acres</option>
+            <option value="has_parcel">Parcel ID assigned</option>
+          </select>
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+            className="h-8 rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-200"
+            aria-label="Sort dispatch jobs"
+          >
+            <option value="scheduled">Sort: first work date</option>
+            <option value="acreage_asc">Sort: acreage, low to high</option>
+            <option value="acreage_desc">Sort: acreage, high to low</option>
+            <option value="parcel">Sort: Parcel ID</option>
+          </select>
+          <span className="ml-auto text-xs text-zinc-500">{dispatchJobs.length} job{dispatchJobs.length === 1 ? "" : "s"} shown</span>
+        </div>
+
         {/* Table */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">Loading jobs...</div>
-          ) : jobs.length === 0 ? (
+          ) : dispatchJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-zinc-500 gap-2">
               <Briefcase className="w-8 h-8 opacity-30" />
-              <p className="text-sm">No jobs found</p>
-              <p className="text-xs text-zinc-600">Jobs are created when you convert a quote.</p>
+              <p className="text-sm">No jobs match this dispatch view</p>
+              <p className="text-xs text-zinc-600">Adjust the acreage, Parcel ID, status, or search filters.</p>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -571,6 +628,7 @@ export default function NativeJobsSection() {
                 <tr className="border-b border-zinc-800">
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Client</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Service</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Acreage / Parcel</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Date</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Total</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Status</th>
@@ -578,7 +636,7 @@ export default function NativeJobsSection() {
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job, idx) => (
+                {dispatchJobs.map((job, idx) => (
                   <tr
                     key={job.id}
                     onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job as NativeJob)}
@@ -598,7 +656,10 @@ export default function NativeJobsSection() {
                     </td>
                     <td className="px-4 py-3 text-zinc-300">
                       <div>{job.serviceType ?? "—"}</div>
-                      {job.acreage && <div className="text-xs text-zinc-500">{job.acreage} ac</div>}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-300">
+                      <div className="whitespace-nowrap">{job.acreage ? `${job.acreage} ac` : "—"}</div>
+                      {job.parcelId && <div className="mt-0.5 max-w-[150px] truncate text-xs text-sky-300" title={job.parcelId}>Parcel {job.parcelId}</div>}
                     </td>
                     <td className="px-4 py-3 text-zinc-400 text-xs whitespace-nowrap">
                       <div>{fmtScheduledDates(job, true)}</div>
