@@ -4126,3 +4126,7 @@
 - [x] Add polygon-click popups with job, owner, current quote, and map-location details
 - [x] Add status-based polygon color coding and an Operations legend for pending, active, and completed jobs
 - [x] Add regression coverage and validate interactive polygon behavior
+
+## Dispatch Map Polygon Popup Fix — Sep 2026
+- [x] Prevent the map-background click handler from immediately closing a polygon-selected popup
+- [x] Add regression coverage and validate clicks on official parcel and measured work-area polygons

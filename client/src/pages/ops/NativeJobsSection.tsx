@@ -204,6 +204,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const lastMapFeatureSelectionRef = useRef(0);
   const parcelBoundaryMutation = trpc.parcel.boundary.useMutation();
 
   useEffect(() => {
@@ -232,6 +233,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
     };
     const openJobInfo = (job: NativeJob, position: WorkAreaPoint | google.maps.LatLng, locationSource: "parcel" | "work_area" | "address", hasParcelBoundary: boolean) => {
       if (cancelled) return;
+      lastMapFeatureSelectionRef.current = Date.now();
       const statusStyle = dispatchMapStatusStyle(job.status);
       const workArea = parseWorkAreaPolygon(job.workAreaPolygon);
       const scheduledLabel = fmtScheduledDates(job, true);
@@ -291,6 +293,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
           map,
         });
         polygon.addListener("click", (event: google.maps.PolyMouseEvent) => {
+          event.domEvent?.stopPropagation();
           const position = event.latLng ?? workAreaCenter(points);
           if (position) openJobInfo(job, position, "work_area", hasLoadedParcelBoundary);
         });
@@ -318,6 +321,7 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
               map,
             });
             polygon.addListener("click", (event: google.maps.PolyMouseEvent) => {
+              event.domEvent?.stopPropagation();
               const position = event.latLng ?? parcelCenter;
               if (position) openJobInfo(job, position, "parcel", true);
             });
@@ -356,7 +360,10 @@ function ActiveJobsDispatchMap({ jobs, onJobSelect }: { jobs: NativeJob[]; onJob
 
   return <MapView className="h-[340px] w-full overflow-hidden rounded-b-lg" initialCenter={{ lat: 36.131, lng: -87.45 }} initialZoom={9} onMapReady={(readyMap) => {
     readyMap.setMapTypeId("satellite");
-    readyMap.addListener("click", () => infoWindowRef.current?.close());
+    readyMap.addListener("click", () => {
+      if (Date.now() - lastMapFeatureSelectionRef.current < 350) return;
+      infoWindowRef.current?.close();
+    });
     setMap(readyMap);
   }} />;
 }

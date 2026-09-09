@@ -40,4 +40,10 @@ describe("Operations active-job dispatch map", () => {
     expect(jobsRouterSource).toContain("quoteTitle: quote?.title ?? null");
     expect(jobsRouterSource).toContain("quoteStatus: quote?.status ?? null");
   });
+
+  it("keeps a polygon-selected popup open instead of immediately closing it through the map background handler", () => {
+    expect(jobsSource).toContain("lastMapFeatureSelectionRef");
+    expect(jobsSource).toContain("event.domEvent?.stopPropagation()");
+    expect(jobsSource).toContain("Date.now() - lastMapFeatureSelectionRef.current < 350");
+  });
 });
