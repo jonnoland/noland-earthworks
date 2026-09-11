@@ -4145,3 +4145,8 @@
 - [x] Add a Current Location control to the companion job map with clear GPS permission and failure feedback
 - [x] Add a PIN-protected field job-status update action that synchronizes with Operations
 - [x] Add regression coverage and build, sign, and dual-publish the companion update
+
+## Route Planner Current Location Origin — Sep 2026
+- [x] Add a Use My Location origin option with browser permission, loading, and failure feedback
+- [x] Preserve manual address and Parcel ID origin entry as fallbacks
+- [x] Add regression coverage, validate routing, and publish the Operations update

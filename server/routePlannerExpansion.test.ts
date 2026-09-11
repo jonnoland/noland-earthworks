@@ -22,4 +22,13 @@ describe("equipment-aware rural Route Planner", () => {
     expect(planner).toContain("Posted bridge, weight, and vehicle restrictions reviewed");
     expect(planner).toContain("Gate clearance, tight turns, and turnaround room confirmed");
   });
+
+  it("allows the current GPS position to become the route origin without removing address or Parcel ID origins", () => {
+    const planner = readFileSync(resolve(import.meta.dirname, "../client/src/pages/ops/WeighStationPlanner.tsx"), "utf8");
+
+    expect(planner).toContain("navigator.geolocation.getCurrentPosition");
+    expect(planner).toContain("Current GPS location set as your route origin.");
+    expect(planner).toContain("My location");
+    expect(planner).toContain("A typed address or Parcel ID can still be used as the origin.");
+  });
 });

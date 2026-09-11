@@ -30,6 +30,7 @@ import {
   FileSearch,
   ExternalLink,
   ShieldAlert,
+  LocateFixed,
 } from "lucide-react";
 import { restoreRuralRoutePlan, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes, type RuralRouteStop } from "@shared/ruralRoutePlan";
 import { calculateTowingTravelEstimate } from "@shared/routeVehicleProfile";
@@ -138,6 +139,8 @@ const restrictionLabel: Record<PlannedRoute["routeRestrictions"][number]["restri
 
 export default function WeighStationPlanner() {
   const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
+  const [originLocationLoading, setOriginLocationLoading] = useState(false);
+  const [originLocationError, setOriginLocationError] = useState<string | null>(null);
   const [destination, setDestination] = useState("");
   const [routeName, setRouteName] = useState("");
   const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null);
@@ -486,6 +489,32 @@ export default function WeighStationPlanner() {
     }
   };
 
+  const useCurrentLocationAsOrigin = () => {
+    if (!navigator.geolocation) {
+      setOriginLocationError("This browser does not support location access. Enter an address or Parcel ID origin instead.");
+      return;
+    }
+
+    setOriginLocationLoading(true);
+    setOriginLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOrigin(`${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`);
+        setPlannedRoute(null);
+        setOriginLocationLoading(false);
+        toast.success("Current GPS location set as your route origin.");
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? "Location permission was denied. Allow location access or enter an address instead."
+          : "Your current location could not be determined. Check your signal and try again.";
+        setOriginLocationError(message);
+        setOriginLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
+    );
+  };
+
   const handlePlanRoute = async () => {
     if (!destination.trim()) {
       toast.error("Enter a destination address");
@@ -656,12 +685,20 @@ export default function WeighStationPlanner() {
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">
                 Origin
               </label>
-              <Input
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
-                placeholder="Vanleer, TN 37181"
-                className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={origin}
+                  onChange={(e) => { setOrigin(e.target.value); setOriginLocationError(null); }}
+                  placeholder="Vanleer, TN 37181"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+                />
+                <Button type="button" variant="outline" onClick={useCurrentLocationAsOrigin} disabled={originLocationLoading} className="h-10 shrink-0 border-blue-400/40 bg-blue-500/10 px-3 text-blue-100 hover:bg-blue-500/20" title="Use your current GPS position as the route origin">
+                  <LocateFixed className={`mr-1.5 h-4 w-4 ${originLocationLoading ? "animate-spin" : ""}`} />
+                  {originLocationLoading ? "Locating..." : "My location"}
+                </Button>
+              </div>
+              <p className="text-[10px] leading-relaxed text-white/40">Use your device location when you are away from Vanleer. A typed address or Parcel ID can still be used as the origin.</p>
+              {originLocationError && <p role="alert" className="text-[11px] leading-relaxed text-red-300">{originLocationError}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">
