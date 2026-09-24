@@ -51,6 +51,7 @@ import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
 import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
+import { getCountyParcelPortal } from "@shared/countyParcelPortals";
 import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quoteCostBreakdown";
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
@@ -657,6 +658,7 @@ function QuoteFormModal({
   const [parcelId, setParcelId] = useState(editQuote?.parcelId ?? "");
   const parcelAutoLookupKeyRef = useRef<string | null>(null);
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
+  const selectedCountyPortal = useMemo(() => getCountyParcelPortal(parcelCounty), [parcelCounty]);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string;
     county: string;
@@ -842,6 +844,11 @@ function QuoteFormModal({
     const validation = validateTennesseeParcelId(parcelId);
     if (!validation.valid) {
       setParcelIdError(validation.error);
+      return;
+    }
+    if (selectedCountyPortal && !selectedCountyPortal.operationsLookupSupported) {
+      setParcelMatches([]);
+      setParcelIdError(`${selectedCountyPortal.county} maintains its own official property system. Open the county portal below, then enter or confirm the property details in this editable quote.`);
       return;
     }
     setParcelIdError(null);
@@ -1576,7 +1583,7 @@ function QuoteFormModal({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label className="text-sky-200 text-xs font-semibold">Tennessee Parcel ID Lookup</Label>
-                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. Davidson County uses Nashville Parcel Viewer; other counties use Tennessee Property Viewer. Address and acreage remain editable.</p>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. Davidson County uses Metro Nashville records; covered counties use Tennessee Property Viewer. Address and acreage remain editable.</p>
                 </div>
                 <MapPin className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
               </div>
@@ -1614,6 +1621,22 @@ function QuoteFormModal({
                 </Button>
               </div>
               {parcelIdError && <p id="parcel-id-format-error" role="alert" className="mt-1.5 text-[11px] text-red-300">{parcelIdError}</p>}
+              {selectedCountyPortal && (
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded border border-amber-400/30 bg-amber-400/[0.07] p-2.5 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-amber-200">Official {selectedCountyPortal.county} property records</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-300">
+                      {selectedCountyPortal.operationsLookupSupported
+                        ? "Find Property can use the integrated county record. The official county portal is also available for record review."
+                        : "Tennessee Property Viewer does not cover this county. Use the official county portal, then enter or confirm the editable property details here."}
+                    </p>
+                    <p className="mt-1 text-[10px] text-zinc-400">Search by: {selectedCountyPortal.searchCapabilities.join(" · ")}. Reference information only; not a legal survey.</p>
+                  </div>
+                  <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center rounded border border-amber-400/50 px-2.5 text-amber-200 hover:bg-amber-400/10">
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open county portal
+                  </a>
+                </div>
+              )}
               <datalist id="service-area-county-options">
                 {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county.replace(/ County$/, "")} />)}
               </datalist>

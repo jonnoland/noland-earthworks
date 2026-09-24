@@ -4150,3 +4150,9 @@
 - [x] Add a Use My Location origin option with browser permission, loading, and failure feedback
 - [x] Preserve manual address and Parcel ID origin entry as fallbacks
 - [x] Add regression coverage, validate routing, and publish the Operations update
+
+## County Parcel Portal Access — Sep 2026
+- [x] Identify every Tennessee Property Viewer coverage exception within the Noland Earthworks service area and verify its official county parcel source
+- [x] Add county-aware official parcel portal links and manual-reference guidance to the Operations quote form
+- [x] Add the same county-aware portal access to the Noland Field quote flow
+- [x] Add regression coverage, validate both workflows, and publish the companion update

@@ -30,6 +30,7 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import QuoteClassificationGuide from "@/components/QuoteClassificationGuide";
 import { isServedCounty, normalizeCountyName, SERVICE_AREA_COUNTIES } from "@/lib/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
+import { getCountyParcelPortal } from "@shared/countyParcelPortals";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
@@ -552,6 +553,7 @@ export default function NewQuote() {
   const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation({
     onError: (error) => setParcelIdError(error.message),
   });
+  const selectedCountyPortal = React.useMemo(() => getCountyParcelPortal(form.county), [form.county]);
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
     skipForwardGeocode.current = true;
@@ -589,6 +591,11 @@ export default function NewQuote() {
     if (!form.county.trim()) { setParcelIdError("Enter the property county before looking up a Parcel ID."); return; }
     const validation = validateTennesseeParcelId(form.parcelId);
     if (!validation.valid) { setParcelIdError(validation.error); return; }
+    if (selectedCountyPortal && !selectedCountyPortal.fieldLookupSupported) {
+      setParcelMatches([]);
+      setParcelIdError(`${selectedCountyPortal.county} uses its own official property system. Open the county portal below, then enter or confirm the editable property details in Noland Field.`);
+      return;
+    }
     setParcelIdError(null);
     parcelLookup.mutate({ county: form.county, parcelId: form.parcelId }, {
       onSuccess: (result) => {
@@ -1524,7 +1531,14 @@ export default function NewQuote() {
             {countyDetectionError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.4 }}>{countyDetectionError}</p>}
             <div style={{ marginTop: 10, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 10, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
               <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Tennessee Parcel ID Lookup</label>
-              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID from the Tennessee Property Viewer. Property details remain editable.</p>
+              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID. Tennessee Property Viewer records are used where available; property details remain editable.</p>
+              {selectedCountyPortal && (
+                <div style={{ border: "1px solid oklch(0.65 0.18 50 / 0.45)", borderRadius: 9, padding: "9px 10px", marginBottom: 9, backgroundColor: "oklch(0.65 0.18 50 / 0.08)" }}>
+                  <p style={{ color: "var(--ne-amber)", fontSize: 11, fontWeight: 700, margin: 0 }}>Official {selectedCountyPortal.county} property records</p>
+                  <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "4px 0 0" }}>This county maintains its own property system. Search by {selectedCountyPortal.searchCapabilities.join(", ")}, then enter or confirm the editable property details here. Reference information only; not a legal survey.</p>
+                  <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 7, color: "var(--ne-amber)", fontSize: 11, fontWeight: 700 }}>Open {selectedCountyPortal.shortLabel}</a>
+                </div>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
                 <input
                   value={form.parcelId}
