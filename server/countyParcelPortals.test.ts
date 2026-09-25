@@ -26,33 +26,52 @@ describe("county-maintained parcel portals", () => {
     expect(COUNTY_PARCEL_PORTALS.every((portal) => portal.portalUrl.startsWith("https://"))).toBe(true);
   });
 
-  it("normalizes county selections and preserves the existing Operations Davidson integration", () => {
+  it("normalizes county selections and enables only verified automatic county GIS lookups", () => {
     expect(getCountyParcelPortal("Montgomery")).toMatchObject({
       county: "Montgomery County",
       portalUrl: "https://property.spatialest.com/tn/montgomery#/",
-      operationsLookupSupported: false,
-      fieldLookupSupported: false,
+      operationsLookupSupported: true,
+      fieldLookupSupported: true,
     });
     expect(getCountyParcelPortal("Davidson County")).toMatchObject({
       operationsLookupSupported: true,
+      fieldLookupSupported: true,
+    });
+    expect(getCountyParcelPortal("Rutherford")).toMatchObject({
+      operationsLookupSupported: true,
+      fieldLookupSupported: true,
+    });
+    expect(getCountyParcelPortal("Knox")).toMatchObject({
+      operationsLookupSupported: false,
       fieldLookupSupported: false,
     });
     expect(isStatewideParcelCoverageException("Hickman")).toBe(true);
     expect(isStatewideParcelCoverageException("Cheatham")).toBe(false);
   });
 
-  it("shows the official county portal in both quote workflows and bypasses unsupported automated lookups", () => {
+  it("shows automatic candidate controls only for verified counties and manual portal guidance everywhere else", () => {
     const operationsQuote = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
     const fieldQuote = source("noland-earthworks-mobile/src/pages/NewQuote.tsx");
+    const parcelRouter = source("server/parcelRouter.ts");
+    const fieldRouter = source("server/fieldQuoteRouter.ts");
 
     expect(operationsQuote).toContain("getCountyParcelPortal");
     expect(operationsQuote).toContain("Official {selectedCountyPortal.county} property records");
     expect(operationsQuote).toContain("!selectedCountyPortal.operationsLookupSupported");
     expect(operationsQuote).toContain("Open county portal");
+    expect(operationsQuote).toContain("Find from address");
+    expect(operationsQuote).toContain("parcel.lookupCandidates");
 
     expect(fieldQuote).toContain("getCountyParcelPortal");
     expect(fieldQuote).toContain("Official {selectedCountyPortal.county} property records");
     expect(fieldQuote).toContain("!selectedCountyPortal.fieldLookupSupported");
     expect(fieldQuote).toContain("Open {selectedCountyPortal.shortLabel}");
+    expect(fieldQuote).toContain("Find from address / GPS");
+    expect(fieldQuote).toContain("fieldQuote.lookupParcelCandidates");
+
+    expect(parcelRouter).toContain("lookupCandidates: protectedProcedure");
+    expect(parcelRouter).toContain("lookupCountyGisParcels");
+    expect(fieldRouter).toContain("lookupParcelCandidates: requireAppToken");
+    expect(fieldRouter).toContain("lookupCountyGisParcels");
   });
 });

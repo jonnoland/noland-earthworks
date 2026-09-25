@@ -4156,3 +4156,9 @@
 - [x] Add county-aware official parcel portal links and manual-reference guidance to the Operations quote form
 - [x] Add the same county-aware portal access to the Noland Field quote flow
 - [x] Add regression coverage, validate both workflows, and publish the companion update
+
+## County GIS Parcel Lookup — Sep 2026
+- [x] Add controlled county GIS adapters for automatic Davidson, Montgomery, and Rutherford parcel candidates
+- [x] Add Operations candidate selection and official manual-portal cards for the six manual counties
+- [x] Add the same automatic and manual parcel workflow to Noland Field
+- [x] Add focused coverage, validate full builds, publish Noland Field, and refresh the preview

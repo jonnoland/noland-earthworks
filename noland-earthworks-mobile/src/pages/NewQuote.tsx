@@ -548,9 +548,13 @@ export default function NewQuote() {
     parcelId: string; county: string; address: string | null; city: string | null; zip: string | null;
     owner: string | null; deedAcreage: number | null; lat: number | null; lng: number | null;
     boundaryRings: Array<Array<{ lat: number; lng: number }>> | null; propertyViewerUrl: string | null;
+    source?: string; sourceUpdated?: string; referenceNotice?: string;
   }>>([]);
   const [selectedParcelBoundary, setSelectedParcelBoundary] = useState<Array<Array<{ lat: number; lng: number }>> | null>(null);
   const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation({
+    onError: (error) => setParcelIdError(error.message),
+  });
+  const parcelCandidateLookup = trpc.fieldQuote.lookupParcelCandidates.useMutation({
     onError: (error) => setParcelIdError(error.message),
   });
   const selectedCountyPortal = React.useMemo(() => getCountyParcelPortal(form.county), [form.county]);
@@ -606,6 +610,36 @@ export default function NewQuote() {
         }
         if (result.matches.length === 1) {
           applyParcelMatch(result.matches[0]);
+          return;
+        }
+        setParcelMatches(result.matches);
+      },
+    });
+  };
+
+  const lookupParcelCandidates = () => {
+    if (!selectedCountyPortal?.fieldLookupSupported) {
+      setParcelMatches([]);
+      setParcelIdError("Use the official county portal to confirm a Parcel ID for this county.");
+      return;
+    }
+    const hasAddress = form.address.trim().length >= 5;
+    const hasPoint = typeof form.lat === "number" && Number.isFinite(form.lat) && typeof form.lng === "number" && Number.isFinite(form.lng);
+    if (!hasAddress && !hasPoint) {
+      setParcelIdError("Enter the property address or use GPS before looking up parcel candidates.");
+      return;
+    }
+    setParcelIdError(null);
+    setSelectedParcelReference(null);
+    parcelCandidateLookup.mutate({
+      county: form.county,
+      address: form.address.trim(),
+      ...(hasPoint ? { latitude: form.lat!, longitude: form.lng! } : {}),
+    }, {
+      onSuccess: (result) => {
+        if (result.matches.length === 0) {
+          setParcelMatches([]);
+          setParcelIdError("No county parcel candidate was found. Review the official county portal or enter the Parcel ID directly.");
           return;
         }
         setParcelMatches(result.matches);
@@ -1531,11 +1565,15 @@ export default function NewQuote() {
             {countyDetectionError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.4 }}>{countyDetectionError}</p>}
             <div style={{ marginTop: 10, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 10, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
               <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Tennessee Parcel ID Lookup</label>
-              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID. Tennessee Property Viewer records are used where available; property details remain editable.</p>
+              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Select the property county, then enter the Parcel ID. Davidson, Montgomery, and Rutherford can also return county GIS candidates from the entered address or GPS point. Property details remain editable.</p>
               {selectedCountyPortal && (
                 <div style={{ border: "1px solid oklch(0.65 0.18 50 / 0.45)", borderRadius: 9, padding: "9px 10px", marginBottom: 9, backgroundColor: "oklch(0.65 0.18 50 / 0.08)" }}>
                   <p style={{ color: "var(--ne-amber)", fontSize: 11, fontWeight: 700, margin: 0 }}>Official {selectedCountyPortal.county} property records</p>
-                  <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "4px 0 0" }}>This county maintains its own property system. Search by {selectedCountyPortal.searchCapabilities.join(", ")}, then enter or confirm the editable property details here. Reference information only; not a legal survey.</p>
+                  <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "4px 0 0" }}>
+                    {selectedCountyPortal.fieldLookupSupported
+                      ? "Find from address / GPS uses the verified county GIS to return selectable candidates. Find searches a known Parcel ID. Review the official county record before relying on it."
+                      : `This county maintains its own property system. Search by ${selectedCountyPortal.searchCapabilities.join(", ")}, then enter or confirm the editable property details here. Reference information only; not a legal survey.`}
+                  </p>
                   <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 7, color: "var(--ne-amber)", fontSize: 11, fontWeight: 700 }}>Open {selectedCountyPortal.shortLabel}</a>
                 </div>
               )}
@@ -1558,15 +1596,24 @@ export default function NewQuote() {
                   {parcelLookup.isPending ? "Finding…" : "Find"}
                 </button>
               </div>
+              {selectedCountyPortal?.fieldLookupSupported && (
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <button type="button" onClick={lookupParcelCandidates} disabled={parcelCandidateLookup.isPending} style={{ border: "1px solid var(--ne-amber)", borderRadius: 8, background: parcelCandidateLookup.isPending ? "var(--ne-raised)" : "transparent", color: "var(--ne-amber)", padding: "7px 9px", fontWeight: 700, fontSize: 11, cursor: parcelCandidateLookup.isPending ? "not-allowed" : "pointer" }}>
+                    {parcelCandidateLookup.isPending ? "Searching county GIS…" : "Find from address / GPS"}
+                  </button>
+                  <span style={{ color: "var(--ne-muted)", fontSize: 10, lineHeight: 1.3 }}>Returns a candidate for your confirmation.</span>
+                </div>
+              )}
               {parcelIdError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, margin: "7px 0 0" }}>{parcelIdError}</p>}
               {parcelMatches.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 9 }} aria-live="polite">
                 {parcelMatches.map((match) => <div key={`${match.county}-${match.parcelId}`} style={{ border: "1px solid var(--ne-border)", borderRadius: 8, padding: 9, backgroundColor: "var(--ne-raised)" }}>
                   <p style={{ color: "var(--ne-cream)", fontSize: 12, fontWeight: 700, margin: 0 }}>{match.address || "Address unavailable"}</p>
                   <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>Parcel {match.parcelId} · {match.county}{match.deedAcreage ? ` · ${match.deedAcreage} acres reported` : ""}</p>
+                  {match.source && <p style={{ color: "var(--ne-amber)", fontSize: 10, fontWeight: 700, margin: "4px 0 0" }}>Source: {match.source}</p>}
                   {match.owner && <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>Owner record: {match.owner}</p>}
                   <div style={{ display: "flex", gap: 10, marginTop: 7, alignItems: "center" }}>
                     <button type="button" onClick={() => applyParcelMatch(match)} style={{ border: "none", borderRadius: 7, padding: "6px 9px", backgroundColor: "var(--ne-amber)", color: "var(--ne-amber-ink)", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Use Property</button>
-                    {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" style={{ color: "var(--ne-amber)", fontSize: 11 }}>Open TN Property Viewer</a>}
+                    {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" style={{ color: "var(--ne-amber)", fontSize: 11 }}>Open official property viewer</a>}
                   </div>
                 </div>)}
               </div>}

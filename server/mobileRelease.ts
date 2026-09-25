@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.29",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.29_84452ee9.apk",
+  version: "0.4.31",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.31_af35c787.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.29: Adds official county property portal access for every county excluded from Tennessee Property Viewer. When a selected county uses its own assessment system, the app shows the verified official portal and keeps the quote property fields editable for manual confirmation.",
+  notes: "Noland Field v0.4.31: Completes the county GIS Parcel ID lookup update for Davidson, Montgomery, and Rutherford counties. Address and GPS candidate searches now retain a usable map location from the official parcel boundary when a county response does not include a centroid. Confirm the selected candidate before applying it to the editable quote. Chester, Hamilton, Hickman, Knox, Shelby, and Williamson continue to use their official manual property portals.",
   highlights: [
     "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
@@ -17,6 +17,16 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.31",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.31: Completes the county GIS Parcel ID lookup update for Davidson, Montgomery, and Rutherford counties. Address and GPS candidate searches now retain a usable map location from the official parcel boundary when a county response does not include a centroid. Confirm the selected candidate before applying it to the editable quote. Chester, Hamilton, Hickman, Knox, Shelby, and Williamson continue to use their official manual property portals.",
+    },
+    {
+      version: "0.4.30",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.30: Adds automatic Parcel ID candidate lookup from verified county GIS services for Davidson, Montgomery, and Rutherford counties. Use the entered address or device GPS to find a candidate, confirm it before applying it to the editable quote, and open the official county record when needed. Chester, Hamilton, Hickman, Knox, Shelby, and Williamson continue to use their official manual property portals.",
+    },
     {
       version: "0.4.29",
       title: "Noland Field update",

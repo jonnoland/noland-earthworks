@@ -10,6 +10,7 @@ import {
   NASHVILLE_PARCEL_SOURCE,
   queryNashvilleParcels,
 } from "./nashvilleParcelViewer";
+import { getCountyGisParcelSource, lookupCountyGisParcels } from "./countyGisParcelLookup";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -123,7 +124,61 @@ function mapFeature(feature: ArcGisParcelFeature) {
 
 export const parcelRouter = router({
   /**
-   * Looks up a Tennessee parcel by county and Parcel ID through the Tennessee
+   * Finds candidates from the verified county-published GIS layers for
+   * Davidson, Montgomery, and Rutherford. The owner must select a returned
+   * candidate before the editable quote fields are populated.
+   */
+  lookupCandidates: protectedProcedure
+    .input(z.object({
+      county: z.string().trim().min(2).max(40).regex(/^[A-Za-z .'-]+$/, "Enter a Tennessee county name."),
+      address: z.string().trim().max(200).optional().default(""),
+      latitude: z.number().finite().min(-90).max(90).optional(),
+      longitude: z.number().finite().min(-180).max(180).optional(),
+    }).superRefine((value, ctx) => {
+      const hasAddress = value.address.trim().length >= 5;
+      const hasPoint = value.latitude !== undefined && value.longitude !== undefined;
+      if (!hasAddress && !hasPoint) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a property address or select a map location before looking up a parcel." });
+      }
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Operations access required" });
+      }
+
+      const source = getCountyGisParcelSource(input.county);
+      if (!source) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This county does not have a verified public parcel GIS lookup. Use the official county portal to confirm the Parcel ID.",
+        });
+      }
+
+      try {
+        const matches = await lookupCountyGisParcels({
+          county: input.county,
+          address: input.address,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          resultRecordCount: 6,
+        });
+        return {
+          matches,
+          source: source.source,
+          sourceUpdated: source.sourceUpdated,
+          referenceNotice: `${source.source} data is reference information only, not a legal survey. Select the correct candidate and review the official county record.`,
+        };
+      } catch (error) {
+        console.error("[parcel.lookupCandidates] county GIS lookup failed", error);
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "The county parcel GIS is unavailable right now. Open the official county portal to confirm the Parcel ID.",
+        });
+      }
+    }),
+
+  /**
+  * Looks up a Tennessee parcel by county and Parcel ID through the Tennessee
    * Comptroller’s public Property Boundaries service. The returned property
    * fields are reference information only and remain editable in the quote.
    */
@@ -143,6 +198,22 @@ export const parcelRouter = router({
       }
 
       try {
+        const countyGisSource = getCountyGisParcelSource(input.county);
+        if (countyGisSource && !isDavidsonCounty(input.county)) {
+          const matches = await lookupCountyGisParcels({
+            county: input.county,
+            parcelId: input.parcelId,
+            resultRecordCount: 6,
+          });
+          return {
+            matches,
+            normalizedParcelId: parcelValidation.normalized,
+            source: countyGisSource.source,
+            sourceUpdated: countyGisSource.sourceUpdated,
+            referenceNotice: `${countyGisSource.source} parcel information is reference information only, not a legal survey. Review the official county record before relying on it.`,
+          };
+        }
+
         if (isDavidsonCounty(input.county)) {
           try {
             let features = await queryNashvilleParcels({
@@ -214,6 +285,28 @@ export const parcelRouter = router({
       }
 
       try {
+        const countyGisSource = getCountyGisParcelSource(input.county);
+        if (countyGisSource && !isDavidsonCounty(input.county)) {
+          const match = (await lookupCountyGisParcels({
+            county: input.county,
+            parcelId: input.parcelId,
+            includeGeometry: true,
+            resultRecordCount: 1,
+          }))[0];
+          if (!match) {
+            throw new TRPCError({ code: "NOT_FOUND", message: `No mapped Parcel ID boundary was found for ${countyGisSource.county}.` });
+          }
+          if (!match.boundaryRings) {
+            throw new TRPCError({ code: "NOT_FOUND", message: `This ${countyGisSource.county} Parcel ID does not include a usable boundary outline.` });
+          }
+          return {
+            ...match,
+            boundaryRings: match.boundaryRings,
+            source: countyGisSource.source,
+            referenceNotice: `${countyGisSource.source} boundaries are reference information only, not a legal survey. Verify the official county record before relying on them.`,
+          };
+        }
+
         if (isDavidsonCounty(input.county)) {
           try {
             let features = await queryNashvilleParcels({

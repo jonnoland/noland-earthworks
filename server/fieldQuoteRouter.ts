@@ -24,6 +24,7 @@ import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { buildTennesseeParcelSearchPattern, parseTennesseeCountyMapParcel, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { getCountyGisParcelSource, lookupCountyGisParcels } from "./countyGisParcelLookup";
 import { getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
 import { formatQuoteCents, roundQuoteCentsUp } from "../shared/quoteMoney";
@@ -525,6 +526,53 @@ export const fieldQuoteRouter = router({
       return updated;
     }),
 
+  /** Finds candidate parcels from verified county-published GIS services. */
+  lookupParcelCandidates: requireAppToken
+    .input(z.object({
+      county: z.string().trim().min(2).max(40).regex(/^[A-Za-z .'-]+$/, "Enter a Tennessee county name."),
+      address: z.string().trim().max(200).optional().default(""),
+      latitude: z.number().finite().min(-90).max(90).optional(),
+      longitude: z.number().finite().min(-180).max(180).optional(),
+    }).superRefine((value, ctx) => {
+      const hasAddress = value.address.trim().length >= 5;
+      const hasPoint = value.latitude !== undefined && value.longitude !== undefined;
+      if (!hasAddress && !hasPoint) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter an address or select a map location before looking up a parcel." });
+      }
+    }))
+    .mutation(async ({ input }) => {
+      const source = getCountyGisParcelSource(input.county);
+      if (!source) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This county requires the official county portal for Parcel ID confirmation.",
+        });
+      }
+
+      try {
+        const matches = await lookupCountyGisParcels({
+          county: input.county,
+          address: input.address,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          includeGeometry: true,
+          resultRecordCount: 6,
+        });
+        return {
+          matches,
+          source: source.source,
+          sourceUpdated: source.sourceUpdated,
+          referenceNotice: `${source.source} data is reference information only, not a legal survey. Select the correct candidate and review the official county record.`,
+        };
+      } catch (error) {
+        console.error("[fieldQuote.lookupParcelCandidates] county GIS lookup failed", error);
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "The county parcel GIS is unavailable right now. Open the official county portal to confirm the Parcel ID.",
+        });
+      }
+    }),
+
   /** Lookup a parcel for the signed-in Noland Field app user. */
   lookupParcel: requireAppToken
     .input(z.object({
@@ -538,6 +586,17 @@ export const fieldQuoteRouter = router({
       }
 
       try {
+        const countyGisSource = getCountyGisParcelSource(input.county);
+        if (countyGisSource) {
+          const matches = await lookupCountyGisParcels({
+            county: input.county,
+            parcelId: input.parcelId,
+            includeGeometry: true,
+            resultRecordCount: 6,
+          });
+          return { matches, normalizedParcelId: parcelValidation.normalized, source: countyGisSource.source };
+        }
+
         const countyMapParcelWhere = buildFieldCountyMapParcelWhere(input.county, input.parcelId);
         const params = new URLSearchParams({
           where: countyMapParcelWhere ?? buildFieldParcelWhere(input.county, input.parcelId),

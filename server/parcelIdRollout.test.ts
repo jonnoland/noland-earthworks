@@ -30,6 +30,6 @@ describe("Tennessee Parcel ID lookup rollout", () => {
     expect(publicQuote).toContain("owner and mailing details are not shown or copied");
     expect(publicQuote).toContain("Open Tennessee Property Viewer");
     expect(fieldQuote).toContain("Tennessee Parcel ID Lookup");
-    expect(fieldQuote).toContain("Open TN Property Viewer");
+    expect(fieldQuote).toContain("Open official property viewer");
   });
 });

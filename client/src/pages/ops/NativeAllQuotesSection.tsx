@@ -667,12 +667,18 @@ function QuoteFormModal({
     deedAcreage: number | null;
     propertyViewerUrl: string | null;
     assessmentDataUrl: string | null;
+    source?: string;
+    sourceUpdated?: string;
+    referenceNotice?: string;
   }>>([]);
   const [selectedParcel, setSelectedParcel] = useState<typeof parcelMatches[number] | null>(null);
   const siteVisitCostEstimate = selectedParcel?.deedAcreage
     ? estimateInternalSiteVisitCost(selectedParcel.deedAcreage)
     : null;
   const parcelLookupMutation = trpc.parcel.lookup.useMutation({
+    onError: (error) => toast.error(error.message),
+  });
+  const parcelCandidateLookupMutation = trpc.parcel.lookupCandidates.useMutation({
     onError: (error) => toast.error(error.message),
   });
   const uploadAttachmentMutation = trpc.nativeQuotes.uploadAttachment.useMutation();
@@ -812,9 +818,9 @@ function QuoteFormModal({
   };
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
-    const parcelSourceLabel = isNashvilleParcelViewerUrl(match.propertyViewerUrl)
+    const parcelSourceLabel = match.source ?? (isNashvilleParcelViewerUrl(match.propertyViewerUrl)
       ? "Nashville Parcel Viewer"
-      : "TN Property Viewer";
+      : "TN Property Viewer");
     const reportedAcreage = match.deedAcreage
       ? String(Math.round(match.deedAcreage * 100) / 100)
       : null;
@@ -836,6 +842,30 @@ function QuoteFormModal({
     setSelectedParcel(match);
     setParcelMatches([]);
     toast.success(reportedAcreage ? "Parcel details and reported acreage copied into the editable quote fields." : "Parcel details copied into the editable quote fields.");
+  };
+
+  const lookupParcelCandidates = () => {
+    if (!selectedCountyPortal?.operationsLookupSupported) {
+      toast.error("Use the official county portal to confirm a Parcel ID for this county.");
+      return;
+    }
+    if (form.propertyAddress.trim().length < 5) {
+      toast.error("Enter the property address before looking up parcel candidates.");
+      return;
+    }
+    setParcelIdError(null);
+    setSelectedParcel(null);
+    parcelCandidateLookupMutation.mutate({ county: parcelCounty, address: form.propertyAddress }, {
+      onSuccess: (result) => {
+        if (result.matches.length === 0) {
+          setParcelMatches([]);
+          toast.message("No county parcel candidate was found for that address. Review the official county portal or enter the Parcel ID directly.");
+          return;
+        }
+        setParcelMatches(result.matches);
+        toast.message(result.matches.length === 1 ? "A county parcel candidate was found. Confirm it below before applying it." : `Found ${result.matches.length} county parcel candidates. Select the correct property below.`);
+      },
+    });
   };
 
   const lookupParcel = () => {
@@ -1583,7 +1613,7 @@ function QuoteFormModal({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label className="text-sky-200 text-xs font-semibold">Tennessee Parcel ID Lookup</Label>
-                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. Davidson County uses Metro Nashville records; covered counties use Tennessee Property Viewer. Address and acreage remain editable.</p>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. Davidson, Montgomery, and Rutherford can also return county GIS candidates from the entered address. Address and acreage remain editable.</p>
                 </div>
                 <MapPin className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
               </div>
@@ -1620,6 +1650,15 @@ function QuoteFormModal({
                   {parcelLookupMutation.isPending ? "Looking up" : "Find Property"}
                 </Button>
               </div>
+              {selectedCountyPortal?.operationsLookupSupported && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={lookupParcelCandidates} disabled={parcelCandidateLookupMutation.isPending} className="border-sky-500/50 text-sky-200 hover:bg-sky-500/10">
+                    {parcelCandidateLookupMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <MapPin className="mr-1.5 h-3.5 w-3.5" />}
+                    {parcelCandidateLookupMutation.isPending ? "Searching county GIS" : "Find from address"}
+                  </Button>
+                  <span className="text-[10px] text-zinc-500">Returns a candidate for your confirmation. It does not replace the county record.</span>
+                </div>
+              )}
               {parcelIdError && <p id="parcel-id-format-error" role="alert" className="mt-1.5 text-[11px] text-red-300">{parcelIdError}</p>}
               {selectedCountyPortal && (
                 <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded border border-amber-400/30 bg-amber-400/[0.07] p-2.5 text-xs">
@@ -1627,7 +1666,7 @@ function QuoteFormModal({
                     <p className="font-semibold text-amber-200">Official {selectedCountyPortal.county} property records</p>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-300">
                       {selectedCountyPortal.operationsLookupSupported
-                        ? "Find Property can use the integrated county record. The official county portal is also available for record review."
+                        ? "Find from address uses the verified county GIS to return selectable parcel candidates. Find Property searches a known Parcel ID. The official county portal remains available for record review."
                         : "Tennessee Property Viewer does not cover this county. Use the official county portal, then enter or confirm the editable property details here."}
                     </p>
                     <p className="mt-1 text-[10px] text-zinc-400">Search by: {selectedCountyPortal.searchCapabilities.join(" · ")}. Reference information only; not a legal survey.</p>
@@ -1648,7 +1687,7 @@ function QuoteFormModal({
                         <div>
                           <p className="font-semibold text-zinc-100">{match.address || "Address unavailable"}</p>
                           <p className="mt-0.5 text-zinc-400">Parcel {match.parcelId} · {match.county}{match.deedAcreage ? ` · ${match.deedAcreage.toLocaleString()} acres reported` : ""}</p>
-                          <p className="mt-1 text-[10px] font-medium text-sky-300">{isNashvilleParcelViewerUrl(match.propertyViewerUrl) ? "Source: Nashville Parcel Viewer (Metro Nashville)" : "Source: Tennessee Property Viewer"}</p>
+                          <p className="mt-1 text-[10px] font-medium text-sky-300">Source: {match.source ?? (isNashvilleParcelViewerUrl(match.propertyViewerUrl) ? "Nashville Parcel Viewer (Metro Nashville)" : "Tennessee Property Viewer")}</p>
                           {match.owner && <p className="mt-0.5 text-zinc-500">Owner record: {match.owner}</p>}
                         </div>
                         <div className="flex items-center gap-1.5">
