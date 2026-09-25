@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.31",
-  downloadUrl: "/manus-storage/Noland-Field-v0.4.31_af35c787.apk",
+  version: "0.4.32",
+  downloadUrl: "/manus-storage/Noland-Field-v0.4.32_29c6dc28.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Noland Field v0.4.31: Completes the county GIS Parcel ID lookup update for Davidson, Montgomery, and Rutherford counties. Address and GPS candidate searches now retain a usable map location from the official parcel boundary when a county response does not include a centroid. Confirm the selected candidate before applying it to the editable quote. Chester, Hamilton, Hickman, Knox, Shelby, and Williamson continue to use their official manual property portals.",
+  notes: "Noland Field v0.4.32: Adds a one-click Copy address button beside each official manual county property portal. For Chester, Hamilton, Hickman, Knox, Shelby, and Williamson, copy the entered property address, open the official portal, and paste it into the county search. The action includes a device-compatible clipboard fallback.",
   highlights: [
     "Measure Work Area lets you draw the actual job boundary on the satellite map, calculate acreage, and deliberately apply that value to the quote.",
     "Jobs now list every scheduled work date from Operations, including nonconsecutive planned work days.",
@@ -17,6 +17,11 @@ export const NOLAND_FIELD_LATEST_RELEASE = {
     "A reconnect Sync Now control refreshes the saved Operations pricing snapshot and its timestamp.",
   ],
   history: [
+    {
+      version: "0.4.32",
+      title: "Noland Field update",
+      notes: "Noland Field v0.4.32: Adds a one-click Copy address button beside each official manual county property portal. For Chester, Hamilton, Hickman, Knox, Shelby, and Williamson, copy the entered property address, open the official portal, and paste it into the county search. The action includes a device-compatible clipboard fallback.",
+    },
     {
       version: "0.4.31",
       title: "Noland Field update",

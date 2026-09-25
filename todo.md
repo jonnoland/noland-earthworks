@@ -4162,3 +4162,8 @@
 - [x] Add Operations candidate selection and official manual-portal cards for the six manual counties
 - [x] Add the same automatic and manual parcel workflow to Noland Field
 - [x] Add focused coverage, validate full builds, publish Noland Field, and refresh the preview
+
+## Manual County Portal Address Copy — Sep 2026
+- [x] Add one-click property-address copy beside the six manual county portal links in Operations Quotes
+- [x] Add the same property-address copy action in Noland Field
+- [x] Add coverage, validate both workflows, publish the companion update, and refresh the preview

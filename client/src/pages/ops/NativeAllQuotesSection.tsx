@@ -397,6 +397,24 @@ function positiveDurationError(value: string | undefined) {
     : "Enter a positive number of working days.";
 }
 
+async function copyTextToClipboard(value: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    if (!copied) throw new Error("Clipboard access was unavailable");
+  }
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -866,6 +884,20 @@ function QuoteFormModal({
         toast.message(result.matches.length === 1 ? "A county parcel candidate was found. Confirm it below before applying it." : `Found ${result.matches.length} county parcel candidates. Select the correct property below.`);
       },
     });
+  };
+
+  const copyManualPortalAddress = async () => {
+    const address = form.propertyAddress.trim();
+    if (!address) {
+      toast.error("Enter the property address before opening the county portal.");
+      return;
+    }
+    try {
+      await copyTextToClipboard(address);
+      toast.success("Property address copied. Paste it into the county property search.");
+    } catch {
+      toast.error("Clipboard access is unavailable. Select and copy the property address manually.");
+    }
   };
 
   const lookupParcel = () => {
@@ -1671,9 +1703,16 @@ function QuoteFormModal({
                     </p>
                     <p className="mt-1 text-[10px] text-zinc-400">Search by: {selectedCountyPortal.searchCapabilities.join(" · ")}. Reference information only; not a legal survey.</p>
                   </div>
-                  <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center rounded border border-amber-400/50 px-2.5 text-amber-200 hover:bg-amber-400/10">
-                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open county portal
-                  </a>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                    {!selectedCountyPortal.operationsLookupSupported && (
+                      <Button type="button" variant="outline" size="sm" onClick={copyManualPortalAddress} className="h-8 border-amber-400/50 px-2.5 text-xs text-amber-200 hover:bg-amber-400/10">
+                        <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy address
+                      </Button>
+                    )}
+                    <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded border border-amber-400/50 px-2.5 text-amber-200 hover:bg-amber-400/10">
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open county portal
+                    </a>
+                  </div>
                 </div>
               )}
               <datalist id="service-area-county-options">

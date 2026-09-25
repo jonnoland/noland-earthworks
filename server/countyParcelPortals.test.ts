@@ -61,6 +61,9 @@ describe("county-maintained parcel portals", () => {
     expect(operationsQuote).toContain("Open county portal");
     expect(operationsQuote).toContain("Find from address");
     expect(operationsQuote).toContain("parcel.lookupCandidates");
+    expect(operationsQuote).toContain("copyManualPortalAddress");
+    expect(operationsQuote).toContain("Copy address");
+    expect(operationsQuote).toContain("navigator.clipboard.writeText");
 
     expect(fieldQuote).toContain("getCountyParcelPortal");
     expect(fieldQuote).toContain("Official {selectedCountyPortal.county} property records");
@@ -68,6 +71,9 @@ describe("county-maintained parcel portals", () => {
     expect(fieldQuote).toContain("Open {selectedCountyPortal.shortLabel}");
     expect(fieldQuote).toContain("Find from address / GPS");
     expect(fieldQuote).toContain("fieldQuote.lookupParcelCandidates");
+    expect(fieldQuote).toContain("copyManualPortalAddress");
+    expect(fieldQuote).toContain("Copy address");
+    expect(fieldQuote).toContain("navigator.clipboard.writeText");
 
     expect(parcelRouter).toContain("lookupCandidates: protectedProcedure");
     expect(parcelRouter).toContain("lookupCountyGisParcels");

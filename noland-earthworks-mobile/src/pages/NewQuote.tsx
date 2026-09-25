@@ -17,6 +17,7 @@ import {
   CheckCircle,
   CloudOff,
   CloudCheck,
+  Copy,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { AppLauncher } from "@capacitor/app-launcher";
@@ -645,6 +646,33 @@ export default function NewQuote() {
         setParcelMatches(result.matches);
       },
     });
+  };
+
+  const copyManualPortalAddress = async () => {
+    const address = form.address.trim();
+    if (!address) {
+      setParcelIdError("Enter the property address before opening the county portal.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(address);
+    } catch {
+      const input = document.createElement("textarea");
+      input.value = address;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand("copy");
+      input.remove();
+      if (!copied) {
+        setParcelIdError("Clipboard access is unavailable. Select and copy the property address manually.");
+        return;
+      }
+    }
+    setParcelIdError(null);
+    setCountyDetectionMessage("Property address copied. Paste it into the county property search.");
   };
 
   React.useEffect(() => {
@@ -1574,7 +1602,14 @@ export default function NewQuote() {
                       ? "Find from address / GPS uses the verified county GIS to return selectable candidates. Find searches a known Parcel ID. Review the official county record before relying on it."
                       : `This county maintains its own property system. Search by ${selectedCountyPortal.searchCapabilities.join(", ")}, then enter or confirm the editable property details here. Reference information only; not a legal survey.`}
                   </p>
-                  <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 7, color: "var(--ne-amber)", fontSize: 11, fontWeight: 700 }}>Open {selectedCountyPortal.shortLabel}</a>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 8 }}>
+                    {!selectedCountyPortal.fieldLookupSupported && (
+                      <button type="button" onClick={copyManualPortalAddress} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid oklch(0.65 0.18 50 / 0.7)", borderRadius: 7, background: "transparent", color: "var(--ne-amber)", padding: "6px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        <Copy size={13} /> Copy address
+                      </button>
+                    )}
+                    <a href={selectedCountyPortal.portalUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", color: "var(--ne-amber)", fontSize: 11, fontWeight: 700 }}>Open {selectedCountyPortal.shortLabel}</a>
+                  </div>
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
