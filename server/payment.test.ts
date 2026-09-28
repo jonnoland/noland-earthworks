@@ -7,6 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = vi.hoisted(() => ({
   lastCheckoutParams: null as Record<string, unknown> | null,
+  retrievedCheckout: { payment_status: "unpaid", status: "open" },
+  expiredCheckoutId: null as string | null,
 }));
 
 // ─── Mock ENV before importing stripe.ts ─────────────────────────────────────
@@ -41,6 +43,11 @@ vi.mock("stripe", () => {
             payment_intent: "pi_test_invoice123",
           };
         }),
+        retrieve: vi.fn().mockImplementation(async () => state.retrievedCheckout),
+        expire: vi.fn().mockImplementation(async (sessionId: string) => {
+          state.expiredCheckoutId = sessionId;
+          return { id: sessionId, status: "expired" };
+        }),
       },
     },
   }));
@@ -52,6 +59,8 @@ vi.mock("stripe", () => {
 describe("stripe helpers", () => {
   beforeEach(() => {
     state.lastCheckoutParams = null;
+    state.retrievedCheckout = { payment_status: "unpaid", status: "open" };
+    state.expiredCheckoutId = null;
   });
 
   it("isStripeConfigured returns true when key is set", async () => {
@@ -100,6 +109,26 @@ describe("stripe helpers", () => {
       native_job_id: "7",
       payment_type: "invoice_balance",
     });
+  });
+
+  it("expires the previous open invoice checkout before a resend", async () => {
+    const { expireInvoiceCheckoutSession } = await import("./stripe");
+    await expireInvoiceCheckoutSession("cs_old_invoice");
+    expect(state.expiredCheckoutId).toBe("cs_old_invoice");
+  });
+
+  it("refuses to replace an invoice checkout Stripe already reports as paid", async () => {
+    state.retrievedCheckout = { payment_status: "paid", status: "complete" };
+    const { expireInvoiceCheckoutSession } = await import("./stripe");
+    await expect(expireInvoiceCheckoutSession("cs_paid_invoice")).rejects.toThrow("already reports this invoice checkout as paid");
+    expect(state.expiredCheckoutId).toBeNull();
+  });
+
+  it("refuses to resend while an ACH payment is awaiting settlement", async () => {
+    state.retrievedCheckout = { payment_status: "unpaid", status: "complete" };
+    const { expireInvoiceCheckoutSession } = await import("./stripe");
+    await expect(expireInvoiceCheckoutSession("cs_pending_ach")).rejects.toThrow("awaiting Stripe confirmation");
+    expect(state.expiredCheckoutId).toBeNull();
   });
 });
 

@@ -4167,3 +4167,11 @@
 - [x] Add one-click property-address copy beside the six manual county portal links in Operations Quotes
 - [x] Add the same property-address copy action in Noland Field
 - [x] Add coverage, validate both workflows, publish the companion update, and refresh the preview
+
+## ACH Settlement Verification and Invoice Resend — September 27, 2026
+
+- [x] Verify `checkout.session.async_payment_succeeded` marks the native invoice paid and updates the linked job payment record.
+- [x] Add an owner-only resend procedure for unpaid/sent invoices that creates a card/ACH checkout link for older invoices when needed.
+- [x] Regenerate the hosted invoice with the current payment link before resending it.
+- [x] Add a Resend Invoice control with clear success/error feedback in Operations.
+- [x] Run focused tests, strict TypeScript, full regression tests, production build, restart, and checkpoint.

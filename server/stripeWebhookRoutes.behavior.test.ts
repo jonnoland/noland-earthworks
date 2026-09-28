@@ -9,8 +9,19 @@ const state = vi.hoisted(() => ({
   ledgerStatus: null as string | null,
   failPaymentUpdate: false,
   notifyOwner: vi.fn().mockResolvedValue(undefined),
+  nativeInvoice: null as null | {
+    id: number;
+    jobId: number;
+    totalCents: number;
+    status: string;
+    stripePaymentIntentId: string | null;
+  },
+  invoiceUpdate: null as Record<string, unknown> | null,
+  jobUpdate: null as Record<string, unknown> | null,
   paymentsTable: { stripeSessionId: "stripeSessionId" },
   nativeQuotesTable: { id: "id" },
+  nativeInvoicesTable: { id: "id" },
+  nativeJobsTable: { id: "id" },
   webhookEventsTable: { eventId: "eventId", status: "status", attempts: "attempts" },
 }));
 
@@ -27,14 +38,19 @@ vi.mock("drizzle-orm", () => ({
 vi.mock("../drizzle/schema", () => ({
   payments: state.paymentsTable,
   nativeQuotes: state.nativeQuotesTable,
+  nativeInvoices: state.nativeInvoicesTable,
+  nativeJobs: state.nativeJobsTable,
   stripeWebhookEvents: state.webhookEventsTable,
 }));
 vi.mock("./db", () => ({
   getDb: async () => ({
     select: () => ({
-      from: () => ({
+      from: (table: unknown) => ({
         where: () => ({
-          limit: async () => state.existingStatus ? [{ status: state.existingStatus }] : [],
+          limit: async () => {
+            if (table === state.nativeInvoicesTable) return state.nativeInvoice ? [state.nativeInvoice] : [];
+            return state.existingStatus ? [{ status: state.existingStatus }] : [];
+          },
         }),
       }),
     }),
@@ -48,6 +64,8 @@ vi.mock("./db", () => ({
         where: async () => {
           if (table === state.paymentsTable && state.failPaymentUpdate) throw new Error("payment update failed");
           if (table === state.webhookEventsTable) state.ledgerStatus = String(values.status ?? state.ledgerStatus);
+          if (table === state.nativeInvoicesTable) state.invoiceUpdate = values;
+          if (table === state.nativeJobsTable) state.jobUpdate = values;
         },
       }),
     }),
@@ -61,6 +79,36 @@ function checkoutEvent(id: string) {
     id,
     type: "checkout.session.completed",
     data: { object: { id: "cs_test_123", metadata: {}, amount_total: 5000 } },
+  };
+}
+
+function asyncInvoiceSucceededEvent(id: string) {
+  return {
+    id,
+    type: "checkout.session.async_payment_succeeded",
+    data: {
+      object: {
+        id: "cs_ach_invoice_42",
+        payment_intent: "pi_ach_invoice_42",
+        payment_status: "paid",
+        metadata: { native_invoice_id: "42", native_job_id: "7", payment_type: "invoice_balance" },
+      },
+    },
+  };
+}
+
+function asyncInvoiceFailedEvent(id: string) {
+  return {
+    id,
+    type: "checkout.session.async_payment_failed",
+    data: {
+      object: {
+        id: "cs_failed_ach_invoice_42",
+        payment_intent: "pi_failed_ach_invoice_42",
+        payment_status: "unpaid",
+        metadata: { native_invoice_id: "42", native_job_id: "7", payment_type: "invoice_balance" },
+      },
+    },
   };
 }
 
@@ -88,6 +136,9 @@ describe("Stripe webhook behavior", () => {
     state.existingStatus = undefined;
     state.ledgerStatus = null;
     state.failPaymentUpdate = false;
+    state.nativeInvoice = null;
+    state.invoiceUpdate = null;
+    state.jobUpdate = null;
     state.notifyOwner.mockClear();
   });
 
@@ -111,5 +162,39 @@ describe("Stripe webhook behavior", () => {
     await expect(response.json()).resolves.toEqual({ error: "Internal webhook processing failed; retry requested" });
     expect(state.ledgerStatus).toBe("failed");
     expect(state.notifyOwner).toHaveBeenCalledOnce();
+  });
+
+  it("marks the invoice and linked job paid after delayed ACH settlement succeeds", async () => {
+    state.event = asyncInvoiceSucceededEvent("evt_live_ach_42");
+    state.nativeInvoice = {
+      id: 42,
+      jobId: 7,
+      totalCents: 125000,
+      status: "sent",
+      stripePaymentIntentId: null,
+    };
+
+    const response = await dispatchWebhook();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ received: true });
+    expect(state.invoiceUpdate).toMatchObject({ status: "paid", stripePaymentIntentId: "pi_ach_invoice_42" });
+    expect(state.invoiceUpdate?.paidAt).toBeInstanceOf(Date);
+    expect(state.jobUpdate).toMatchObject({ paidCents: 125000 });
+    expect(state.jobUpdate?.paidAt).toBeInstanceOf(Date);
+    expect(state.ledgerStatus).toBe("processed");
+  });
+
+  it("keeps a failed ACH invoice unpaid and clears its stale checkout so it can be resent", async () => {
+    state.event = asyncInvoiceFailedEvent("evt_live_ach_failed_42");
+
+    const response = await dispatchWebhook();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ received: true });
+    expect(state.invoiceUpdate).toEqual({ stripePaymentLinkUrl: null, stripeCheckoutSessionId: null });
+    expect(state.jobUpdate).toBeNull();
+    expect(state.notifyOwner).toHaveBeenCalledWith(expect.objectContaining({ title: "ACH invoice payment failed" }));
+    expect(state.ledgerStatus).toBe("processed");
   });
 });

@@ -19,7 +19,7 @@ import { eq, desc, like, or, and, inArray } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
-import { createInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
+import { createInvoiceCheckoutSession, expireInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -478,6 +478,142 @@ export const nativeJobsRouter = router({
         .where(input.jobId ? eq(nativeInvoices.jobId, input.jobId) : undefined)
         .orderBy(desc(nativeInvoices.createdAt));
       return rows;
+    }),
+
+  /**
+   * Resend an existing unpaid invoice. A fresh Stripe Checkout Session is
+   * created so legacy invoices and expired links receive current card + ACH
+   * payment options. Any prior open session is expired first to prevent an
+   * accidental duplicate payment.
+   */
+  resendInvoice: ownerProcedure
+    .input(z.object({ invoiceId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [invoice] = await db.select().from(nativeInvoices).where(eq(nativeInvoices.id, input.invoiceId)).limit(1);
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status === "paid") {
+        throw new TRPCError({ code: "CONFLICT", message: "This invoice is already marked paid and cannot be resent." });
+      }
+      if (invoice.status === "void") {
+        throw new TRPCError({ code: "CONFLICT", message: "Void invoices cannot be resent." });
+      }
+      if (!invoice.clientEmail) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Add a customer email address before resending this invoice." });
+      }
+      if (!ENV.resendApiKey) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Invoice email delivery is not configured." });
+      }
+
+      const [job] = await db.select().from(nativeJobs).where(eq(nativeJobs.id, invoice.jobId)).limit(1);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "The job linked to this invoice was not found." });
+
+      const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
+      const lineItems: InvoiceParams["lineItems"] = JSON.parse(invoice.lineItems || "[]");
+      let paymentLinkUrl = invoice.stripePaymentLinkUrl;
+      let stripeCheckoutSessionId = invoice.stripeCheckoutSessionId;
+      let stripePaymentIntentId = invoice.stripePaymentIntentId;
+
+      if (invoice.totalCents > 0) {
+        if (!isStripeConfigured()) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe is not configured, so a card and ACH payment link cannot be created." });
+        }
+        if (stripeCheckoutSessionId) {
+          try {
+            await expireInvoiceCheckoutSession(stripeCheckoutSessionId);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "The previous Stripe checkout could not be verified.";
+            throw new TRPCError({ code: "CONFLICT", message });
+          }
+        }
+
+        const checkout = await createInvoiceCheckoutSession({
+          invoiceId: invoice.id,
+          jobId: invoice.jobId,
+          invoiceNumber,
+          amountCents: invoice.totalCents,
+          customerEmail: invoice.clientEmail,
+          customerName: invoice.clientName,
+          successUrl: `https://nolandearthworks.com/?payment=success&invoice=${invoice.id}`,
+          cancelUrl: `https://nolandearthworks.com/?payment=cancelled&invoice=${invoice.id}`,
+        });
+        paymentLinkUrl = checkout.url;
+        stripeCheckoutSessionId = checkout.sessionId;
+        stripePaymentIntentId = checkout.paymentIntentId;
+      }
+
+      const invoiceHtml = buildInvoiceHtml({
+        invoiceNumber,
+        job,
+        lineItems,
+        subtotalCents: invoice.subtotalCents,
+        depositPaidCents: invoice.depositPaidCents,
+        totalCents: invoice.totalCents,
+        paymentLinkUrl,
+        notes: invoice.notes ?? undefined,
+        dueDate: invoice.dueDate ?? undefined,
+      });
+      const { url: pdfUrl } = await storagePut(
+        `invoices/${invoice.jobId}-${Date.now()}-resent.html`,
+        Buffer.from(invoiceHtml, "utf8"),
+        "text/html"
+      );
+      await db.update(nativeInvoices).set({
+        pdfUrl,
+        stripePaymentLinkUrl: paymentLinkUrl,
+        stripeCheckoutSessionId,
+        stripePaymentIntentId,
+      }).where(eq(nativeInvoices.id, invoice.id));
+
+      const emailHtml = buildInvoiceEmailHtml({
+        invoiceNumber,
+        job,
+        lineItems,
+        subtotalCents: invoice.subtotalCents,
+        depositPaidCents: invoice.depositPaidCents,
+        totalCents: invoice.totalCents,
+        pdfUrl,
+        paymentLinkUrl,
+        notes: invoice.notes ?? undefined,
+        dueDate: invoice.dueDate ?? undefined,
+      });
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ENV.resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Noland Earthworks <quotes@nolandearthworks.com>",
+          to: invoice.clientEmail,
+          subject: `Invoice ${invoiceNumber} — Noland Earthworks`,
+          html: emailHtml,
+        }),
+      });
+      const resData = await res.json() as { id?: string; message?: string };
+      if (!res.ok || !resData.id) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: resData.message || "The email provider did not accept the invoice resend.",
+        });
+      }
+
+      const emailSentAt = new Date();
+      await db.update(nativeInvoices).set({
+        status: "sent",
+        emailSentId: resData.id,
+        emailSentAt,
+      }).where(eq(nativeInvoices.id, invoice.id));
+
+      return {
+        success: true,
+        invoiceId: invoice.id,
+        clientEmail: invoice.clientEmail,
+        paymentLinkUrl,
+        emailSentAt,
+      };
     }),
 
   /**

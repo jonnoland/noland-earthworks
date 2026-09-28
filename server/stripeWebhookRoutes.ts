@@ -227,8 +227,15 @@ async function handleInvoicePaymentSucceeded(session: Stripe.Checkout.Session): 
 }
 
 async function handleInvoicePaymentFailed(session: Stripe.Checkout.Session): Promise<void> {
-  const invoiceId = session.metadata?.native_invoice_id;
-  if (!invoiceId) return;
+  const invoiceId = session.metadata?.native_invoice_id
+    ? parseInt(session.metadata.native_invoice_id, 10)
+    : null;
+  if (!invoiceId || isNaN(invoiceId)) return;
+  const db = await getRequiredDb();
+  await db.update(nativeInvoices).set({
+    stripePaymentLinkUrl: null,
+    stripeCheckoutSessionId: null,
+  }).where(eq(nativeInvoices.id, invoiceId));
   await notifyOwner({
     title: "ACH invoice payment failed",
     content: `Stripe reported a failed payment for native invoice #${invoiceId}. The invoice remains unpaid; contact the customer if needed.`,

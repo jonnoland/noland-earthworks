@@ -119,6 +119,7 @@ export default function NativeInvoicesSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [markPaidId, setMarkPaidId] = useState<number | null>(null);
+  const [resendId, setResendId] = useState<number | null>(null);
 
   // Fetch all invoices (no jobId filter = all)
   const { data: allInvoices = [], isLoading } = trpc.nativeJobs.listInvoices.useQuery({});
@@ -129,6 +130,15 @@ export default function NativeInvoicesSection() {
       utils.nativeJobs.list.invalidate();
       toast.success("Invoice marked as paid");
       setMarkPaidId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const resendMutation = trpc.nativeJobs.resendInvoice.useMutation({
+    onSuccess: (result) => {
+      utils.nativeJobs.listInvoices.invalidate();
+      toast.success(`Invoice resent to ${result.clientEmail} with a fresh card / ACH payment link`);
+      setResendId(null);
     },
     onError: (e) => toast.error(e.message),
   });
@@ -157,6 +167,7 @@ export default function NativeInvoicesSection() {
   const countUnpaid = allInvoices.filter((i) => i.status === "unpaid" || i.status === "sent").length;
 
   const invoiceToMarkPaid = allInvoices.find((i) => i.id === markPaidId);
+  const invoiceToResend = allInvoices.find((i) => i.id === resendId);
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: 500 }}>
@@ -337,6 +348,18 @@ export default function NativeInvoicesSection() {
                           </Button>
                         </>
                       )}
+                      {(inv.status === "unpaid" || inv.status === "sent") && inv.clientEmail && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setResendId(inv.id)}
+                          disabled={resendMutation.isPending}
+                          className="h-7 px-2 text-blue-400 hover:text-blue-300 text-xs"
+                          title="Resend invoice with a fresh card / ACH payment link"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       {(inv.status === "unpaid" || inv.status === "sent") && (
                         <Button
                           variant="ghost"
@@ -381,6 +404,35 @@ export default function NativeInvoicesSection() {
               className="bg-green-700 hover:bg-green-600 text-white"
             >
               Mark Paid
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resend Invoice Confirmation */}
+      <AlertDialog open={resendId !== null} onOpenChange={(v) => !v && setResendId(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resend this invoice?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              {invoiceToResend && (
+                <>
+                  Invoice #{String(invoiceToResend.id).padStart(4, "0")} will be emailed again to{" "}
+                  <strong className="text-zinc-200">{invoiceToResend.clientEmail}</strong>. A fresh Stripe payment link will replace the previous link and will accept card or ACH bank payment.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300" disabled={resendMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resendId && resendMutation.mutate({ invoiceId: resendId })}
+              disabled={resendMutation.isPending}
+              className="bg-blue-700 hover:bg-blue-600 text-white"
+            >
+              {resendMutation.isPending ? "Resending..." : "Resend Invoice"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

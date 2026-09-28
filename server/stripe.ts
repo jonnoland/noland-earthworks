@@ -173,3 +173,21 @@ export async function createInvoiceCheckoutSession(
     : session.payment_intent?.id ?? null;
   return { sessionId: session.id, url: session.url, paymentIntentId };
 }
+
+/**
+ * Retire an older invoice Checkout Session before issuing a fresh resend link.
+ * A paid session is never replaced because doing so could allow a duplicate payment.
+ */
+export async function expireInvoiceCheckoutSession(sessionId: string): Promise<void> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.payment_status === "paid") {
+    throw new Error("Stripe already reports this invoice checkout as paid. Refresh the invoice status before resending.");
+  }
+  if (session.status === "complete") {
+    throw new Error("A bank payment has already been submitted and is awaiting Stripe confirmation. Do not resend this invoice yet.");
+  }
+  if (session.status === "open") {
+    await stripe.checkout.sessions.expire(sessionId);
+  }
+}
