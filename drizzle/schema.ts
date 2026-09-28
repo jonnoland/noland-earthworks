@@ -2013,7 +2013,7 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   proposalStatus: varchar("proposalStatus", { length: 30 }).notNull().default("not_started"),
   depositStatus: varchar("depositStatus", { length: 30 }).notNull().default("not_requested"),
   finalPaymentStatus: varchar("finalPaymentStatus", { length: 30 }).notNull().default("not_due"),
-  /** draft | sent | viewed | approved | declined | invoiced | cancelled */
+  /** draft | sent | viewed | approved | declined | invoiced | paid | cancelled */
   status: varchar("status", { length: 30 }).notNull().default("draft"),
   portalToken: varchar("portalToken", { length: 64 }),
   portalSentAt: timestamp("portalSentAt"),

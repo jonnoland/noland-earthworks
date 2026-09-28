@@ -4182,3 +4182,10 @@
 - [x] Clear ACH processing state on settlement success, settlement failure, and manual payment completion.
 - [x] Display a clear Payment Pending badge and settlement explanation in Operations invoices.
 - [x] Add regression coverage, apply the migration, validate, checkpoint, and refresh the preview.
+
+## Paid Quote Pipeline — September 28, 2026
+
+- [x] Synchronize settled Stripe invoice payments to the quote's final payment state.
+- [x] Synchronize manually recorded invoice payments to the quote's final payment state.
+- [x] Add a terminal Paid section and Paid badge to Operations Quotes.
+- [x] Run full regression tests, production build, checkpoint, and refresh the preview.

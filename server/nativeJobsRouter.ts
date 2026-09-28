@@ -647,6 +647,18 @@ export const nativeJobsRouter = router({
         .set({ paidCents, paidAt })
         .where(eq(nativeJobs.id, invoice.jobId));
 
+      if (invoice.quoteId !== null) {
+        await db
+          .update(nativeQuotes)
+          .set({
+            finalPaymentStatus: "paid",
+            status: "paid",
+            nextActionType: "final_payment_paid",
+            nextActionDueAt: null,
+          })
+          .where(eq(nativeQuotes.id, invoice.quoteId));
+      }
+
       return { success: true };
     }),
 });

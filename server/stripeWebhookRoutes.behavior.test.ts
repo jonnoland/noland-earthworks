@@ -12,12 +12,14 @@ const state = vi.hoisted(() => ({
   nativeInvoice: null as null | {
     id: number;
     jobId: number;
+    quoteId: number | null;
     totalCents: number;
     status: string;
     stripePaymentIntentId: string | null;
   },
   invoiceUpdate: null as Record<string, unknown> | null,
   jobUpdate: null as Record<string, unknown> | null,
+  quoteUpdate: null as Record<string, unknown> | null,
   paymentsTable: { stripeSessionId: "stripeSessionId" },
   nativeQuotesTable: { id: "id" },
   nativeInvoicesTable: { id: "id" },
@@ -66,6 +68,7 @@ vi.mock("./db", () => ({
           if (table === state.webhookEventsTable) state.ledgerStatus = String(values.status ?? state.ledgerStatus);
           if (table === state.nativeInvoicesTable) state.invoiceUpdate = values;
           if (table === state.nativeJobsTable) state.jobUpdate = values;
+          if (table === state.nativeQuotesTable) state.quoteUpdate = values;
         },
       }),
     }),
@@ -154,6 +157,7 @@ describe("Stripe webhook behavior", () => {
     state.nativeInvoice = null;
     state.invoiceUpdate = null;
     state.jobUpdate = null;
+    state.quoteUpdate = null;
     state.notifyOwner.mockClear();
   });
 
@@ -197,6 +201,7 @@ describe("Stripe webhook behavior", () => {
     state.nativeInvoice = {
       id: 42,
       jobId: 7,
+      quoteId: 19,
       totalCents: 125000,
       status: "sent",
       stripePaymentIntentId: null,
@@ -210,6 +215,12 @@ describe("Stripe webhook behavior", () => {
     expect(state.invoiceUpdate?.paidAt).toBeInstanceOf(Date);
     expect(state.jobUpdate).toMatchObject({ paidCents: 125000 });
     expect(state.jobUpdate?.paidAt).toBeInstanceOf(Date);
+    expect(state.quoteUpdate).toEqual({
+      finalPaymentStatus: "paid",
+      status: "paid",
+      nextActionType: "final_payment_paid",
+      nextActionDueAt: null,
+    });
     expect(state.ledgerStatus).toBe("processed");
   });
 

@@ -217,6 +217,14 @@ async function markNativeInvoicePaid(invoiceId: number, paymentIntentId: string 
     achPaymentPendingAt: null,
   }).where(eq(nativeInvoices.id, invoiceId));
   await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));
+  if (invoice.quoteId !== null) {
+    await db.update(nativeQuotes).set({
+      finalPaymentStatus: "paid",
+      status: "paid",
+      nextActionType: "final_payment_paid",
+      nextActionDueAt: null,
+    }).where(eq(nativeQuotes.id, invoice.quoteId));
+  }
   console.log(`[Stripe Webhook] Native invoice #${invoiceId} marked paid`);
 }
 

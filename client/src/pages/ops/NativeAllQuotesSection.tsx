@@ -192,6 +192,7 @@ function parseWorkAreaPolygon(value: string | null): Array<{ lat: number; lng: n
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ quote }: { quote: NativeQuote }) {
+  if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return <Badge className="bg-green-700 text-white text-xs">Paid</Badge>;
   if (quote.nextActionType === "send_revision") return <Badge className="bg-amber-500 text-zinc-950 text-xs">Revision Ready</Badge>;
   if (quote.convertedToJobAt || quote.status === "invoiced") return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
   if (quote.depositPaidAt) return <Badge className="bg-green-600 text-white text-xs">Deposit Paid</Badge>;
@@ -2552,12 +2553,14 @@ function NativeQuoteDetailPanel({
       { value: "cancelled", label: "Cancelled" },
     ],
     invoiced: [],
+    paid: [],
     declined: [{ value: "draft", label: "Restore to Draft" }],
     cancelled: [{ value: "draft", label: "Restore to Draft" }],
   };
 
   // Derive current stage key for the panel
   const panelStageKey = (() => {
+    if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return "paid";
     if (quote.convertedToJobAt) return "invoiced";
     if (quote.clientAction === "declined") return "declined";
     if (quote.status === "cancelled") return "cancelled";
@@ -2780,6 +2783,12 @@ function NativeQuoteDetailPanel({
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Deposit Paid</span>
                   <span className="font-medium text-green-400">${(quote.depositPaidCents / 100).toLocaleString()}</span>
+                </div>
+              )}
+              {(quote.finalPaymentStatus === "paid" || quote.status === "paid") && (
+                <div className="flex justify-between border-t border-green-500/20 pt-2 text-xs">
+                  <span className="font-semibold text-green-300">Final Payment</span>
+                  <span className="font-semibold text-green-400">Paid</span>
                 </div>
               )}
             </div>
@@ -3933,6 +3942,16 @@ export function NativeAllQuotesSection() {
       nextStatuses: [],
     },
     {
+      key: "paid",
+      label: "Paid",
+      description: "Final invoice paid. Kept as a completed quote record.",
+      color: "text-green-400",
+      bgColor: "bg-green-950/30",
+      badgeColor: "bg-green-700",
+      nextStatuses: [],
+      terminal: true,
+    },
+    {
       key: "declined",
       label: "Declined",
       description: "Client declined. Can be restored to draft.",
@@ -3959,6 +3978,7 @@ export function NativeAllQuotesSection() {
   // fields (clientAction, portalSentAt, depositPaidAt, convertedToJobAt) so that
   // quotes are correctly classified regardless of which path set the state.
   const getStageKey = (q: NativeQuote): string => {
+    if (q.finalPaymentStatus === "paid" || q.status === "paid") return "paid";
     if (q.convertedToJobAt || q.status === "invoiced") return "invoiced";
     if (q.clientAction === "declined" || q.status === "declined") return "declined";
     if (q.status === "cancelled") return "cancelled";
@@ -4002,7 +4022,7 @@ export function NativeAllQuotesSection() {
 
   // Total counts for header
   const totalCount = quotes.length;
-  const activeCount = quotes.filter(q => !q.convertedToJobAt && q.status !== "cancelled" && q.clientAction !== "declined").length;
+  const activeCount = quotes.filter(q => !q.convertedToJobAt && q.status !== "cancelled" && q.status !== "paid" && q.finalPaymentStatus !== "paid" && q.clientAction !== "declined").length;
 
   // Filter: if statusFilter is "all", show all stages; otherwise show just that stage
   const visibleStages = statusFilter === "all"
@@ -4011,7 +4031,7 @@ export function NativeAllQuotesSection() {
 
   const statuses = [
     { value: "all", label: "All", count: totalCount },
-    ...PIPELINE_STAGES.filter(s => !s.terminal).map(s => ({ value: s.key, label: s.label, count: pipelineGroups[s.key]?.length ?? 0 })),
+    ...PIPELINE_STAGES.filter(s => !s.terminal || s.key === "paid").map(s => ({ value: s.key, label: s.label, count: pipelineGroups[s.key]?.length ?? 0 })),
     { value: "declined", label: "Declined", count: pipelineGroups["declined"]?.length ?? 0 },
     { value: "cancelled", label: "Cancelled", count: pipelineGroups["cancelled"]?.length ?? 0 },
   ];

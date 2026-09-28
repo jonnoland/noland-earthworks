@@ -297,6 +297,45 @@ describe("nativeJobs.listInvoices", () => {
   });
 });
 
+describe("nativeJobs.markInvoicePaid", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("marks the linked quote paid with the completed final invoice", async () => {
+    const invoice = {
+      id: 75,
+      jobId: 1,
+      quoteId: 10,
+      totalCents: 240000,
+      status: "sent",
+    };
+    const updates: Array<Record<string, unknown>> = [];
+    const updateSet = vi.fn((values: Record<string, unknown>) => ({
+      where: vi.fn().mockImplementation(async () => { updates.push(values); }),
+    }));
+    const mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([invoice]),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+
+    await expect(
+      appRouter.createCaller(createOwnerContext()).nativeJobs.markInvoicePaid({ invoiceId: 75 })
+    ).resolves.toEqual({ success: true });
+
+    expect(updates).toContainEqual(expect.objectContaining({ status: "paid", achPaymentPendingAt: null }));
+    expect(updates).toContainEqual(expect.objectContaining({ paidCents: 240000 }));
+    expect(updates).toContainEqual({
+      finalPaymentStatus: "paid",
+      status: "paid",
+      nextActionType: "final_payment_paid",
+      nextActionDueAt: null,
+    });
+  });
+});
+
 describe("nativeJobs access control", () => {
   beforeEach(() => vi.clearAllMocks());
 
