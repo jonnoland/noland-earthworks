@@ -4175,3 +4175,10 @@
 - [x] Regenerate the hosted invoice with the current payment link before resending it.
 - [x] Add a Resend Invoice control with clear success/error feedback in Operations.
 - [x] Run focused tests, strict TypeScript, full regression tests, production build, restart, and checkpoint.
+
+## ACH Payment-Pending Invoice Badge — September 27, 2026
+
+- [x] Persist ACH processing state when Stripe reports a completed checkout awaiting settlement.
+- [x] Clear ACH processing state on settlement success, settlement failure, and manual payment completion.
+- [x] Display a clear Payment Pending badge and settlement explanation in Operations invoices.
+- [x] Add regression coverage, apply the migration, validate, checkpoint, and refresh the preview.

@@ -639,7 +639,7 @@ export const nativeJobsRouter = router({
 
       await db
         .update(nativeInvoices)
-        .set({ status: "paid", paidAt })
+        .set({ status: "paid", paidAt, achPaymentPendingAt: null })
         .where(eq(nativeInvoices.id, input.invoiceId));
 
       await db

@@ -163,6 +163,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     if (session.payment_status === "paid") {
       await markNativeInvoicePaid(nativeInvoiceId, paymentIntentId);
     } else {
+      await db.update(nativeInvoices).set({
+        achPaymentPendingAt: new Date(),
+        stripePaymentIntentId: paymentIntentId,
+      }).where(eq(nativeInvoices.id, nativeInvoiceId));
       console.log(`[Stripe Webhook] Invoice #${nativeInvoiceId} payment submitted and awaiting settlement`);
     }
     return;
@@ -210,6 +214,7 @@ async function markNativeInvoicePaid(invoiceId: number, paymentIntentId: string 
     status: "paid",
     paidAt,
     stripePaymentIntentId: paymentIntentId ?? invoice.stripePaymentIntentId,
+    achPaymentPendingAt: null,
   }).where(eq(nativeInvoices.id, invoiceId));
   await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));
   console.log(`[Stripe Webhook] Native invoice #${invoiceId} marked paid`);
@@ -235,6 +240,7 @@ async function handleInvoicePaymentFailed(session: Stripe.Checkout.Session): Pro
   await db.update(nativeInvoices).set({
     stripePaymentLinkUrl: null,
     stripeCheckoutSessionId: null,
+    achPaymentPendingAt: null,
   }).where(eq(nativeInvoices.id, invoiceId));
   await notifyOwner({
     title: "ACH invoice payment failed",

@@ -51,6 +51,7 @@ type NativeInvoice = {
   status: "unpaid" | "sent" | "paid" | "void";
   pdfUrl: string | null;
   stripePaymentLinkUrl?: string | null;
+  achPaymentPendingAt?: Date | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -299,12 +300,27 @@ export default function NativeInvoicesSection() {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusBadgeClass(inv.status)}`}
-                    >
-                      {statusIcon(inv.status)}
-                      {statusLabel(inv.status)}
-                    </span>
+                    {inv.achPaymentPendingAt ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-medium bg-violet-500/15 text-violet-300 border-violet-500/40"
+                          title="The customer submitted an ACH payment. Stripe has not confirmed the bank settlement yet."
+                        >
+                          <Clock className="w-3 h-3" />
+                          Payment Pending
+                        </span>
+                        <span className="text-[9px] leading-none text-violet-300/70">
+                          ACH submitted {formatDate(inv.achPaymentPendingAt)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusBadgeClass(inv.status)}`}
+                      >
+                        {statusIcon(inv.status)}
+                        {statusLabel(inv.status)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-1.5">
@@ -348,7 +364,7 @@ export default function NativeInvoicesSection() {
                           </Button>
                         </>
                       )}
-                      {(inv.status === "unpaid" || inv.status === "sent") && inv.clientEmail && (
+                      {(inv.status === "unpaid" || inv.status === "sent") && !inv.achPaymentPendingAt && inv.clientEmail && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -360,7 +376,7 @@ export default function NativeInvoicesSection() {
                           <Send className="w-3.5 h-3.5" />
                         </Button>
                       )}
-                      {(inv.status === "unpaid" || inv.status === "sent") && (
+                      {(inv.status === "unpaid" || inv.status === "sent") && !inv.achPaymentPendingAt && (
                         <Button
                           variant="ghost"
                           size="sm"

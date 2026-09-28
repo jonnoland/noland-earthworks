@@ -2181,6 +2181,8 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   /** Stripe PaymentIntent associated with the hosted checkout */
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  /** Set after an ACH checkout is submitted and cleared only when Stripe settles or fails it. */
+  achPaymentPendingAt: timestamp("achPaymentPendingAt"),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),
