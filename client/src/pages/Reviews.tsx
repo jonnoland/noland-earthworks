@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
+import { GOOGLE_REVIEW_URL } from "@/lib/googleReview";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Star, ExternalLink } from "lucide-react";
 import { useEffect } from "react";
@@ -254,20 +255,23 @@ export default function ReviewsPage() {
               </div>
             )}
             <a
-              href="https://g.page/r/nolandearth/review"
+              href={GOOGLE_REVIEW_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "0.4rem",
-                fontFamily: "'Lato', sans-serif",
-                fontSize: "0.85rem",
+                gap: "0.55rem",
+                fontFamily: "'Oswald', sans-serif",
+                fontSize: "0.9rem",
                 fontWeight: 600,
-                color: "#E07B2A",
+                color: "#fff",
+                backgroundColor: "#E07B2A",
                 textDecoration: "none",
-                borderBottom: "1px solid rgba(224,123,42,0.4)",
-                paddingBottom: "1px",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                padding: "0.8rem 1.25rem",
+                whiteSpace: "nowrap",
               }}
             >
               Leave a Google Review

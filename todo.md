@@ -4189,3 +4189,8 @@
 - [x] Synchronize manually recorded invoice payments to the quote's final payment state.
 - [x] Add a terminal Paid section and Paid badge to Operations Quotes.
 - [x] Run full regression tests, production build, checkpoint, and refresh the preview.
+
+## Public Review Call-to-Action Consolidation — September 28, 2026
+
+- [x] Replace duplicate public review links with one clear, prominent review button.
+- [x] Add regression coverage, validate the public site build, checkpoint, and refresh the preview.

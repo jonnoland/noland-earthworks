@@ -5,6 +5,7 @@
  */
 import { useRef, useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { GOOGLE_REVIEW_URL } from "@/lib/googleReview";
 
 
 function StarRating({ rating }: { rating: number }) {
@@ -366,7 +367,7 @@ export default function TestimonialsSection() {
             </p>
           </div>
           <a
-            href="https://g.page/r/CcglMAMbtQInEBM/review"
+            href={GOOGLE_REVIEW_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
