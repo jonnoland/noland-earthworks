@@ -4194,3 +4194,9 @@
 
 - [x] Replace duplicate public review links with one clear, prominent review button.
 - [x] Add regression coverage, validate the public site build, checkpoint, and refresh the preview.
+
+## Public Review Social Proof Enhancements — September 28, 2026
+
+- [x] Add a live five-star Google review carousel below the public review call-to-action.
+- [x] Add a concise feedback prompt and accessible subtle hover glow to the review button.
+- [x] Add coverage, validate, checkpoint, and refresh the preview.

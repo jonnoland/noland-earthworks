@@ -6,6 +6,7 @@
 import { useRef, useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { GOOGLE_REVIEW_URL } from "@/lib/googleReview";
+import GoogleReviewCarousel from "@/components/GoogleReviewCarousel";
 
 
 function StarRating({ rating }: { rating: number }) {
@@ -353,51 +354,54 @@ export default function TestimonialsSection() {
             >
               Happy with our work?
             </div>
+          </div>
+          <div style={{ display: "grid", justifyItems: "start", gap: "0.7rem", maxWidth: "360px" }}>
             <p
               style={{
                 fontFamily: "'Lato', sans-serif",
-                fontWeight: 300,
                 fontSize: "0.9rem",
                 color: "rgba(240,237,230,0.6)",
                 margin: 0,
+                lineHeight: 1.55,
               }}
             >
-              Your Google review helps other property owners find us and means the world to a small,
-              veteran-owned business.
+              A quick review helps other landowners make a confident decision and helps me keep improving the work.
             </p>
-          </div>
-          <a
-            href={GOOGLE_REVIEW_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              backgroundColor: "#E07B2A",
-              color: "#fff",
-              fontFamily: "'Oswald', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              padding: "0.85rem 1.75rem",
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
+            <a
+              href={GOOGLE_REVIEW_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="google-review-button"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                backgroundColor: "#E07B2A",
+                color: "#fff",
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                padding: "0.85rem 1.75rem",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
             >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-            Leave a Google Review
-          </a>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Leave a Google Review
+            </a>
+          </div>
         </div>
+        <GoogleReviewCarousel reviews={liveReviews} />
       </div>
     </section>
   );

@@ -6,6 +6,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
+import GoogleReviewCarousel from "@/components/GoogleReviewCarousel";
 import { trpc } from "@/lib/trpc";
 import { GOOGLE_REVIEW_URL } from "@/lib/googleReview";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -254,30 +255,45 @@ export default function ReviewsPage() {
                 Verified review feed is being connected.
               </div>
             )}
-            <a
-              href={GOOGLE_REVIEW_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.55rem",
-                fontFamily: "'Oswald', sans-serif",
-                fontSize: "0.9rem",
-                fontWeight: 600,
-                color: "#fff",
-                backgroundColor: "#E07B2A",
-                textDecoration: "none",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                padding: "0.8rem 1.25rem",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Leave a Google Review
-              <ExternalLink size={13} />
-            </a>
+            <div style={{ display: "grid", justifyItems: "start", gap: "0.65rem", maxWidth: "330px" }}>
+              <p
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.84rem",
+                  lineHeight: 1.5,
+                  color: "rgba(240,237,230,0.66)",
+                  margin: 0,
+                }}
+              >
+                A quick review helps other landowners make a confident decision and helps me keep improving the work.
+              </p>
+              <a
+                href={GOOGLE_REVIEW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="google-review-button"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.55rem",
+                  fontFamily: "'Oswald', sans-serif",
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  color: "#fff",
+                  backgroundColor: "#E07B2A",
+                  textDecoration: "none",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  padding: "0.8rem 1.25rem",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Leave a Google Review
+                <ExternalLink size={13} />
+              </a>
+            </div>
           </div>
+          <GoogleReviewCarousel reviews={reviews} />
         </div>
       </section>
 
