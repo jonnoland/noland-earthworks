@@ -19,6 +19,7 @@ import { eq, desc, like, or, and, inArray } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
+import { createInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -300,6 +301,10 @@ export const nativeJobsRouter = router({
 
       const subtotalCents = lineItems.reduce((sum, li) => sum + li.totalCents, 0) || job.totalCents;
       const totalCents = Math.max(0, subtotalCents - depositPaidCents);
+      let paymentLinkUrl: string | null = null;
+      let stripeCheckoutSessionId: string | null = null;
+      let stripePaymentIntentId: string | null = null;
+      let paymentLinkError: string | undefined;
 
       // Build invoice number from count
       const allInvoices = await db.select({ id: nativeInvoices.id }).from(nativeInvoices);
@@ -313,13 +318,14 @@ export const nativeJobsRouter = router({
         subtotalCents,
         depositPaidCents,
         totalCents,
+        paymentLinkUrl,
         notes: input.notes,
         dueDate: input.dueDate,
       });
 
       const htmlBuffer = Buffer.from(invoiceHtml, "utf8");
       const fileKey = `invoices/${job.id}-${Date.now()}.html`;
-      const { url: pdfUrl } = await storagePut(fileKey, htmlBuffer, "text/html");
+      let { url: pdfUrl } = await storagePut(fileKey, htmlBuffer, "text/html");
 
       // Insert invoice record
       const inserted = await db
@@ -344,6 +350,47 @@ export const nativeJobsRouter = router({
 
       const invoiceId = (inserted as unknown as { insertId: number }).insertId;
 
+      if (isStripeConfigured() && totalCents > 0) {
+        try {
+          const checkout = await createInvoiceCheckoutSession({
+            invoiceId,
+            jobId: job.id,
+            invoiceNumber,
+            amountCents: totalCents,
+            customerEmail: job.clientEmail,
+            customerName: job.clientName,
+            successUrl: `https://nolandearthworks.com/?payment=success&invoice=${invoiceId}`,
+            cancelUrl: `https://nolandearthworks.com/?payment=cancelled&invoice=${invoiceId}`,
+          });
+          paymentLinkUrl = checkout.url;
+          stripeCheckoutSessionId = checkout.sessionId;
+          stripePaymentIntentId = checkout.paymentIntentId;
+          await db.update(nativeInvoices).set({
+            stripePaymentLinkUrl: paymentLinkUrl,
+            stripeCheckoutSessionId,
+            stripePaymentIntentId,
+          }).where(eq(nativeInvoices.id, invoiceId));
+
+          const finalInvoiceHtml = buildInvoiceHtml({
+            invoiceNumber,
+            job,
+            lineItems,
+            subtotalCents,
+            depositPaidCents,
+            totalCents,
+            paymentLinkUrl,
+            notes: input.notes,
+            dueDate: input.dueDate,
+          });
+          const finalFile = await storagePut(`invoices/${job.id}-${Date.now()}-payment.html`, Buffer.from(finalInvoiceHtml, "utf8"), "text/html");
+          pdfUrl = finalFile.url;
+          await db.update(nativeInvoices).set({ pdfUrl }).where(eq(nativeInvoices.id, invoiceId));
+        } catch (err) {
+          paymentLinkError = err instanceof Error ? err.message : "Stripe could not create the payment link.";
+          console.error("[Invoice] Failed to create Stripe payment link:", err);
+        }
+      }
+
       // Mark job as invoiced
       await db
         .update(nativeJobs)
@@ -363,6 +410,7 @@ export const nativeJobsRouter = router({
             depositPaidCents,
             totalCents,
             pdfUrl,
+            paymentLinkUrl,
             notes: input.notes,
             dueDate: input.dueDate,
           });
@@ -392,13 +440,18 @@ export const nativeJobsRouter = router({
             .set({ emailSentId, emailSentAt: new Date(), status: "sent" })
             .where(eq(nativeInvoices.id, invoiceId));
           emailSent = true;
+          if (paymentLinkError) {
+            emailSendError = `Invoice email sent, but Stripe could not create the online payment link: ${paymentLinkError}`;
+          }
         } catch (err) {
           console.error("[Invoice] Failed to send email:", err);
           emailSendError = err instanceof Error ? err.message : "The invoice was created, but the email could not be sent.";
         }
       } else if (input.sendEmail) {
         emailSendError = job.clientEmail
-          ? "Email delivery is not configured. The invoice was created but not sent."
+          ? paymentLinkError
+            ? `Email delivery is not configured, and Stripe could not create the payment link: ${paymentLinkError}`
+            : "Email delivery is not configured. The invoice was created but not sent."
           : "This job has no customer email address. The invoice was created but not sent.";
       }
 
@@ -408,7 +461,7 @@ export const nativeJobsRouter = router({
         .where(eq(nativeInvoices.id, invoiceId))
         .limit(1);
 
-      return { ...invoice, emailSent, emailSendError };
+      return { ...invoice, emailSent, emailSendError, paymentLinkError };
     }),
 
   /**
@@ -493,6 +546,7 @@ interface InvoiceParams {
   subtotalCents: number;
   depositPaidCents: number;
   totalCents: number;
+  paymentLinkUrl?: string | null;
   notes?: string;
   dueDate?: Date;
 }
@@ -601,8 +655,10 @@ function buildInvoiceHtml(p: InvoiceParams): string {
       <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;">Notes</p>
       <div style="background:#f9f7f4;border:1px solid #f0ede6;border-radius:6px;padding:14px 16px;font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;">${esc(p.notes)}</div>
     </div>` : ""}
-    <div style="padding:16px 36px;background:#fdf6ee;border-top:1px solid #f0e4cc;">
-      <p style="margin:0;font-size:13px;color:#7a4f1a;">
+    <div style="padding:${p.paymentLinkUrl ? "20px" : "16px"} 36px;background:#fdf6ee;border-top:1px solid #f0e4cc;${p.paymentLinkUrl ? "text-align:center;" : ""}">
+      ${p.paymentLinkUrl ? `<p style="margin:0 0 10px;font-size:13px;color:#7a4f1a;"><strong>Pay this invoice online</strong> by card or ACH bank transfer.</p>
+      <a href="${esc(p.paymentLinkUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:700;">Pay Invoice Securely &rarr;</a>
+      <p style="margin:12px 0 0;font-size:13px;color:#7a4f1a;">` : `<p style="margin:0;font-size:13px;color:#7a4f1a;">`}
         <strong>Payment:</strong> Check, cash, or electronic transfer. Make checks payable to <strong>Noland Earthworks, LLC</strong>.
         Questions? Call <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or email <a href="mailto:quotes@nolandearthworks.com" style="color:#E07B2A;">quotes@nolandearthworks.com</a>.
       </p>
@@ -673,11 +729,14 @@ function buildInvoiceEmailHtml(p: InvoiceParams & { pdfUrl: string }): string {
                 <td style="padding:12px 16px;font-size:15px;font-weight:700;color:#E07B2A;text-align:right;">${fmt(p.totalCents)}</td>
               </tr>
             </table>
+            ${p.paymentLinkUrl ? `<div style="text-align:center;margin-bottom:12px;">
+              <a href="${esc(p.paymentLinkUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">Pay by Card or ACH &rarr;</a>
+            </div>` : ""}
             <div style="text-align:center;">
               <a href="${esc(p.pdfUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View Invoice &rarr;</a>
             </div>
             <p style="margin:20px 0 0;font-size:13px;color:#555;line-height:1.6;">
-              Payment accepted by check, cash, or electronic transfer.<br />
+              Online payment accepts card or ACH bank transfer. ACH payments may take several business days to settle. Check, cash, or other electronic transfer arrangements are also accepted.<br />
               Questions? Call <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.
             </p>
           </td>

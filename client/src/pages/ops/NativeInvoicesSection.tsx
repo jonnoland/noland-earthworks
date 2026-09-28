@@ -30,6 +30,7 @@ import {
   Clock,
   XCircle,
   Send,
+  Copy,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ type NativeInvoice = {
   totalCents: number;
   status: "unpaid" | "sent" | "paid" | "void";
   pdfUrl: string | null;
+  stripePaymentLinkUrl?: string | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -305,6 +307,35 @@ export default function NativeInvoicesSection() {
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </Button>
+                      )}
+                      {inv.stripePaymentLinkUrl && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(inv.stripePaymentLinkUrl!, "_blank")}
+                            className="h-7 px-2 text-amber-400 hover:text-amber-300 text-xs"
+                            title="Open card / ACH payment link"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(inv.stripePaymentLinkUrl!);
+                                toast.success("Payment link copied");
+                              } catch {
+                                toast.error("Could not copy the payment link");
+                              }
+                            }}
+                            className="h-7 px-2 text-zinc-400 hover:text-zinc-200 text-xs"
+                            title="Copy card / ACH payment link"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
                       )}
                       {(inv.status === "unpaid" || inv.status === "sent") && (
                         <Button

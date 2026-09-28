@@ -2175,6 +2175,12 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   status: mysqlEnum("status", ["unpaid", "sent", "paid", "void"]).notNull().default("unpaid"),
   /** S3 URL of the generated PDF */
   pdfUrl: varchar("pdfUrl", { length: 1024 }),
+  /** Hosted Stripe Checkout URL supporting card and ACH Direct Debit */
+  stripePaymentLinkUrl: varchar("stripePaymentLinkUrl", { length: 1024 }),
+  /** Stripe Checkout Session used for this invoice payment */
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+  /** Stripe PaymentIntent associated with the hosted checkout */
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),

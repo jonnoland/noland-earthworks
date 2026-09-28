@@ -12,7 +12,7 @@ import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./stripe";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
-import { payments, nativeQuotes, stripeWebhookEvents } from "../drizzle/schema";
+import { payments, nativeQuotes, nativeInvoices, nativeJobs, stripeWebhookEvents } from "../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 
@@ -114,6 +114,12 @@ export function registerStripeWebhookRoutes(app: Express): void {
         if (event.type === "checkout.session.completed") {
           const session = event.data.object as Stripe.Checkout.Session;
           await handleCheckoutCompleted(session);
+        } else if (event.type === "checkout.session.async_payment_succeeded") {
+          const session = event.data.object as Stripe.Checkout.Session;
+          await handleInvoicePaymentSucceeded(session);
+        } else if (event.type === "checkout.session.async_payment_failed") {
+          const session = event.data.object as Stripe.Checkout.Session;
+          await handleInvoicePaymentFailed(session);
         } else if (event.type === "checkout.session.expired") {
           const session = event.data.object as Stripe.Checkout.Session;
           await handleCheckoutExpired(session);
@@ -150,6 +156,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.payment_intent
       : session.payment_intent?.id ?? null;
 
+  const nativeInvoiceId = session.metadata?.native_invoice_id
+    ? parseInt(session.metadata.native_invoice_id, 10)
+    : null;
+  if (nativeInvoiceId && !isNaN(nativeInvoiceId)) {
+    if (session.payment_status === "paid") {
+      await markNativeInvoicePaid(nativeInvoiceId, paymentIntentId);
+    } else {
+      console.log(`[Stripe Webhook] Invoice #${nativeInvoiceId} payment submitted and awaiting settlement`);
+    }
+    return;
+  }
+
   // Update generic payments table (used by other checkout flows)
   await db
     .update(payments)
@@ -181,6 +199,40 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   console.log(`[Stripe Webhook] Payment marked as paid for session ${session.id}`);
+}
+
+async function markNativeInvoicePaid(invoiceId: number, paymentIntentId: string | null): Promise<void> {
+  const db = await getRequiredDb();
+  const [invoice] = await db.select().from(nativeInvoices).where(eq(nativeInvoices.id, invoiceId)).limit(1);
+  if (!invoice || invoice.status === "paid") return;
+  const paidAt = new Date();
+  await db.update(nativeInvoices).set({
+    status: "paid",
+    paidAt,
+    stripePaymentIntentId: paymentIntentId ?? invoice.stripePaymentIntentId,
+  }).where(eq(nativeInvoices.id, invoiceId));
+  await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));
+  console.log(`[Stripe Webhook] Native invoice #${invoiceId} marked paid`);
+}
+
+async function handleInvoicePaymentSucceeded(session: Stripe.Checkout.Session): Promise<void> {
+  const invoiceId = session.metadata?.native_invoice_id
+    ? parseInt(session.metadata.native_invoice_id, 10)
+    : null;
+  if (!invoiceId || isNaN(invoiceId)) return;
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+  await markNativeInvoicePaid(invoiceId, paymentIntentId);
+}
+
+async function handleInvoicePaymentFailed(session: Stripe.Checkout.Session): Promise<void> {
+  const invoiceId = session.metadata?.native_invoice_id;
+  if (!invoiceId) return;
+  await notifyOwner({
+    title: "ACH invoice payment failed",
+    content: `Stripe reported a failed payment for native invoice #${invoiceId}. The invoice remains unpaid; contact the customer if needed.`,
+  });
 }
 
 async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {

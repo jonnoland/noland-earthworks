@@ -78,6 +78,9 @@ interface GeneratedInvoiceResult {
   totalCents: number;
   emailSent: boolean;
   emailSendError?: string;
+  paymentLinkUrl?: string | null;
+  paymentLinkError?: string;
+  pdfUrl?: string | null;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -387,7 +390,9 @@ function GenerateInvoiceDialog({
 
   const generateMut = trpc.nativeJobs.generateInvoice.useMutation({
     onSuccess: (invoice) => {
-      if (invoice.emailSent) {
+      if (invoice.emailSent && invoice.emailSendError) {
+        toast.warning(`Invoice emailed, but the online payment link could not be created: ${invoice.emailSendError}`);
+      } else if (invoice.emailSent) {
         toast.success(`Final payment invoice emailed to ${job.clientEmail}`);
       } else if (invoice.emailSendError) {
         toast.error(`Invoice created, but not emailed: ${invoice.emailSendError}`);
@@ -396,6 +401,9 @@ function GenerateInvoiceDialog({
       }
       if (invoice?.pdfUrl) {
         window.open(invoice.pdfUrl, "_blank");
+      }
+      if (invoice?.paymentLinkError && !invoice.emailSendError) {
+        toast.warning(`Invoice created, but the online payment link could not be created: ${invoice.paymentLinkError}`);
       }
       utils.nativeJobs.list.invalidate();
       utils.nativeJobs.listInvoices.invalidate();

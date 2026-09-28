@@ -113,3 +113,63 @@ export async function createCheckoutSession(
 
   return { sessionId: session.id, url: session.url };
 }
+
+export interface CreateInvoiceCheckoutSessionParams {
+  invoiceId: number;
+  jobId: number;
+  invoiceNumber: string;
+  amountCents: number;
+  customerEmail: string | null | undefined;
+  customerName: string | null | undefined;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * Create a hosted final-invoice checkout link. Stripe displays card and
+ * US bank account (ACH Direct Debit) when ACH is enabled for the account.
+ * ACH is asynchronous, so the webhook—not the browser return—is authoritative.
+ */
+export async function createInvoiceCheckoutSession(
+  params: CreateInvoiceCheckoutSessionParams
+): Promise<{ sessionId: string; url: string; paymentIntentId: string | null }> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card", "us_bank_account"],
+    line_items: [{
+      price_data: {
+        currency: "usd",
+        unit_amount: params.amountCents,
+        product_data: {
+          name: `Invoice ${params.invoiceNumber} — Noland Earthworks`,
+          description: "Final balance for completed land management work",
+        },
+      },
+      quantity: 1,
+    }],
+    customer_email: params.customerEmail ?? undefined,
+    client_reference_id: `invoice-${params.invoiceId}`,
+    metadata: {
+      native_invoice_id: params.invoiceId.toString(),
+      native_job_id: params.jobId.toString(),
+      payment_type: "invoice_balance",
+      invoice_number: params.invoiceNumber,
+    },
+    payment_intent_data: {
+      metadata: {
+        native_invoice_id: params.invoiceId.toString(),
+        native_job_id: params.jobId.toString(),
+        payment_type: "invoice_balance",
+      },
+    },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+  });
+
+  if (!session.url) throw new Error("Stripe did not return an invoice payment URL");
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+  return { sessionId: session.id, url: session.url, paymentIntentId };
+}
