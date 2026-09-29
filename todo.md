@@ -4205,3 +4205,9 @@
 
 - [x] Include the verified Google review link in final-invoice email content without altering payment handling.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Personalized Final Invoice Review Email — September 28, 2026
+
+- [x] Personalize the final-invoice review request with the customer’s first name.
+- [x] Send and verify a clearly labeled test final-invoice email to the configured administrator address.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

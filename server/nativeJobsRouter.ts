@@ -691,7 +691,7 @@ function esc(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-interface InvoiceParams {
+export interface InvoiceParams {
   invoiceNumber: string;
   job: {
     clientName: string;
@@ -842,9 +842,10 @@ function buildInvoiceHtml(p: InvoiceParams): string {
 </html>`;
 }
 
-function buildInvoiceEmailHtml(p: InvoiceParams & { pdfUrl: string }): string {
+export function buildInvoiceEmailHtml(p: InvoiceParams & { pdfUrl: string }): string {
   const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
   const dueStr = p.dueDate?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? "Upon receipt";
+  const firstName = p.job.clientName.trim().split(/\s+/)[0] || "there";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -898,7 +899,7 @@ function buildInvoiceEmailHtml(p: InvoiceParams & { pdfUrl: string }): string {
               <a href="${esc(p.pdfUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View Invoice &rarr;</a>
             </div>
             ${p.googleReviewUrl ? `<div style="margin:24px 0 0;padding:18px 20px;background:#fdf6ee;border:1px solid #f0e4cc;border-radius:6px;text-align:center;">
-              <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#1a1a1a;">Happy with the completed work?</p>
+              <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#1a1a1a;">${esc(firstName)}, happy with the completed work?</p>
               <p style="margin:0 0 14px;font-size:13px;color:#555;line-height:1.55;">A quick Google review helps other landowners make a confident decision and helps me keep improving the work.</p>
               <a href="${esc(p.googleReviewUrl)}" style="display:inline-block;background:#1a1a1a;color:#fff;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:12px 22px;border-radius:6px;text-decoration:none;">Leave a Google Review &rarr;</a>
             </div>` : ""}

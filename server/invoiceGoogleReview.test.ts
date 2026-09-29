@@ -15,7 +15,7 @@ describe("final invoice Google review link", () => {
 
   it("includes the review request in both first-send and resend final invoice emails", () => {
     expect(invoiceRouter.match(/googleReviewUrl,/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(invoiceRouter).toContain("Happy with the completed work?");
+    expect(invoiceRouter).toContain("happy with the completed work?");
     expect(invoiceRouter).toContain("Leave a Google Review");
     expect(invoiceRouter).toContain('href="${esc(p.googleReviewUrl)}"');
   });
