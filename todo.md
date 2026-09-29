@@ -4211,3 +4211,8 @@
 - [x] Personalize the final-invoice review request with the customer’s first name.
 - [x] Send and verify a clearly labeled test final-invoice email to the configured administrator address.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## CAT SIS Field Fix Quick Access — September 29, 2026
+
+- [x] Add machine-specific CAT SIS quick access and serial-number copy controls in Operations Field Fix.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

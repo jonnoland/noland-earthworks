@@ -45,12 +45,15 @@ import {
   ShieldOff,
   Sparkles,
   Brain,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { CAT_SIS_URL, isCatEquipment } from "@shared/catSis";
 import {
   Dialog,
   DialogContent,
@@ -307,6 +310,29 @@ function EquipmentTab({
     });
   };
 
+  const copySerialNumber = async (serialNumber: string) => {
+    const serial = serialNumber.trim();
+    if (!serial) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(serial);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = serial;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("Clipboard copy was blocked.");
+      }
+      toast.success("Serial number copied. Paste it into CAT SIS 2.0.");
+    } catch {
+      toast.error("Could not copy the serial number. Select it manually and paste it into CAT SIS 2.0.");
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -403,6 +429,43 @@ function EquipmentTab({
                 </button>
               </div>
             </div>
+            {isCatEquipment(m.make) && (
+              <div
+                className="mt-3 flex flex-col gap-3 rounded-md border border-amber-500/25 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground">CAT SIS 2.0</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                    Open CAT&apos;s OEM service reference, sign in, and paste this machine&apos;s serial number to search its service information.
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {m.serialNumber ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1.5 border-amber-500/40 text-xs hover:bg-amber-500/10"
+                      onClick={() => void copySerialNumber(m.serialNumber)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy serial
+                    </Button>
+                  ) : (
+                    <span className="text-[11px] text-amber-500">Add a serial number to copy it into SIS.</span>
+                  )}
+                  <a
+                    href={CAT_SIS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
+                  >
+                    Open CAT SIS
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+            )}
             {m.notes && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{m.notes}</p>}
           </div>
         ))}
