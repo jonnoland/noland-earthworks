@@ -7,7 +7,7 @@ const source = (relativePath: string) => readFileSync(resolve(root, relativePath
 
 describe("public Google review call-to-action", () => {
   it("uses one verified direct review destination across public review sections", () => {
-    const reviewUrl = source("client/src/lib/googleReview.ts");
+    const reviewUrl = source("shared/googleReview.ts");
     const testimonials = source("client/src/components/TestimonialsSection.tsx");
     const reviewsPage = source("client/src/pages/Reviews.tsx");
 

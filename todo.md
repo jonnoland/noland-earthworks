@@ -4200,3 +4200,8 @@
 - [x] Add a live five-star Google review carousel below the public review call-to-action.
 - [x] Add a concise feedback prompt and accessible subtle hover glow to the review button.
 - [x] Add coverage, validate, checkpoint, and refresh the preview.
+
+## Final Invoice Google Review Link — September 28, 2026
+
+- [x] Include the verified Google review link in final-invoice email content without altering payment handling.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

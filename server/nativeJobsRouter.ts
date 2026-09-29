@@ -14,12 +14,13 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeJobs, nativeInvoices, nativeQuotes, nativeJobScheduleDates } from "../drizzle/schema";
+import { nativeJobs, nativeInvoices, nativeQuotes, nativeJobScheduleDates, businessSettings } from "../drizzle/schema";
 import { eq, desc, like, or, and, inArray } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
 import { createInvoiceCheckoutSession, expireInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
+import { GOOGLE_REVIEW_URL } from "@shared/googleReview";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -402,6 +403,11 @@ export const nativeJobsRouter = router({
       let emailSendError: string | undefined;
       if (input.sendEmail && job.clientEmail && ENV.resendApiKey) {
         try {
+          const [settings] = await db
+            .select({ googleReviewUrl: businessSettings.googleReviewUrl })
+            .from(businessSettings)
+            .limit(1);
+          const googleReviewUrl = settings?.googleReviewUrl?.trim() || GOOGLE_REVIEW_URL;
           const emailHtml = buildInvoiceEmailHtml({
             invoiceNumber,
             job,
@@ -413,6 +419,7 @@ export const nativeJobsRouter = router({
             paymentLinkUrl,
             notes: input.notes,
             dueDate: input.dueDate,
+            googleReviewUrl,
           });
 
           const res = await fetch("https://api.resend.com/emails", {
@@ -567,6 +574,11 @@ export const nativeJobsRouter = router({
         stripePaymentIntentId,
       }).where(eq(nativeInvoices.id, invoice.id));
 
+      const [settings] = await db
+        .select({ googleReviewUrl: businessSettings.googleReviewUrl })
+        .from(businessSettings)
+        .limit(1);
+      const googleReviewUrl = settings?.googleReviewUrl?.trim() || GOOGLE_REVIEW_URL;
       const emailHtml = buildInvoiceEmailHtml({
         invoiceNumber,
         job,
@@ -578,6 +590,7 @@ export const nativeJobsRouter = router({
         paymentLinkUrl,
         notes: invoice.notes ?? undefined,
         dueDate: invoice.dueDate ?? undefined,
+        googleReviewUrl,
       });
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -695,6 +708,7 @@ interface InvoiceParams {
   depositPaidCents: number;
   totalCents: number;
   paymentLinkUrl?: string | null;
+  googleReviewUrl?: string;
   notes?: string;
   dueDate?: Date;
 }
@@ -883,6 +897,11 @@ function buildInvoiceEmailHtml(p: InvoiceParams & { pdfUrl: string }): string {
             <div style="text-align:center;">
               <a href="${esc(p.pdfUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View Invoice &rarr;</a>
             </div>
+            ${p.googleReviewUrl ? `<div style="margin:24px 0 0;padding:18px 20px;background:#fdf6ee;border:1px solid #f0e4cc;border-radius:6px;text-align:center;">
+              <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#1a1a1a;">Happy with the completed work?</p>
+              <p style="margin:0 0 14px;font-size:13px;color:#555;line-height:1.55;">A quick Google review helps other landowners make a confident decision and helps me keep improving the work.</p>
+              <a href="${esc(p.googleReviewUrl)}" style="display:inline-block;background:#1a1a1a;color:#fff;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:12px 22px;border-radius:6px;text-decoration:none;">Leave a Google Review &rarr;</a>
+            </div>` : ""}
             <p style="margin:20px 0 0;font-size:13px;color:#555;line-height:1.6;">
               Online payment accepts card or ACH bank transfer. ACH payments may take several business days to settle. Check, cash, or other electronic transfer arrangements are also accepted.<br />
               Questions? Call <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.
