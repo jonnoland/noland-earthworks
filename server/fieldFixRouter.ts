@@ -146,6 +146,18 @@ export const fieldFixRouter = router({
       return { ok: true };
     }),
 
+  updateSerialNumber: adminProcedure
+    .input(z.object({ id: z.number().int(), serialNumber: z.string().trim().min(1).max(100) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db
+        .update(equipment)
+        .set({ serialNumber: input.serialNumber, updatedAt: new Date() })
+        .where(eq(equipment.id, input.id));
+      return { ok: true };
+    }),
+
   deleteEquipment: adminProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ input }) => {

@@ -255,6 +255,7 @@ function EquipmentTab({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [hoursEditId, setHoursEditId] = useState<number | null>(null);
   const [newHours, setNewHours] = useState("");
+  const [serialEntryValues, setSerialEntryValues] = useState<Record<number, string>>({});
 
   const upsert = trpc.fieldFix.upsertEquipment.useMutation({
     onSuccess: () => { onRefresh(); setShowForm(false); setEditingId(null); toast.success("Equipment saved."); },
@@ -262,6 +263,18 @@ function EquipmentTab({
   });
   const updateHours = trpc.fieldFix.updateHours.useMutation({
     onSuccess: () => { onRefresh(); setHoursEditId(null); toast.success("Hours updated."); },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateSerialNumber = trpc.fieldFix.updateSerialNumber.useMutation({
+    onSuccess: (_result, variables) => {
+      onRefresh();
+      setSerialEntryValues((current) => {
+        const next = { ...current };
+        delete next[variables.id];
+        return next;
+      });
+      toast.success("Serial number saved.");
+    },
     onError: (e) => toast.error(e.message),
   });
   const deleteEquipment = trpc.fieldFix.deleteEquipment.useMutation({
@@ -310,15 +323,15 @@ function EquipmentTab({
     });
   };
 
-  const copySerialNumber = async (serialNumber: string) => {
-    const serial = serialNumber.trim();
-    if (!serial) return;
+  const copyForSis = async (value: string, label: string) => {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) return;
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(serial);
+        await navigator.clipboard.writeText(normalizedValue);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = serial;
+        textarea.value = normalizedValue;
         textarea.style.position = "fixed";
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
@@ -327,10 +340,19 @@ function EquipmentTab({
         textarea.remove();
         if (!copied) throw new Error("Clipboard copy was blocked.");
       }
-      toast.success("Serial number copied. Paste it into CAT SIS 2.0.");
+      toast.success(`${label} copied. Paste it into CAT SIS 2.0.`);
     } catch {
-      toast.error("Could not copy the serial number. Select it manually and paste it into CAT SIS 2.0.");
+      toast.error(`Could not copy the ${label.toLowerCase()}. Select it manually and paste it into CAT SIS 2.0.`);
     }
+  };
+
+  const saveInlineSerialNumber = (machineId: number) => {
+    const serialNumber = serialEntryValues[machineId]?.trim() ?? "";
+    if (!serialNumber) {
+      toast.error("Enter a serial number before saving.");
+      return;
+    }
+    updateSerialNumber.mutate({ id: machineId, serialNumber });
   };
 
   return (
@@ -439,20 +461,58 @@ function EquipmentTab({
                   <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
                     Open CAT&apos;s OEM service reference, sign in, and paste this machine&apos;s serial number to search its service information.
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] text-amber-100/90">
+                    <span>Model: {m.model || "Not recorded"}</span>
+                    <span>Serial: {m.serialNumber || "Not recorded"}</span>
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {m.model && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1.5 border-amber-500/40 text-xs hover:bg-amber-500/10"
+                      onClick={() => void copyForSis(m.model, "Model number")}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy model
+                    </Button>
+                  )}
                   {m.serialNumber ? (
                     <Button
                       size="sm"
                       variant="outline"
                       className="h-8 gap-1.5 border-amber-500/40 text-xs hover:bg-amber-500/10"
-                      onClick={() => void copySerialNumber(m.serialNumber)}
+                      onClick={() => void copyForSis(m.serialNumber, "Serial number")}
                     >
                       <Copy className="h-3.5 w-3.5" />
                       Copy serial
                     </Button>
                   ) : (
-                    <span className="text-[11px] text-amber-500">Add a serial number to copy it into SIS.</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={serialEntryValues[m.id] ?? ""}
+                        onChange={(event) => setSerialEntryValues((current) => ({ ...current, [m.id]: event.target.value }))}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            saveInlineSerialNumber(m.id);
+                          }
+                        }}
+                        className="h-8 w-44 border-amber-500/40 bg-background text-xs"
+                        placeholder="Add serial number"
+                        aria-label={`Serial number for ${m.name}`}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 gap-1.5 bg-amber-600 text-xs text-white hover:bg-amber-500"
+                        disabled={updateSerialNumber.isPending}
+                        onClick={() => saveInlineSerialNumber(m.id)}
+                      >
+                        {updateSerialNumber.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Save serial
+                      </Button>
+                    </div>
                   )}
                   <a
                     href={CAT_SIS_URL}

@@ -5,6 +5,7 @@ import { CAT_SIS_URL, isCatEquipment } from "@shared/catSis";
 
 const root = resolve(import.meta.dirname, "..");
 const fieldFixSource = readFileSync(resolve(root, "client/src/pages/ops/FieldFix.tsx"), "utf8");
+const fieldFixRouterSource = readFileSync(resolve(root, "server/fieldFixRouter.ts"), "utf8");
 
 describe("Field Fix CAT SIS quick access", () => {
   it("recognizes CAT and Caterpillar equipment without matching other brands", () => {
@@ -22,11 +23,21 @@ describe("Field Fix CAT SIS quick access", () => {
     expect(fieldFixSource).toContain('rel="noreferrer"');
   });
 
-  it("shows a serial copy action only for CAT equipment cards", () => {
+  it("shows serial and model copy actions only for CAT equipment cards", () => {
     expect(fieldFixSource).toContain("isCatEquipment(m.make)");
     expect(fieldFixSource).toContain("Copy serial");
+    expect(fieldFixSource).toContain("Copy model");
+    expect(fieldFixSource).toContain("Model: {m.model || \"Not recorded\"}");
+    expect(fieldFixSource).toContain("Serial: {m.serialNumber || \"Not recorded\"}");
     expect(fieldFixSource).toContain("navigator.clipboard?.writeText");
     expect(fieldFixSource).toContain("Paste it into CAT SIS 2.0.");
-    expect(fieldFixSource).toContain("Add a serial number to copy it into SIS.");
+  });
+
+  it("saves a missing serial number directly from the CAT SIS panel", () => {
+    expect(fieldFixSource).toContain('placeholder="Add serial number"');
+    expect(fieldFixSource).toContain("Save serial");
+    expect(fieldFixSource).toContain("saveInlineSerialNumber(m.id)");
+    expect(fieldFixRouterSource).toContain("updateSerialNumber: adminProcedure");
+    expect(fieldFixRouterSource).toContain("serialNumber: input.serialNumber");
   });
 });

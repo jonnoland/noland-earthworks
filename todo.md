@@ -4216,3 +4216,9 @@
 
 - [x] Add machine-specific CAT SIS quick access and serial-number copy controls in Operations Field Fix.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## CAT SIS Inline Serial and Model Access — September 29, 2026
+
+- [x] Add inline serial-number entry and save support for CAT machines in Field Fix.
+- [x] Show the CAT model beside the serial number and provide a separate model copy action.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.
