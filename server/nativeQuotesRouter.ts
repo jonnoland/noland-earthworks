@@ -18,9 +18,9 @@ import { formatAcreageServiceDescription } from "@shared/quoteLineItemMeasuremen
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeQuoteRevisions, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary, businessSettings } from "../drizzle/schema";
+import { nativeQuotes, nativeQuoteRevisions, nativeJobs, nativeInvoices, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary, businessSettings } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
-import { eq, desc, like, or, and, asc, isNull } from "drizzle-orm";
+import { eq, desc, like, or, and, asc, isNull, isNotNull, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 import { getStripe, isStripeConfigured } from "./stripe";
@@ -363,8 +363,28 @@ export const nativeQuotesRouter = router({
         .orderBy(desc(nativeQuotes.createdAt))
         .limit(input.limit)
         .offset(input.offset);
+      const quoteIds = rows.map((quote) => quote.id);
+      const pendingInvoices = quoteIds.length > 0
+        ? await db
+          .select({ quoteId: nativeInvoices.quoteId, achPaymentPendingAt: nativeInvoices.achPaymentPendingAt })
+          .from(nativeInvoices)
+          .where(and(inArray(nativeInvoices.quoteId, quoteIds), isNotNull(nativeInvoices.achPaymentPendingAt)))
+          .orderBy(desc(nativeInvoices.achPaymentPendingAt))
+        : [];
+      const pendingAchByQuoteId = new Map<number, Date>();
+      for (const invoice of pendingInvoices) {
+        if (invoice.quoteId !== null && invoice.achPaymentPendingAt && !pendingAchByQuoteId.has(invoice.quoteId)) {
+          pendingAchByQuoteId.set(invoice.quoteId, invoice.achPaymentPendingAt);
+        }
+      }
       console.log(`[nativeQuotes.list] Returning ${rows.length} rows (status=${input.status ?? 'all'}, search=${input.search ?? ''})`);
-      return { quotes: rows, total: rows.length };
+      return {
+        quotes: rows.map((quote) => ({
+          ...quote,
+          achPaymentPendingAt: pendingAchByQuoteId.get(quote.id) ?? null,
+        })),
+        total: rows.length,
+      };
     }),
 
   getById: ownerProcedure

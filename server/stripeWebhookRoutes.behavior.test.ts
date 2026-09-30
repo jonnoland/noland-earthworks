@@ -221,6 +221,10 @@ describe("Stripe webhook behavior", () => {
       nextActionType: "final_payment_paid",
       nextActionDueAt: null,
     });
+    expect(state.notifyOwner).toHaveBeenCalledWith(expect.objectContaining({
+      title: "ACH settled — Quote #19 moved to Paid",
+      content: expect.stringContaining("Stripe confirmed the ACH settlement"),
+    }));
     expect(state.ledgerStatus).toBe("processed");
   });
 

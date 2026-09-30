@@ -170,6 +170,7 @@ interface NativeQuote {
   depositPaidAt: Date | null;
   convertedJobId: number | null;
   convertedToJobAt: Date | null;
+  achPaymentPendingAt: Date | null;
   createdAt: Date;
 }
 
@@ -192,7 +193,8 @@ function parseWorkAreaPolygon(value: string | null): Array<{ lat: number; lng: n
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ quote }: { quote: NativeQuote }) {
-  if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return <Badge className="bg-green-700 text-white text-xs">Paid</Badge>;
+  if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return <Badge className="bg-green-700 text-white text-xs">Paid / Settled</Badge>;
+  if (quote.achPaymentPendingAt) return <Badge className="bg-violet-700 text-white text-xs" title="The customer submitted an ACH payment. Stripe has not confirmed settlement yet."><Clock className="mr-1 h-3 w-3" />ACH Pending</Badge>;
   if (quote.nextActionType === "send_revision") return <Badge className="bg-amber-500 text-zinc-950 text-xs">Revision Ready</Badge>;
   if (quote.convertedToJobAt || quote.status === "invoiced") return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
   if (quote.depositPaidAt) return <Badge className="bg-green-600 text-white text-xs">Deposit Paid</Badge>;
@@ -2785,10 +2787,19 @@ function NativeQuoteDetailPanel({
                   <span className="font-medium text-green-400">${(quote.depositPaidCents / 100).toLocaleString()}</span>
                 </div>
               )}
+              {quote.achPaymentPendingAt && (
+                <div className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-2 text-xs text-violet-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 font-semibold"><Clock className="h-3.5 w-3.5" />ACH Payment Pending</span>
+                    <span className="text-[10px] text-violet-200/75">Submitted {new Date(quote.achPaymentPendingAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="mt-1 leading-4 text-violet-100/80">The customer submitted payment. Stripe has not confirmed the bank settlement yet.</p>
+                </div>
+              )}
               {(quote.finalPaymentStatus === "paid" || quote.status === "paid") && (
                 <div className="flex justify-between border-t border-green-500/20 pt-2 text-xs">
                   <span className="font-semibold text-green-300">Final Payment</span>
-                  <span className="font-semibold text-green-400">Paid</span>
+                  <span className="font-semibold text-green-400">Paid / Settled</span>
                 </div>
               )}
             </div>

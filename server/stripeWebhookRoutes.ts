@@ -16,6 +16,14 @@ import { payments, nativeQuotes, nativeInvoices, nativeJobs, stripeWebhookEvents
 import { eq, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 
+function formatInvoiceAmount(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
 async function getRequiredDb() {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable while processing signed Stripe webhook");
@@ -205,7 +213,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   console.log(`[Stripe Webhook] Payment marked as paid for session ${session.id}`);
 }
 
-async function markNativeInvoicePaid(invoiceId: number, paymentIntentId: string | null): Promise<void> {
+async function markNativeInvoicePaid(
+  invoiceId: number,
+  paymentIntentId: string | null,
+  paymentSource: "immediate" | "ach_settlement" = "immediate",
+): Promise<void> {
   const db = await getRequiredDb();
   const [invoice] = await db.select().from(nativeInvoices).where(eq(nativeInvoices.id, invoiceId)).limit(1);
   if (!invoice || invoice.status === "paid") return;
@@ -224,6 +236,17 @@ async function markNativeInvoicePaid(invoiceId: number, paymentIntentId: string 
       nextActionType: "final_payment_paid",
       nextActionDueAt: null,
     }).where(eq(nativeQuotes.id, invoice.quoteId));
+    if (paymentSource === "ach_settlement") {
+      const [quote] = await db
+        .select({ clientName: nativeQuotes.clientName, title: nativeQuotes.title })
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.id, invoice.quoteId))
+        .limit(1);
+      await notifyOwner({
+        title: `ACH settled — Quote #${invoice.quoteId} moved to Paid`,
+        content: `Stripe confirmed the ACH settlement for final invoice #${invoice.id} (${formatInvoiceAmount(invoice.totalCents)}).${quote ? ` ${quote.clientName}'s quote, "${quote.title}", is now in Paid.` : " The linked quote is now in Paid."}`,
+      }).catch((error) => console.warn(`[Stripe Webhook] ACH settlement notification failed for invoice #${invoice.id}:`, error));
+    }
   }
   console.log(`[Stripe Webhook] Native invoice #${invoiceId} marked paid`);
 }
@@ -236,7 +259,7 @@ async function handleInvoicePaymentSucceeded(session: Stripe.Checkout.Session): 
   const paymentIntentId = typeof session.payment_intent === "string"
     ? session.payment_intent
     : session.payment_intent?.id ?? null;
-  await markNativeInvoicePaid(invoiceId, paymentIntentId);
+  await markNativeInvoicePaid(invoiceId, paymentIntentId, "ach_settlement");
 }
 
 async function handleInvoicePaymentFailed(session: Stripe.Checkout.Session): Promise<void> {

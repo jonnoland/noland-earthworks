@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = resolve(import.meta.dirname, "..");
 const quotesUi = readFileSync(resolve(root, "client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
 const invoiceRouter = readFileSync(resolve(root, "server/nativeJobsRouter.ts"), "utf8");
+const quotesRouter = readFileSync(resolve(root, "server/nativeQuotesRouter.ts"), "utf8");
 
 describe("paid quote pipeline", () => {
   it("places a quote with final payment paid into the Paid pipeline section", () => {
@@ -17,6 +18,15 @@ describe("paid quote pipeline", () => {
 
   it("keeps paid quotes out of the active quote count", () => {
     expect(quotesUi).toContain('q.finalPaymentStatus !== "paid"');
+  });
+
+  it("shows ACH pending before settlement and paid settled after confirmation", () => {
+    expect(quotesRouter).toContain("achPaymentPendingAt: nativeInvoices.achPaymentPendingAt");
+    expect(quotesRouter).toContain("pendingAchByQuoteId");
+    expect(quotesUi).toContain("ACH Pending");
+    expect(quotesUi).toContain("ACH Payment Pending");
+    expect(quotesUi).toContain("Stripe has not confirmed the bank settlement yet.");
+    expect(quotesUi).toContain("Paid / Settled");
   });
 
   it("moves a manually recorded final invoice payment back to the source quote", () => {

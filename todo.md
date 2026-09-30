@@ -4222,3 +4222,9 @@
 - [x] Add inline serial-number entry and save support for CAT machines in Field Fix.
 - [x] Show the CAT model beside the serial number and provide a separate model copy action.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Quote ACH Settlement Status and Notification — September 30, 2026
+
+- [x] Surface ACH payment-pending and settled status on the linked quote before and after settlement.
+- [x] Notify the owner when Stripe confirms an ACH settlement and moves the linked quote to Paid.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.
