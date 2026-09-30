@@ -27,7 +27,9 @@ describe("native quote validity policy", () => {
     expect(isQuoteExpiredForCustomer(sentQuote(sentAt), new Date("2026-10-01T15:29:59.999Z"))).toBe(false);
     expect(isQuoteExpiredForCustomer(sentQuote(sentAt), new Date("2026-10-01T15:30:00.000Z"))).toBe(true);
     expect(isQuoteExpiredForCustomer(sentQuote(sentAt, { clientAction: "changes_requested" }), new Date("2026-10-02T00:00:00.000Z"))).toBe(true);
+    expect(isQuoteExpiredForCustomer(sentQuote(sentAt, { status: "draft" }), new Date("2026-10-02T00:00:00.000Z"))).toBe(true);
     expect(isQuoteExpiredForCustomer(sentQuote(sentAt, { status: "approved", clientAction: "approved" }), new Date("2026-10-02T00:00:00.000Z"))).toBe(false);
+    expect(isQuoteExpiredForCustomer(sentQuote(sentAt, { status: "draft", clientAction: "approved" }), new Date("2026-10-02T00:00:00.000Z"))).toBe(false);
     expect(isQuoteExpiredForCustomer(sentQuote(sentAt, { convertedToJobAt: new Date() }), new Date("2026-10-02T00:00:00.000Z"))).toBe(false);
   });
 });

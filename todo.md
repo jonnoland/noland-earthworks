@@ -4241,3 +4241,8 @@
 - [x] Block expired quote approval, deposit, conversion, and resending until it is restored to draft.
 - [x] Add an Expired Quotes section with a restore-to-draft-only reassessment path.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Sent-Stage Quote Expiration Repair — September 30, 2026
+- [x] Expire legacy customer-sent quotes that retain a draft database status but have a sent portal link.
+- [x] Reconcile the two overdue customer-sent quotes and invalidate their prior portal links.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

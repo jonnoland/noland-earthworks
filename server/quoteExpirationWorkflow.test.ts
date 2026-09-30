@@ -12,6 +12,7 @@ describe("thirty-day quote expiration workflow", () => {
     const server = read("server/_core/index.ts");
 
     expect(policy).toContain("QUOTE_VALIDITY_DAYS = 30");
+    expect(policy).toContain('QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE = ["sent", "draft"]');
     expect(policy).toContain('status: "expired"');
     expect(policy).toContain('nextActionType: "quote_expired"');
     expect(policy).toContain("expireStaleNativeQuotes");

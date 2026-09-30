@@ -1,10 +1,13 @@
-import { and, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { nativeQuotes, type NativeQuote } from "../drizzle/schema";
 
 export const QUOTE_VALIDITY_DAYS = 30;
 export const QUOTE_VALIDITY_MS = QUOTE_VALIDITY_DAYS * 24 * 60 * 60 * 1000;
 
-const QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE = ["sent"] as const;
+// Older quote records can retain a draft lifecycle status after a customer portal
+// was sent. The Quotes pipeline correctly presents those as Sent from portalSentAt,
+// so the automatic expiry rule must treat both records the same way.
+const QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE = ["sent", "draft"] as const;
 
 type QuoteValidityRecord = Pick<NativeQuote, "id" | "status" | "portalSentAt" | "clientAction" | "convertedToJobAt" | "depositPaidAt">;
 
@@ -19,6 +22,7 @@ export function isQuoteExpiredForCustomer(quote: QuoteValidityRecord, now = new 
     validUntil
     && now.getTime() >= validUntil.getTime()
     && QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE.includes(quote.status as typeof QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE[number])
+    && (!quote.clientAction || quote.clientAction === "changes_requested")
     && !quote.convertedToJobAt
     && !quote.depositPaidAt,
   );
@@ -34,7 +38,7 @@ export const EXPIRED_QUOTE_UPDATE = {
 } as const;
 
 /**
- * Expires one unaccepted sent quote when its 30-day validity window has passed.
+ * Expires one unaccepted customer-sent quote when its 30-day validity window has passed.
  * The conditional update keeps this safe if a client approves it at the same time.
  */
 export async function expireQuoteIfNeeded(db: any, quote: QuoteValidityRecord, now = new Date()): Promise<boolean> {
@@ -42,11 +46,11 @@ export async function expireQuoteIfNeeded(db: any, quote: QuoteValidityRecord, n
   await db
     .update(nativeQuotes)
     .set(EXPIRED_QUOTE_UPDATE)
-    .where(and(eq(nativeQuotes.id, quote.id), eq(nativeQuotes.status, "sent")));
+    .where(and(eq(nativeQuotes.id, quote.id), inArray(nativeQuotes.status, [...QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE])));
   return true;
 }
 
-/** Expires all sent, unaccepted quotes whose customer validity window has elapsed. */
+/** Expires all customer-sent, unaccepted quotes whose validity window has elapsed. */
 export async function expireStaleNativeQuotes(db: any, now = new Date()): Promise<void> {
   const cutoff = new Date(now.getTime() - QUOTE_VALIDITY_MS);
   await db
@@ -55,6 +59,7 @@ export async function expireStaleNativeQuotes(db: any, now = new Date()): Promis
     .where(and(
       inArray(nativeQuotes.status, [...QUOTE_STATUSES_ELIGIBLE_TO_EXPIRE]),
       lt(nativeQuotes.portalSentAt, cutoff),
+      or(isNull(nativeQuotes.clientAction), eq(nativeQuotes.clientAction, "changes_requested")),
       isNull(nativeQuotes.convertedJobId),
       isNull(nativeQuotes.depositPaidAt),
     ));
