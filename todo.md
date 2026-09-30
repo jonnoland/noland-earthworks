@@ -4246,3 +4246,11 @@
 - [x] Expire legacy customer-sent quotes that retain a draft database status but have a sent portal link.
 - [x] Reconcile the two overdue customer-sent quotes and invalidate their prior portal links.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Field Fix Service Log Document Import — September 30, 2026
+
+- [x] Add secure PDF, DOC, and DOCX upload handling for Field Fix service-log imports.
+- [x] Extract document text and stage each parsed service-log item for owner review.
+- [x] Add a review-and-import workflow that creates an individual equipment service-log entry per accepted item.
+- [x] Preserve the source document with the import for traceability and show clear parsing errors.
+- [x] Add regression coverage, validate PDF/DOCX extraction, checkpoint, and refresh the preview.

@@ -1455,6 +1455,12 @@ export const serviceLogs = mysqlTable("service_logs", {
   cost: decimal("cost", { precision: 10, scale: 2 }),
   /** Receipt/invoice photo URL */
   receiptUrl: text("receiptUrl"),
+  /** Original document used to import this service entry. */
+  sourceDocumentUrl: text("sourceDocumentUrl"),
+  /** Original document filename shown in the service-history audit trail. */
+  sourceDocumentName: varchar("sourceDocumentName", { length: 255 }),
+  /** Timestamp when this row was created through the document importer. */
+  importedAt: timestamp("importedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

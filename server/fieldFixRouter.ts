@@ -17,6 +17,12 @@ import { eq, desc, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import {
+  extractServiceLogDocumentText,
+  isSupportedServiceLogDocument,
+  MAX_SERVICE_LOG_IMPORT_BYTES,
+  sanitizeServiceLogImportFilename,
+} from "./serviceLogImport";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -54,6 +60,44 @@ const createServiceLogSchema = z.object({
   cost: z.string().optional(), // decimal as string
   receiptUrl: z.string().optional(),
 });
+
+const importedServiceLogEntrySchema = z.object({
+  serviceType: z.string().trim().min(1).max(100),
+  serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid service date.").refine((value) => {
+    const parsed = new Date(`${value}T12:00:00Z`);
+    return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+  }, "Use a valid service date."),
+  hoursAtService: z.number().int().min(0).nullable(),
+  performedBy: z.string().trim().max(200),
+  notes: z.string().trim().max(8_000),
+  cost: z.number().min(0).max(1_000_000).nullable(),
+});
+
+const SERVICE_LOG_IMPORT_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    entries: {
+      type: "array",
+      maxItems: 150,
+      items: {
+        type: "object",
+        properties: {
+          serviceType: { type: "string" },
+          serviceDate: { type: "string" },
+          hoursAtService: { type: ["integer", "null"] },
+          performedBy: { type: "string" },
+          notes: { type: "string" },
+          cost: { type: ["number", "null"] },
+        },
+        required: ["serviceType", "serviceDate", "hoursAtService", "performedBy", "notes", "cost"],
+        additionalProperties: false,
+      },
+    },
+    importNotes: { type: "string" },
+  },
+  required: ["entries", "importNotes"],
+  additionalProperties: false,
+} as const;
 
 // ─── Service Intervals ────────────────────────────────────────────────────────
 
@@ -209,6 +253,132 @@ export const fieldFixRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       await db.delete(serviceLogs).where(eq(serviceLogs.id, input.id));
       return { ok: true };
+    }),
+
+  /**
+   * Saves the source document, extracts its text locally, then produces editable
+   * candidate service-log rows. Nothing is added to the maintenance history until
+   * the owner reviews and imports the selected rows.
+   */
+  extractServiceLogDocument: adminProcedure
+    .input(z.object({
+      equipmentId: z.number().int(),
+      filename: z.string().trim().min(1).max(255),
+      mimeType: z.string().trim().max(150),
+      base64: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isSupportedServiceLogDocument(input.filename, input.mimeType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Use a PDF, DOC, or DOCX service log document." });
+      }
+      const normalizedBase64 = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const bytes = Buffer.from(normalizedBase64, "base64");
+      if (!bytes.length || bytes.length > MAX_SERVICE_LOG_IMPORT_BYTES) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Each service log document must be 10 MB or smaller." });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [machine] = await db
+        .select({ name: equipment.name, make: equipment.make, model: equipment.model, serialNumber: equipment.serialNumber })
+        .from(equipment)
+        .where(eq(equipment.id, input.equipmentId))
+        .limit(1);
+      if (!machine) throw new TRPCError({ code: "NOT_FOUND", message: "Equipment was not found." });
+
+      let extracted;
+      try {
+        extracted = await extractServiceLogDocumentText(bytes, input.filename);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "The service log document could not be read.",
+        });
+      }
+
+      const safeFilename = sanitizeServiceLogImportFilename(input.filename);
+      const key = `field-fix/service-log-imports/${ctx.user.id}/${Date.now()}-${randomBytes(8).toString("hex")}-${safeFilename}`;
+      const { url: sourceDocumentUrl } = await storagePut(key, bytes, input.mimeType);
+
+      const machineDescription = [machine.make, machine.model, machine.name, machine.serialNumber ? `serial ${machine.serialNumber}` : ""]
+        .filter(Boolean)
+        .join(" ");
+      const prompt = `Extract maintenance service events from this equipment service-log document for ${machineDescription || "the selected equipment"}.
+
+Return one entry for every separate service, repair, inspection, parts replacement, or maintenance event. Do not combine separate dated events. Preserve exact dates as YYYY-MM-DD. If an entry has no trustworthy date, do not include it. Use the work performed as serviceType (plain language, 100 characters maximum). Extract hours, cost in dollars, performer, and useful notes only when present. Do not invent values. Empty text fields must be empty strings and missing numeric values must be null.
+
+SOURCE DOCUMENT TEXT:
+${extracted.text}`;
+
+      let parsed: unknown;
+      try {
+        const response = await invokeLLM({
+          model: "gpt-5-mini",
+          temperature: 0,
+          maxTokens: 8_000,
+          messages: [
+            { role: "system", content: "You extract accurate structured maintenance records. Output only the required JSON schema." },
+            { role: "user", content: prompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "service_log_import",
+              strict: true,
+              schema: SERVICE_LOG_IMPORT_OUTPUT_SCHEMA,
+            },
+          },
+        });
+        const raw = response.choices[0]?.message?.content;
+        parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw ?? {}));
+      } catch (error) {
+        console.error("[Field Fix] Service log extraction failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "I could not turn that document into service entries. Please review the file and try again." });
+      }
+
+      const result = z.object({
+        entries: z.array(importedServiceLogEntrySchema).max(150),
+        importNotes: z.string().max(1_000),
+      }).safeParse(parsed);
+      if (!result.success || result.data.entries.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No dated service events were found. You can still add service entries manually." });
+      }
+
+      return {
+        sourceDocumentUrl,
+        sourceDocumentName: safeFilename,
+        entries: result.data.entries,
+        importNotes: result.data.importNotes,
+      };
+    }),
+
+  /** Writes the reviewed candidate rows into the selected machine's service history. */
+  importServiceLogEntries: adminProcedure
+    .input(z.object({
+      equipmentId: z.number().int(),
+      sourceDocumentUrl: z.string().url().max(2_000),
+      sourceDocumentName: z.string().trim().min(1).max(255),
+      entries: z.array(importedServiceLogEntrySchema).min(1).max(150),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [machine] = await db.select({ id: equipment.id }).from(equipment).where(eq(equipment.id, input.equipmentId)).limit(1);
+      if (!machine) throw new TRPCError({ code: "NOT_FOUND", message: "Equipment was not found." });
+
+      await db.insert(serviceLogs).values(input.entries.map((entry) => ({
+        equipmentId: input.equipmentId,
+        serviceType: entry.serviceType,
+        serviceDate: new Date(`${entry.serviceDate}T12:00:00Z`),
+        hoursAtService: entry.hoursAtService ?? undefined,
+        performedBy: entry.performedBy || undefined,
+        notes: entry.notes || undefined,
+        cost: entry.cost != null ? entry.cost.toFixed(2) : undefined,
+        sourceDocumentUrl: input.sourceDocumentUrl,
+        sourceDocumentName: input.sourceDocumentName,
+        importedAt: new Date(),
+      })));
+      return { importedCount: input.entries.length };
     }),
 
   // ── Service Intervals ──────────────────────────────────────────────────────
