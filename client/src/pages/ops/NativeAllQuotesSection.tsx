@@ -194,6 +194,7 @@ function parseWorkAreaPolygon(value: string | null): Array<{ lat: number; lng: n
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ quote }: { quote: NativeQuote }) {
   if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return <Badge className="bg-green-700 text-white text-xs">Paid / Settled</Badge>;
+  if (quote.status === "expired") return <Badge className="bg-orange-700 text-white text-xs">Expired</Badge>;
   if (quote.achPaymentPendingAt) return <Badge className="bg-violet-700 text-white text-xs" title="The customer submitted an ACH payment. Stripe has not confirmed settlement yet."><Clock className="mr-1 h-3 w-3" />ACH Pending</Badge>;
   if (quote.nextActionType === "send_revision") return <Badge className="bg-amber-500 text-zinc-950 text-xs">Revision Ready</Badge>;
   if (quote.convertedToJobAt || quote.status === "invoiced") return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
@@ -2556,6 +2557,7 @@ function NativeQuoteDetailPanel({
     ],
     invoiced: [],
     paid: [],
+    expired: [{ value: "draft", label: "Restore to Draft for Reassessment" }],
     declined: [{ value: "draft", label: "Restore to Draft" }],
     cancelled: [{ value: "draft", label: "Restore to Draft" }],
   };
@@ -2563,6 +2565,7 @@ function NativeQuoteDetailPanel({
   // Derive current stage key for the panel
   const panelStageKey = (() => {
     if (quote.finalPaymentStatus === "paid" || quote.status === "paid") return "paid";
+    if (quote.status === "expired") return "expired";
     if (quote.convertedToJobAt) return "invoiced";
     if (quote.clientAction === "declined") return "declined";
     if (quote.status === "cancelled") return "cancelled";
@@ -2726,6 +2729,12 @@ function NativeQuoteDetailPanel({
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">
               <p className="font-semibold">Owner Review — verify property county</p>
               <p className="mt-1">This request was saved for review because the address county could not be confirmed or did not match the selected service county.</p>
+            </div>
+          )}
+          {quote.status === "expired" && (
+            <div className="rounded-lg border border-orange-500/40 bg-orange-950/30 p-3 text-xs text-orange-100">
+              <p className="font-semibold">Quote expired — reassessment required</p>
+              <p className="mt-1">This quote was not accepted within its 30-day validity window. Restore it to draft, reassess the current scope and pricing, then send a new customer link.</p>
             </div>
           )}
           {/* Client block */}
@@ -3036,7 +3045,7 @@ function NativeQuoteDetailPanel({
         {/* Footer actions */}
         <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
           {/* Primary actions */}
-          {quote.clientEmail && !quote.convertedToJobAt && (
+          {quote.clientEmail && quote.status !== "expired" && !quote.convertedToJobAt && (
             <button
               onClick={() => setShowSendPortal(true)}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors"
@@ -3044,7 +3053,7 @@ function NativeQuoteDetailPanel({
               <Send className="w-3.5 h-3.5" />Send Portal to Client
             </button>
           )}
-          {quote.totalCents > 0 && !quote.depositPaidAt && !quote.convertedToJobAt && (
+          {quote.totalCents > 0 && quote.status !== "expired" && !quote.depositPaidAt && !quote.convertedToJobAt && (
             <button
               onClick={() => setShowDeposit(true)}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
@@ -3052,7 +3061,7 @@ function NativeQuoteDetailPanel({
               <CreditCard className="w-3.5 h-3.5" />Collect Deposit
             </button>
           )}
-          {(quote.clientAction === "approved" || quote.depositPaidAt) && !quote.convertedToJobAt && (
+          {(quote.clientAction === "approved" || quote.depositPaidAt) && quote.status !== "expired" && !quote.convertedToJobAt && (
             <button
               onClick={() => setShowConvert(true)}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
@@ -3069,7 +3078,7 @@ function NativeQuoteDetailPanel({
             </button>
           )}
           {/* Restore to Draft — shown when quote is declined or cancelled */}
-          {(quote.clientAction === "declined" || quote.status === "cancelled") && !quote.convertedToJobAt && (
+          {(quote.clientAction === "declined" || quote.status === "cancelled" || quote.status === "expired") && !quote.convertedToJobAt && (
             <button
               onClick={() => {
                 updateStatusMutation.mutate({ id: quote.id, status: "draft" });
@@ -3077,7 +3086,7 @@ function NativeQuoteDetailPanel({
               }}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-amber-300 border border-amber-600/40 hover:bg-amber-950/30 transition-colors"
             >
-              <ArchiveRestore className="w-3.5 h-3.5" />Restore to Draft
+              <ArchiveRestore className="w-3.5 h-3.5" />{quote.status === "expired" ? "Restore to Draft for Reassessment" : "Restore to Draft"}
             </button>
           )}
 
@@ -3958,8 +3967,18 @@ export function NativeAllQuotesSection() {
       description: "Final invoice paid. Kept as a completed quote record.",
       color: "text-green-400",
       bgColor: "bg-green-950/30",
-      badgeColor: "bg-green-700",
+      badgeColor: "bg-green-600",
       nextStatuses: [],
+      terminal: true,
+    },
+    {
+      key: "expired",
+      label: "Expired",
+      description: "Not accepted within 30 days. Restore to draft for reassessment before sending again.",
+      color: "text-orange-400",
+      bgColor: "bg-orange-950/25",
+      badgeColor: "bg-orange-700",
+      nextStatuses: ["draft"],
       terminal: true,
     },
     {
@@ -3990,6 +4009,7 @@ export function NativeAllQuotesSection() {
   // quotes are correctly classified regardless of which path set the state.
   const getStageKey = (q: NativeQuote): string => {
     if (q.finalPaymentStatus === "paid" || q.status === "paid") return "paid";
+    if (q.status === "expired") return "expired";
     if (q.convertedToJobAt || q.status === "invoiced") return "invoiced";
     if (q.clientAction === "declined" || q.status === "declined") return "declined";
     if (q.status === "cancelled") return "cancelled";
@@ -4033,7 +4053,7 @@ export function NativeAllQuotesSection() {
 
   // Total counts for header
   const totalCount = quotes.length;
-  const activeCount = quotes.filter(q => !q.convertedToJobAt && q.status !== "cancelled" && q.status !== "paid" && q.finalPaymentStatus !== "paid" && q.clientAction !== "declined").length;
+  const activeCount = quotes.filter(q => !q.convertedToJobAt && q.status !== "cancelled" && q.status !== "expired" && q.status !== "paid" && q.finalPaymentStatus !== "paid" && q.clientAction !== "declined").length;
 
   // Filter: if statusFilter is "all", show all stages; otherwise show just that stage
   const visibleStages = statusFilter === "all"
@@ -4042,7 +4062,7 @@ export function NativeAllQuotesSection() {
 
   const statuses = [
     { value: "all", label: "All", count: totalCount },
-    ...PIPELINE_STAGES.filter(s => !s.terminal || s.key === "paid").map(s => ({ value: s.key, label: s.label, count: pipelineGroups[s.key]?.length ?? 0 })),
+    ...PIPELINE_STAGES.filter(s => !s.terminal || s.key === "paid" || s.key === "expired").map(s => ({ value: s.key, label: s.label, count: pipelineGroups[s.key]?.length ?? 0 })),
     { value: "declined", label: "Declined", count: pipelineGroups["declined"]?.length ?? 0 },
     { value: "cancelled", label: "Cancelled", count: pipelineGroups["cancelled"]?.length ?? 0 },
   ];
@@ -4494,13 +4514,15 @@ export function NativeAllQuotesSection() {
                                     <Globe className="w-3.5 h-3.5" />
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => setEditQuote(quote)}
-                                  title="Edit"
-                                  className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
+                                {quote.status !== "expired" && (
+                                  <button
+                                    onClick={() => setEditQuote(quote)}
+                                    title="Edit"
+                                    className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => setSelectedQuote(quote)}
                                   title="View details"

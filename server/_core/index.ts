@@ -20,6 +20,8 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerLegacySeoRedirects } from "../legacySeoRedirects";
 import { getTrailingSlashCanonicalRedirect } from "../canonicalRouting";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
+import { getDb } from "../db";
+import { expireStaleNativeQuotes } from "../quoteValidity";
 import cron from "node-cron";
 import {
   runLeadFollowupAgent,
@@ -145,7 +147,16 @@ async function startServer() {
   cron.schedule("*/30 * * * *", async () => {
     await runNotificationRetryAgent();
   }, { timezone: "America/Chicago" });
-  console.log("[Agents] 6 legacy in-process agents registered; Daily Ops Digest uses the durable morning-brief callback.");
+  // Quote validity: expire unaccepted customer quotes after 30 calendar days.
+  const expireQuotes = async () => {
+    const db = await getDb();
+    if (db) await expireStaleNativeQuotes(db);
+  };
+  void expireQuotes().catch((error) => console.error("[Quotes] Initial expiration check failed:", error));
+  cron.schedule("5 0 * * *", () => {
+    void expireQuotes().catch((error) => console.error("[Quotes] Scheduled expiration check failed:", error));
+  }, { timezone: "America/Chicago" });
+  console.log("[Agents] 6 legacy in-process agents and daily quote expiration registered; Daily Ops Digest uses the durable morning-brief callback.");
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);

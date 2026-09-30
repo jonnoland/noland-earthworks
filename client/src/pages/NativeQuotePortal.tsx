@@ -285,6 +285,11 @@ export default function NativeQuotePortal() {
             Sent {new Date(quote.portalSentAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </p>
         )}
+        {quote.validUntil && (
+          <div className="print:border-amber-700 print:bg-amber-50 print:text-zinc-900 mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            <span className="font-semibold">Quote validity:</span> This quote is valid for 30 days through {new Date(quote.validUntil).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. After that date, I will reassess the scope and pricing before issuing an updated quote.
+          </div>
+        )}
       </div>
 
       {revisionLabel && (

@@ -36,6 +36,7 @@ import { storageGet, storagePut } from "./storage";
 import { ACTIVE_15_DAY_PRICING_CONFIG, calculateInternalPricingModel, isInternalPricingConfig, PRIOR_20_DAY_PRICING_CONFIG } from "../shared/internalPricingModel";
 import { repriceDraftQuoteLineItems } from "../shared/draftQuoteRepricing";
 import { buildNativeQuoteRevisionSnapshot, parseNativeQuoteRevisionSnapshot, type CustomerQuotePhotoReference } from "./quoteRevisionSnapshots";
+import { expireQuoteIfNeeded, expireStaleNativeQuotes, getQuoteValidUntil, isQuoteExpiredForCustomer, quoteValidityMessage } from "./quoteValidity";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -342,6 +343,9 @@ export const nativeQuotesRouter = router({
     .query(async ({ input }: { input: { search?: string; status?: string; limit: number; offset: number } }) => {
       const db = await getDb();
       if (!db) return { quotes: [], total: 0 };
+      // Scheduler coverage is reinforced on workspace access so an overdue sent quote
+      // is never left available just because a process restarted near midnight.
+      await expireStaleNativeQuotes(db);
       const conditions = [];
       if (input.status && input.status !== "all") {
         conditions.push(eq(nativeQuotes.status, input.status));
@@ -639,6 +643,12 @@ export const nativeQuotesRouter = router({
       const { id, lineItems, rentalEquipment, rentalMarkupPct, quoteEvidence, quoteMeasurements, insuranceDocuments, workAreaPolygon, ...rest } = input;
       const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
       if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+      if (existingQuote.status === "expired" && input.status !== "draft") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This quote expired after 30 days. Restore it to draft for reassessment before making changes or sending it again.",
+        });
+      }
       const hasCustomerFacingChange = isCustomerFacingQuoteChange(existingQuote, input);
       if (hasCustomerFacingChange && (existingQuote.signedAt || existingQuote.clientAction === "approved" || existingQuote.status === "approved")) {
         throw new TRPCError({
@@ -702,6 +712,16 @@ export const nativeQuotesRouter = router({
         // re-enters the draft stage cleanly
         updates.clientAction = null;
         updates.clientActionAt = null;
+        if (existingQuote.status === "expired") {
+          // The expired customer link remains invalid. A reassessed draft receives
+          // a fresh 30-day window only when the owner sends it again.
+          updates.portalToken = null;
+          updates.portalSentAt = null;
+          updates.portalViewedAt = null;
+          updates.proposalStatus = "draft";
+          updates.nextActionType = "reassess_expired_quote";
+          updates.nextActionDueAt = new Date();
+        }
       }
 
       await db.update(nativeQuotes).set(updates).where(eq(nativeQuotes.id, id));
@@ -853,6 +873,9 @@ export const nativeQuotesRouter = router({
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
       if (!quote.clientEmail) throw new Error("No client email on this quote");
+      if (quote.status === "expired") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days. Restore it to draft and reassess it before sending a new customer quote." });
+      }
       if (quote.signedAt || quote.clientAction === "approved" || quote.status === "approved") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This accepted quote is locked. Duplicate it to prepare and send a new revision." });
       }
@@ -907,6 +930,8 @@ export const nativeQuotesRouter = router({
 
       // Send email
       const totalFormatted = `$${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+      const validUntil = getQuoteValidUntil(sentAt)!;
+      const validityNotice = quoteValidityMessage(validUntil);
       const noteBlock = input.personalNote
         ? `<p style="margin:0 0 16px;color:#d4a843;font-style:italic;">"${input.personalNote}"</p>`
         : "";
@@ -923,6 +948,7 @@ export const nativeQuotesRouter = router({
             <p style="margin:8px 0 0;font-size:20px;font-weight:bold;color:#f0a500;">${totalFormatted}</p>
           </div>
           <a href="${portalUrl}" style="display:inline-block;background:#f0a500;color:#111;font-weight:bold;padding:14px 28px;border-radius:6px;text-decoration:none;margin:16px 0;">View &amp; Respond to Your Quote</a>
+          <p style="margin:0 0 16px;color:#d4a843;font-size:13px;font-weight:bold;">${validityNotice}</p>
           <p style="margin:24px 0 0;color:#666;font-size:13px;">Questions? Call or text Jon directly at <a href="tel:6154064819" style="color:#f0a500;">615-406-4819</a></p>
           <p style="margin:4px 0 0;color:#444;font-size:12px;">Noland Earthworks, LLC &bull; Vanleer, TN &bull; Veteran-Owned &amp; Operated</p>
         </div>`;
@@ -965,6 +991,10 @@ export const nativeQuotesRouter = router({
       const rows = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
+      if (quote.status === "expired" || isQuoteExpiredForCustomer(quote)) {
+        await expireQuoteIfNeeded(db, quote);
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days and must be restored to draft for reassessment before it can become a job." });
+      }
 
       // Insert into nativeJobs (the table the Jobs page reads from)
       const result = await db.insert(nativeJobs).values({
@@ -1016,6 +1046,10 @@ export const nativeQuotesRouter = router({
       const rows = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
+      if (quote.status === "expired" || isQuoteExpiredForCustomer(quote)) {
+        await expireQuoteIfNeeded(db, quote);
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days. Restore it to draft and reassess it before collecting a deposit." });
+      }
 
       const depositCents = Math.round(quote.totalCents * input.depositPct / 100);
       const stripe = getStripe();
@@ -1647,6 +1681,9 @@ Rules:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+      if (quote.status === "expired" || await expireQuoteIfNeeded(db, quote)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days. Contact Jon for an updated quote before making a payment." });
+      }
       if (quote.clientAction !== "approved" || !quote.signedAt || quote.signatureMode !== "typed" || quote.phaseOneAcceptanceScope !== "phase_1" || !quote.phaseOneSignatureConsentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Accept and sign Phase 1 before paying its deposit." });
       }
@@ -1704,6 +1741,9 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      if (quote.status === "expired" || await expireQuoteIfNeeded(db, quote)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This quote expired after 30 days. Please contact Jon for an updated quote." });
+      }
       const revisions = await db.select().from(nativeQuoteRevisions)
         .where(eq(nativeQuoteRevisions.quoteId, quote.id))
         .orderBy(desc(nativeQuoteRevisions.revisionNumber))
@@ -1777,6 +1817,7 @@ Rules:
         convertedToJobAt: quote.convertedToJobAt,
         portalViewedAt: quote.portalViewedAt,
         portalSentAt: quote.portalSentAt,
+        validUntil: getQuoteValidUntil(quote.portalSentAt),
         signedAt: quote.signedAt,
         signatureTypedText: quote.signatureTypedText,
         signatureMode: quote.signatureMode,
@@ -1802,6 +1843,9 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      if (quote.status === "expired" || await expireQuoteIfNeeded(db, quote)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days. Please contact Jon for an updated quote." });
+      }
       // Sync status column so pipeline stage classifier stays consistent
       const statusSync = input.action === "declined" ? "declined"
         : quote.status; // changes_requested stays in current status
@@ -1843,6 +1887,9 @@ Rules:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      if (quote.status === "expired" || await expireQuoteIfNeeded(db, quote)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quote expired after 30 days. Please contact Jon for an updated quote." });
+      }
       if (quote.clientAction === "declined") throw new TRPCError({ code: "BAD_REQUEST", message: "This quote was declined and cannot be accepted." });
       const revisions = await db.select().from(nativeQuoteRevisions)
         .where(eq(nativeQuoteRevisions.quoteId, quote.id))

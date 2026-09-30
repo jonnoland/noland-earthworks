@@ -4234,3 +4234,10 @@
 - [x] Trace the paid Ken Sawyer job, invoice, and source-quote relationship.
 - [x] Repair final-payment synchronization when an invoice lacks its direct quote link.
 - [x] Reconcile the affected paid quote and add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Thirty-Day Quote Validity and Expiration — September 30, 2026
+- [x] Add a shared 30-day quote-validity policy and automatic expiration process.
+- [x] Include the validity window and exact expiration date in customer quote emails and portal/PDF views.
+- [x] Block expired quote approval, deposit, conversion, and resending until it is restored to draft.
+- [x] Add an Expired Quotes section with a restore-to-draft-only reassessment path.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.
