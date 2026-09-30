@@ -4228,3 +4228,9 @@
 - [x] Surface ACH payment-pending and settled status on the linked quote before and after settlement.
 - [x] Notify the owner when Stripe confirms an ACH settlement and moves the linked quote to Paid.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Paid Job to Quote Synchronization Repair — September 30, 2026
+
+- [x] Trace the paid Ken Sawyer job, invoice, and source-quote relationship.
+- [x] Repair final-payment synchronization when an invoice lacks its direct quote link.
+- [x] Reconcile the affected paid quote and add regression coverage, validate, checkpoint, and refresh the preview.

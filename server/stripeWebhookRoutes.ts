@@ -15,6 +15,7 @@ import { getDb } from "./db";
 import { payments, nativeQuotes, nativeInvoices, nativeJobs, stripeWebhookEvents } from "../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
+import { resolveInvoiceQuoteId } from "./nativeInvoiceQuoteLink";
 
 function formatInvoiceAmount(cents: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -220,30 +221,34 @@ async function markNativeInvoicePaid(
 ): Promise<void> {
   const db = await getRequiredDb();
   const [invoice] = await db.select().from(nativeInvoices).where(eq(nativeInvoices.id, invoiceId)).limit(1);
-  if (!invoice || invoice.status === "paid") return;
-  const paidAt = new Date();
-  await db.update(nativeInvoices).set({
-    status: "paid",
-    paidAt,
-    stripePaymentIntentId: paymentIntentId ?? invoice.stripePaymentIntentId,
-    achPaymentPendingAt: null,
-  }).where(eq(nativeInvoices.id, invoiceId));
+  if (!invoice) return;
+  const wasAlreadyPaid = invoice.status === "paid";
+  const paidAt = invoice.paidAt ?? new Date();
+  if (!wasAlreadyPaid) {
+    await db.update(nativeInvoices).set({
+      status: "paid",
+      paidAt,
+      stripePaymentIntentId: paymentIntentId ?? invoice.stripePaymentIntentId,
+      achPaymentPendingAt: null,
+    }).where(eq(nativeInvoices.id, invoiceId));
+  }
   await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));
-  if (invoice.quoteId !== null) {
+  const quoteId = await resolveInvoiceQuoteId(db, invoice);
+  if (quoteId !== null) {
     await db.update(nativeQuotes).set({
       finalPaymentStatus: "paid",
       status: "paid",
       nextActionType: "final_payment_paid",
       nextActionDueAt: null,
-    }).where(eq(nativeQuotes.id, invoice.quoteId));
-    if (paymentSource === "ach_settlement") {
+    }).where(eq(nativeQuotes.id, quoteId));
+    if (paymentSource === "ach_settlement" && !wasAlreadyPaid) {
       const [quote] = await db
         .select({ clientName: nativeQuotes.clientName, title: nativeQuotes.title })
         .from(nativeQuotes)
-        .where(eq(nativeQuotes.id, invoice.quoteId))
+        .where(eq(nativeQuotes.id, quoteId))
         .limit(1);
       await notifyOwner({
-        title: `ACH settled — Quote #${invoice.quoteId} moved to Paid`,
+        title: `ACH settled — Quote #${quoteId} moved to Paid`,
         content: `Stripe confirmed the ACH settlement for final invoice #${invoice.id} (${formatInvoiceAmount(invoice.totalCents)}).${quote ? ` ${quote.clientName}'s quote, "${quote.title}", is now in Paid.` : " The linked quote is now in Paid."}`,
       }).catch((error) => console.warn(`[Stripe Webhook] ACH settlement notification failed for invoice #${invoice.id}:`, error));
     }

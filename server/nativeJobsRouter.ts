@@ -21,6 +21,7 @@ import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
 import { createInvoiceCheckoutSession, expireInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
 import { GOOGLE_REVIEW_URL } from "@shared/googleReview";
+import { resolveInvoiceQuoteId } from "./nativeInvoiceQuoteLink";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -660,7 +661,8 @@ export const nativeJobsRouter = router({
         .set({ paidCents, paidAt })
         .where(eq(nativeJobs.id, invoice.jobId));
 
-      if (invoice.quoteId !== null) {
+      const quoteId = await resolveInvoiceQuoteId(db, invoice);
+      if (quoteId !== null) {
         await db
           .update(nativeQuotes)
           .set({
@@ -669,7 +671,7 @@ export const nativeJobsRouter = router({
             nextActionType: "final_payment_paid",
             nextActionDueAt: null,
           })
-          .where(eq(nativeQuotes.id, invoice.quoteId));
+          .where(eq(nativeQuotes.id, quoteId));
       }
 
       return { success: true };

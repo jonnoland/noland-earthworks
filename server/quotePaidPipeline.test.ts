@@ -6,6 +6,8 @@ const root = resolve(import.meta.dirname, "..");
 const quotesUi = readFileSync(resolve(root, "client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
 const invoiceRouter = readFileSync(resolve(root, "server/nativeJobsRouter.ts"), "utf8");
 const quotesRouter = readFileSync(resolve(root, "server/nativeQuotesRouter.ts"), "utf8");
+const quoteLinkResolver = readFileSync(resolve(root, "server/nativeInvoiceQuoteLink.ts"), "utf8");
+const stripeWebhookRouter = readFileSync(resolve(root, "server/stripeWebhookRoutes.ts"), "utf8");
 
 describe("paid quote pipeline", () => {
   it("places a quote with final payment paid into the Paid pipeline section", () => {
@@ -29,10 +31,13 @@ describe("paid quote pipeline", () => {
     expect(quotesUi).toContain("Paid / Settled");
   });
 
-  it("moves a manually recorded final invoice payment back to the source quote", () => {
+  it("moves a final invoice payment back to the source quote, including legacy invoices", () => {
     expect(invoiceRouter).toContain('finalPaymentStatus: "paid"');
     expect(invoiceRouter).toContain('status: "paid"');
     expect(invoiceRouter).toContain('nextActionType: "final_payment_paid"');
-    expect(invoiceRouter).toContain('where(eq(nativeQuotes.id, invoice.quoteId))');
+    expect(invoiceRouter).toContain("resolveInvoiceQuoteId(db, invoice)");
+    expect(stripeWebhookRouter).toContain("resolveInvoiceQuoteId(db, invoice)");
+    expect(quoteLinkResolver).toContain("nativeJobs.quoteId");
+    expect(quoteLinkResolver).toContain(".set({ quoteId })");
   });
 });

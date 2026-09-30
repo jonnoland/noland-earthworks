@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
     totalCents: number;
     status: string;
     stripePaymentIntentId: string | null;
+    paidAt?: Date | null;
   },
   invoiceUpdate: null as Record<string, unknown> | null,
   jobUpdate: null as Record<string, unknown> | null,
@@ -226,6 +227,32 @@ describe("Stripe webhook behavior", () => {
       content: expect.stringContaining("Stripe confirmed the ACH settlement"),
     }));
     expect(state.ledgerStatus).toBe("processed");
+  });
+
+  it("reconciles a linked quote when Stripe retries an already-paid invoice without repeating the settlement alert", async () => {
+    state.event = asyncInvoiceSucceededEvent("evt_retry_ach_42");
+    state.nativeInvoice = {
+      id: 42,
+      jobId: 7,
+      quoteId: 19,
+      totalCents: 125000,
+      status: "paid",
+      stripePaymentIntentId: "pi_ach_invoice_42",
+      paidAt: new Date("2026-09-28T02:29:08.000Z"),
+    };
+
+    const response = await dispatchWebhook();
+
+    expect(response.status).toBe(200);
+    expect(state.invoiceUpdate).toBeNull();
+    expect(state.jobUpdate).toMatchObject({ paidCents: 125000 });
+    expect(state.quoteUpdate).toEqual({
+      finalPaymentStatus: "paid",
+      status: "paid",
+      nextActionType: "final_payment_paid",
+      nextActionDueAt: null,
+    });
+    expect(state.notifyOwner).not.toHaveBeenCalled();
   });
 
   it("keeps a failed ACH invoice unpaid and clears its stale checkout so it can be resent", async () => {
