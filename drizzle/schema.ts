@@ -1446,6 +1446,8 @@ export const serviceLogs = mysqlTable("service_logs", {
   id: int("id").primaryKey().autoincrement(),
   equipmentId: int("equipmentId").notNull(),
   serviceType: varchar("serviceType", { length: 100 }).notNull(),
+  /** AI-assigned or owner-reviewed equipment system category. */
+  serviceCategory: varchar("serviceCategory", { length: 64 }),
   serviceDate: timestamp("serviceDate").notNull(),
   hoursAtService: int("hoursAtService"),
   /** Who performed the service: owner, dealer, mobile tech */

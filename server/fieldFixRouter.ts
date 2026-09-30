@@ -17,6 +17,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { SERVICE_LOG_CATEGORIES } from "@shared/serviceLogCategories";
 import {
   extractServiceLogDocumentText,
   isSupportedServiceLogDocument,
@@ -63,6 +64,7 @@ const createServiceLogSchema = z.object({
 
 const importedServiceLogEntrySchema = z.object({
   serviceType: z.string().trim().min(1).max(100),
+  serviceCategory: z.enum(SERVICE_LOG_CATEGORIES),
   serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid service date.").refine((value) => {
     const parsed = new Date(`${value}T12:00:00Z`);
     return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
@@ -83,13 +85,14 @@ const SERVICE_LOG_IMPORT_OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           serviceType: { type: "string" },
+          serviceCategory: { type: "string", enum: [...SERVICE_LOG_CATEGORIES] },
           serviceDate: { type: "string" },
           hoursAtService: { type: ["integer", "null"] },
           performedBy: { type: "string" },
           notes: { type: "string" },
           cost: { type: ["number", "null"] },
         },
-        required: ["serviceType", "serviceDate", "hoursAtService", "performedBy", "notes", "cost"],
+        required: ["serviceType", "serviceCategory", "serviceDate", "hoursAtService", "performedBy", "notes", "cost"],
         additionalProperties: false,
       },
     },
@@ -305,7 +308,7 @@ export const fieldFixRouter = router({
         .join(" ");
       const prompt = `Extract maintenance service events from this equipment service-log document for ${machineDescription || "the selected equipment"}.
 
-Return one entry for every separate service, repair, inspection, parts replacement, or maintenance event. Do not combine separate dated events. Preserve exact dates as YYYY-MM-DD. If an entry has no trustworthy date, do not include it. Use the work performed as serviceType (plain language, 100 characters maximum). Extract hours, cost in dollars, performer, and useful notes only when present. Do not invent values. Empty text fields must be empty strings and missing numeric values must be null.
+Return one entry for every separate service, repair, inspection, parts replacement, or maintenance event. Do not combine separate dated events. Preserve exact dates as YYYY-MM-DD. If an entry has no trustworthy date, do not include it. Use the work performed as serviceType (plain language, 100 characters maximum). Assign exactly one serviceCategory from this fixed list based on the actual work: Engine, Hydraulics, Electrical, Cooling, Fuel & Air, Undercarriage, Drivetrain, Attachment, Inspection, General Maintenance, or Other. Extract hours, cost in dollars, performer, and useful notes only when present. Do not invent values. Empty text fields must be empty strings and missing numeric values must be null.
 
 SOURCE DOCUMENT TEXT:
 ${extracted.text}`;
@@ -369,6 +372,7 @@ ${extracted.text}`;
       await db.insert(serviceLogs).values(input.entries.map((entry) => ({
         equipmentId: input.equipmentId,
         serviceType: entry.serviceType,
+        serviceCategory: entry.serviceCategory,
         serviceDate: new Date(`${entry.serviceDate}T12:00:00Z`),
         hoursAtService: entry.hoursAtService ?? undefined,
         performedBy: entry.performedBy || undefined,

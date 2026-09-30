@@ -7,6 +7,7 @@ import {
   isSupportedServiceLogDocument,
   MAX_SERVICE_LOG_IMPORT_BYTES,
 } from "./serviceLogImport";
+import { SERVICE_LOG_CATEGORIES } from "@shared/serviceLogCategories";
 
 const fixture = (name: string) => readFileSync(resolve(import.meta.dirname, "fixtures", name));
 const source = (path: string) => readFileSync(resolve(import.meta.dirname, `../${path}`), "utf8");
@@ -21,6 +22,9 @@ describe("Field Fix service log document import", () => {
     expect(isSupportedServiceLogDocument("service-history.doc", "application/msword")).toBe(true);
     expect(isSupportedServiceLogDocument("service-history.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe(true);
     expect(isSupportedServiceLogDocument("service-history.txt", "text/plain")).toBe(false);
+    expect(SERVICE_LOG_CATEGORIES).toContain("Engine");
+    expect(SERVICE_LOG_CATEGORIES).toContain("Hydraulics");
+    expect(SERVICE_LOG_CATEGORIES).toContain("Electrical");
   });
 
   it("extracts text from a normal PDF service log without a local office suite", async () => {
@@ -59,11 +63,18 @@ describe("Field Fix service log document import", () => {
     expect(router).toContain('model: "gpt-5-mini"');
     expect(router).toContain("sourceDocumentUrl: input.sourceDocumentUrl");
     expect(router).toContain("sourceDocumentName: input.sourceDocumentName");
+    expect(router).toContain("serviceCategory: entry.serviceCategory");
+    expect(router).toContain("Assign exactly one serviceCategory");
     expect(page).toContain("Import Service Log");
     expect(page).toContain("ready for review");
     expect(page).toContain("Import {importEntries.length}");
+    expect(page).toContain("System Category *");
+    expect(page).toContain("Service log import progress");
+    expect(page).toContain("Identifying maintenance items");
+    expect(page).toContain("getServiceCategoryBadgeClass(log.serviceCategory)");
     expect(page).toContain("Imported from {log.sourceDocumentName");
     expect(schema).toContain('sourceDocumentUrl: text("sourceDocumentUrl")');
     expect(schema).toContain('sourceDocumentName: varchar("sourceDocumentName"');
+    expect(schema).toContain('serviceCategory: varchar("serviceCategory"');
   });
 });

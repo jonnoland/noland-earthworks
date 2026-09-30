@@ -974,6 +974,13 @@
       "when": 1790782781320,
       "tag": "0138_lame_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "5",
+      "when": 1790783846084,
+      "tag": "0139_perpetual_polaris",
+      "breakpoints": true
     }
   ]
 }

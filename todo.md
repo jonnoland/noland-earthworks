@@ -4254,3 +4254,10 @@
 - [x] Add a review-and-import workflow that creates an individual equipment service-log entry per accepted item.
 - [x] Preserve the source document with the import for traceability and show clear parsing errors.
 - [x] Add regression coverage, validate PDF/DOCX extraction, checkpoint, and refresh the preview.
+
+## Field Fix Service Log Categories and Import Progress — September 30, 2026
+
+- [x] Add durable service-category fields and AI category extraction for imported maintenance items.
+- [x] Show category labels during review and in the saved Service Log history.
+- [x] Add a staged, accessible import progress bar for PDF and Word document processing.
+- [x] Add tests, migrate the schema, validate, checkpoint, and refresh the preview.

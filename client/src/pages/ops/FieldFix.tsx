@@ -8,7 +8,7 @@
  *  - Service Log: Keyword search + service type filter
  *  - History: Keyword search + date filter
  */
-import { useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 const OpsDashboardLayout = DashboardLayout;
@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CAT_SIS_URL, isCatEquipment } from "@shared/catSis";
+import { SERVICE_LOG_CATEGORIES, type ServiceLogCategory } from "@shared/serviceLogCategories";
 import {
   Dialog,
   DialogContent,
@@ -86,12 +87,48 @@ type TabId = "equipment" | "diagnose" | "service-log" | "intervals" | "history";
 
 type ImportedServiceLogEntry = {
   serviceType: string;
+  serviceCategory: ServiceLogCategory;
   serviceDate: string;
   hoursAtService: number | null;
   performedBy: string;
   notes: string;
   cost: number | null;
 };
+
+type ServiceLogImportProgress = {
+  value: number;
+  label: string;
+  detail: string;
+  active: boolean;
+};
+
+const INITIAL_SERVICE_LOG_IMPORT_PROGRESS: ServiceLogImportProgress = {
+  value: 0,
+  label: "",
+  detail: "",
+  active: false,
+};
+
+const SERVICE_CATEGORY_BADGE_CLASS: Record<ServiceLogCategory, string> = {
+  Engine: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+  Hydraulics: "border-blue-500/30 bg-blue-500/10 text-blue-300",
+  Electrical: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+  Cooling: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+  "Fuel & Air": "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  Undercarriage: "border-stone-500/30 bg-stone-500/10 text-stone-300",
+  Drivetrain: "border-purple-500/30 bg-purple-500/10 text-purple-300",
+  Attachment: "border-teal-500/30 bg-teal-500/10 text-teal-300",
+  Inspection: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  "General Maintenance": "border-green-500/30 bg-green-500/10 text-green-300",
+  Other: "border-muted-foreground/30 bg-muted text-muted-foreground",
+};
+
+function getServiceCategoryBadgeClass(category: string | null | undefined): string {
+  if (SERVICE_LOG_CATEGORIES.includes(category as ServiceLogCategory)) {
+    return SERVICE_CATEGORY_BADGE_CLASS[category as ServiceLogCategory];
+  }
+  return SERVICE_CATEGORY_BADGE_CLASS.Other;
+}
 
 const TABS: { id: TabId; label: string; icon: typeof Stethoscope }[] = [
   { id: "equipment", label: "Equipment", icon: Wrench },
@@ -1142,6 +1179,7 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
   const [importNotes, setImportNotes] = useState("");
   const [importSource, setImportSource] = useState<{ url: string; name: string } | null>(null);
   const [selectedImportFileName, setSelectedImportFileName] = useState("");
+  const [importProgress, setImportProgress] = useState<ServiceLogImportProgress>(INITIAL_SERVICE_LOG_IMPORT_PROGRESS);
   const importFileRef = useRef<HTMLInputElement>(null);
 
   const { data: logs = [], refetch } = trpc.fieldFix.listServiceLogs.useQuery({ equipmentId });
@@ -1169,6 +1207,16 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
     onError: (e) => toast.error(e.message),
   });
 
+  useEffect(() => {
+    if (!importProgress.active || !extractImport.isPending) return;
+    const timer = window.setInterval(() => {
+      setImportProgress((current) => current.value >= 92
+        ? current
+        : { ...current, value: Math.min(92, current.value + 3) });
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [extractImport.isPending, importProgress.active]);
+
   const handleSubmit = () => {
     if (!form.serviceType.trim()) { toast.error("Service type is required."); return; }
     create.mutate({
@@ -1187,6 +1235,7 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
     setImportNotes("");
     setImportSource(null);
     setSelectedImportFileName("");
+    setImportProgress(INITIAL_SERVICE_LOG_IMPORT_PROGRESS);
     if (importFileRef.current) importFileRef.current.value = "";
   };
 
@@ -1202,12 +1251,30 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
       return;
     }
     setSelectedImportFileName(file.name);
+    setImportProgress({
+      value: 8,
+      label: "Preparing document",
+      detail: "Checking the selected service log.",
+      active: true,
+    });
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
         reader.onerror = () => reject(new Error("The document could not be read."));
         reader.readAsDataURL(file);
+      });
+      setImportProgress({
+        value: 42,
+        label: "Extracting service log text",
+        detail: "Reading the document and saving the original for reference.",
+        active: true,
+      });
+      setImportProgress({
+        value: 65,
+        label: "Identifying maintenance items",
+        detail: "AI is separating dated service events and assigning equipment-system categories.",
+        active: true,
       });
       const result = await extractImport.mutateAsync({
         equipmentId,
@@ -1218,10 +1285,17 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
       setImportEntries(result.entries);
       setImportNotes(result.importNotes);
       setImportSource({ url: result.sourceDocumentUrl, name: result.sourceDocumentName });
+      setImportProgress({
+        value: 100,
+        label: "Ready for review",
+        detail: `${result.entries.length} categorized service ${result.entries.length === 1 ? "item is" : "items are"} ready to review.`,
+        active: false,
+      });
       toast.success(`${result.entries.length} service ${result.entries.length === 1 ? "entry" : "entries"} ready for review.`);
     } catch {
       // The mutation presents the actionable error message.
       setSelectedImportFileName("");
+      setImportProgress(INITIAL_SERVICE_LOG_IMPORT_PROGRESS);
     }
   };
 
@@ -1367,6 +1441,25 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">Up to 10 MB. Review every extracted entry before it is added to this machine.</p>
                 {selectedImportFileName && <p className="mt-3 text-xs text-primary">{selectedImportFileName}</p>}
+                {importProgress.active && (
+                  <div className="mx-auto mt-4 max-w-md text-left" aria-live="polite">
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-medium text-foreground">
+                      <span>{importProgress.label}</span>
+                      <span>{importProgress.value}%</span>
+                    </div>
+                    <div
+                      className="h-2 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-label="Service log import progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={importProgress.value}
+                    >
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out" style={{ width: `${importProgress.value}%` }} />
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">{importProgress.detail}</p>
+                  </div>
+                )}
               </button>
               <input
                 ref={importFileRef}
@@ -1412,6 +1505,16 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
                       <div className="sm:col-span-2">
                         <label className="mb-1 block text-[11px] text-muted-foreground">Service Type *</label>
                         <Input value={entry.serviceType} onChange={(event) => updateImportEntry(index, { serviceType: event.target.value })} />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-[11px] text-muted-foreground">System Category *</label>
+                        <select
+                          value={entry.serviceCategory}
+                          onChange={(event) => updateImportEntry(index, { serviceCategory: event.target.value as ServiceLogCategory })}
+                          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                        >
+                          {SERVICE_LOG_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] text-muted-foreground">Date *</label>
@@ -1499,6 +1602,11 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-foreground">{log.serviceType}</span>
+                  {log.serviceCategory && (
+                    <Badge variant="outline" className={cn("text-[10px] font-medium", getServiceCategoryBadgeClass(log.serviceCategory))}>
+                      {log.serviceCategory}
+                    </Badge>
+                  )}
                   {log.cost && (
                     <Badge variant="secondary" className="text-[10px]">${parseFloat(log.cost).toFixed(2)}</Badge>
                   )}

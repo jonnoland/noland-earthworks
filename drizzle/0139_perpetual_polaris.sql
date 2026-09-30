@@ -1,0 +1,1 @@
+ALTER TABLE `service_logs` ADD `serviceCategory` varchar(64);
