@@ -23,6 +23,11 @@ describe("paid check invoice documents", () => {
     expect(html).toContain("Paid Invoice");
     expect(html).toContain("Balance Paid");
     expect(html).toContain("Paid by check #1050");
+    expect(html).toContain('class="paid-stamp"');
+    expect(html).toContain(">PAID</div>");
+    expect(html).toContain("Payment Summary");
+    expect(html).toContain("PAID IN FULL");
+    expect(html).toContain("Check number:</strong> #1050");
     expect(html).not.toContain("Pay Invoice Securely");
   });
 

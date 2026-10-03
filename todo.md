@@ -4305,3 +4305,9 @@
 - [x] Identify paid check invoices whose stored document still shows an unpaid balance.
 - [x] Add an owner-safe refresh path that replaces legacy paid-check invoice documents with paid versions.
 - [x] Regenerate affected documents, add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Paid Invoice Stamp and Payment Summary — October 3, 2026
+
+- [x] Add a clear PAID watermark to generated invoices with a zero balance.
+- [x] Show the payment method, reference, and payment date above the paid invoice document content.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

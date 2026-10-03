@@ -1227,6 +1227,7 @@ export function buildInvoiceHtml(p: InvoiceParams): string {
   const paymentSummary = p.paymentStatus
     ? `Paid by check${p.paymentStatus.reference ? ` #${esc(p.paymentStatus.reference)}` : ""} on ${esc(paidDate ?? "—")}`
     : null;
+  const paymentMethod = p.paymentStatus?.method === "check" ? "Check" : null;
 
   const lineItemRows = p.lineItems.map(li => `
     <tr>
@@ -1249,7 +1250,8 @@ export function buildInvoiceHtml(p: InvoiceParams): string {
       .page { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
     }
     body { margin: 0; padding: 32px 16px; background: #f4f1ec; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-    .page { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.10); }
+    .page { position:relative; max-width:800px; margin:0 auto; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.10); }
+    .paid-stamp { position:absolute; z-index:2; top:46%; right:30px; transform:rotate(-16deg); border:8px solid #15803d; border-radius:10px; padding:8px 20px; color:#15803d; font-size:64px; line-height:1; font-weight:900; letter-spacing:7px; opacity:.16; pointer-events:none; }
   </style>
 </head>
 <body>
@@ -1262,6 +1264,20 @@ export function buildInvoiceHtml(p: InvoiceParams): string {
         <div style="color:#aaa;font-size:13px;margin-top:8px;">${esc(p.invoiceNumber)}</div>
       </div>
     </div>
+    ${p.paymentStatus ? `<div class="paid-stamp" aria-label="Paid in full">PAID</div>
+    <div style="position:relative;z-index:3;margin:20px 36px 0;padding:16px 18px;background:#ecfdf3;border:2px solid #86efac;border-radius:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.1px;color:#15803d;">Payment Summary</div>
+          <div style="margin-top:4px;font-size:20px;font-weight:800;color:#166534;">PAID IN FULL</div>
+        </div>
+        <div style="font-size:13px;color:#166534;text-align:right;line-height:1.6;">
+          <div><strong>Method:</strong> ${paymentMethod}</div>
+          <div><strong>Check number:</strong> ${p.paymentStatus.reference ? `#${esc(p.paymentStatus.reference)}` : "—"}</div>
+          <div><strong>Date received:</strong> ${esc(paidDate ?? "—")}</div>
+        </div>
+      </div>
+    </div>` : ""}
     <div style="padding:24px 36px;display:flex;gap:32px;flex-wrap:wrap;border-bottom:1px solid #f0ede6;">
       <div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;margin-bottom:4px;">Bill To</div>
