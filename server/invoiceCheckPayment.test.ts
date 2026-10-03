@@ -14,6 +14,7 @@ describe("manual invoice check payment workflow", () => {
     expect(schema).toContain('paymentNotes: text("paymentNotes")');
     expect(schema).toContain('paymentReceiptEmailId: varchar("paymentReceiptEmailId", { length: 128 })');
     expect(schema).toContain('paymentReceiptSentAt: timestamp("paymentReceiptSentAt")');
+    expect(schema).toContain('paymentReceiptUrl: varchar("paymentReceiptUrl", { length: 1024 })');
   });
 
   it("records a received check only after closing an open online checkout", () => {
@@ -38,5 +39,15 @@ describe("manual invoice check payment workflow", () => {
     expect(invoicesUi).toContain("paymentMethodLabel");
     expect(invoicesUi).toContain(">Payment</th>");
     expect(invoicesUi).toContain("Receipt emailed");
+    expect(invoicesUi).toContain("View paid final invoice");
+    expect(invoicesUi).toContain("View final payment receipt");
+    expect(invoicesUi).toContain("Resend Payment Receipt");
+  });
+
+  it("resends only the receipt for paid check invoices while preserving settled payment state", () => {
+    expect(router).toContain("resendCheckPaymentReceipt: ownerProcedure");
+    expect(router).toContain("Only paid check invoices can receive a payment receipt resend.");
+    expect(router).toContain("savePaidCheckDocuments");
+    expect(router).toContain("paymentReceiptUrl: paidDocuments.paymentReceiptUrl");
   });
 });

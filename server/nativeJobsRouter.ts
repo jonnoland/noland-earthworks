@@ -531,8 +531,28 @@ export const nativeJobsRouter = router({
         .where(eq(nativeInvoices.id, invoiceId))
         .limit(1);
 
+      let directCheckDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string } | null = null;
+      if (isCheckPayment && invoice) {
+        try {
+          directCheckDocuments = await savePaidCheckDocuments({
+            invoice,
+            job,
+            checkNumber: input.checkNumber!,
+            paidAt: checkPaidAt,
+          });
+          await db
+            .update(nativeInvoices)
+            .set({ pdfUrl: directCheckDocuments.paidInvoiceUrl, paymentReceiptUrl: directCheckDocuments.paymentReceiptUrl })
+            .where(eq(nativeInvoices.id, invoice.id));
+        } catch (error) {
+          console.error(`[Invoices] Could not save paid documents for invoice #${invoiceId}:`, error);
+        }
+      }
+
       return {
         ...invoice,
+        pdfUrl: directCheckDocuments?.paidInvoiceUrl ?? invoice?.pdfUrl ?? null,
+        paymentReceiptUrl: directCheckDocuments?.paymentReceiptUrl ?? invoice?.paymentReceiptUrl ?? null,
         emailSent,
         emailSendError,
         paymentLinkError,
@@ -830,6 +850,28 @@ export const nativeJobsRouter = router({
           .where(eq(nativeQuotes.id, quoteId));
       }
 
+      let paidDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string } | null = null;
+      try {
+        paidDocuments = await savePaidCheckDocuments({
+          invoice,
+          job: {
+            clientName: invoice.clientName,
+            clientEmail: invoice.clientEmail,
+            clientPhone: invoice.clientPhone,
+            propertyAddress: invoice.propertyAddress,
+            serviceType: invoice.serviceType,
+          },
+          checkNumber: input.checkNumber,
+          paidAt,
+        });
+        await db
+          .update(nativeInvoices)
+          .set({ pdfUrl: paidDocuments.paidInvoiceUrl, paymentReceiptUrl: paidDocuments.paymentReceiptUrl })
+          .where(eq(nativeInvoices.id, invoice.id));
+      } catch (error) {
+        console.error(`[Invoices] Could not save paid documents for invoice #${invoice.id}:`, error);
+      }
+
       const receipt: CheckPaymentReceiptResult = input.sendReceipt
         ? await sendCheckPaymentReceipt({ invoice, checkNumber: input.checkNumber, paidAt })
         : { attempted: false, sent: false, reason: "not_requested" };
@@ -845,9 +887,93 @@ export const nativeJobsRouter = router({
         success: true,
         paidAt,
         checkNumber: input.checkNumber,
+        paidInvoiceUrl: paidDocuments?.paidInvoiceUrl ?? invoice.pdfUrl,
+        paymentReceiptUrl: paidDocuments?.paymentReceiptUrl ?? null,
         receipt: receipt.sent
           ? { attempted: true, sent: true }
           : { attempted: receipt.attempted, sent: false, reason: receipt.reason },
+      };
+    }),
+
+  /**
+   * Re-sends the customer receipt for a completed check payment. This never
+   * changes the settled invoice, job, or quote payment status.
+   */
+  resendCheckPaymentReceipt: ownerProcedure
+    .input(z.object({ invoiceId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [invoice] = await db
+        .select()
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.id, input.invoiceId))
+        .limit(1);
+
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status !== "paid" || invoice.paymentMethod !== "check") {
+        throw new TRPCError({ code: "CONFLICT", message: "Only paid check invoices can receive a payment receipt resend." });
+      }
+      if (!invoice.paymentReference) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This check payment does not have a saved check number." });
+      }
+
+      let paidDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string };
+      try {
+        paidDocuments = await savePaidCheckDocuments({
+          invoice,
+          job: {
+            clientName: invoice.clientName,
+            clientEmail: invoice.clientEmail,
+            clientPhone: invoice.clientPhone,
+            propertyAddress: invoice.propertyAddress,
+            serviceType: invoice.serviceType,
+          },
+          checkNumber: invoice.paymentReference,
+          paidAt: invoice.paidAt ?? new Date(),
+        });
+      } catch (error) {
+        console.error(`[Invoices] Could not prepare paid documents for invoice #${invoice.id}:`, error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not prepare the paid invoice and receipt. Try again shortly." });
+      }
+
+      const receipt = await sendCheckPaymentReceipt({
+        invoice,
+        checkNumber: invoice.paymentReference,
+        paidAt: invoice.paidAt ?? new Date(),
+      });
+
+      if (!receipt.sent) {
+        const message = receipt.reason === "missing_email"
+          ? "Add a customer email address before resending this payment receipt."
+          : receipt.reason === "email_not_configured"
+            ? "Payment receipt email delivery is not configured."
+            : "The email provider could not deliver the payment receipt. Try again shortly.";
+        throw new TRPCError({
+          code: receipt.reason === "delivery_failed" ? "INTERNAL_SERVER_ERROR" : "PRECONDITION_FAILED",
+          message,
+        });
+      }
+
+      const receiptSentAt = new Date();
+      await db
+        .update(nativeInvoices)
+        .set({
+          pdfUrl: paidDocuments.paidInvoiceUrl,
+          paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
+          paymentReceiptEmailId: receipt.emailId,
+          paymentReceiptSentAt: receiptSentAt,
+        })
+        .where(eq(nativeInvoices.id, invoice.id));
+
+      return {
+        success: true,
+        invoiceId: invoice.id,
+        clientEmail: invoice.clientEmail,
+        receiptSentAt,
+        paidInvoiceUrl: paidDocuments.paidInvoiceUrl,
+        paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
       };
     }),
 });
@@ -858,8 +984,8 @@ function fmt(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
-function esc(str: string): string {
-  return str
+function esc(str: string | null | undefined): string {
+  return (str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -887,7 +1013,7 @@ async function sendCheckPaymentReceipt({
   if (!ENV.resendApiKey) return { attempted: false, sent: false, reason: "email_not_configured" };
 
   const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
-  const firstName = invoice.clientName.trim().split(/\s+/)[0] || "there";
+  const firstName = invoice.clientName?.trim().split(/\s+/)[0] || "there";
   const receivedDate = paidAt.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -943,6 +1069,80 @@ async function sendCheckPaymentReceipt({
   }
 }
 
+export function buildCheckPaymentReceiptHtml({
+  invoice,
+  checkNumber,
+  paidAt,
+}: {
+  invoice: CheckReceiptInvoice;
+  checkNumber: string;
+  paidAt: Date;
+}): string {
+  const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
+  const firstName = invoice.clientName?.trim().split(/\s+/)[0] || "there";
+  const receivedDate = paidAt.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `<!DOCTYPE html>
+<html lang="en"><body style="margin:0;padding:0;background:#f4f1ec;font-family:Arial,sans-serif;color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#f4f1ec;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+      <tr><td style="height:5px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+      <tr><td style="padding:28px 36px;background:#1a1a1a;"><div style="font-size:19px;font-weight:700;color:#fff;">NOLAND <span style="color:#E07B2A;">EARTHWORKS</span></div><div style="margin-top:6px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">Payment Receipt</div></td></tr>
+      <tr><td style="padding:28px 36px;">
+        <p style="margin:0 0 14px;font-size:16px;">Hi ${esc(firstName)},</p>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. I received your check payment and have marked your final invoice as paid.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:20px;">
+          <tr><td style="padding:10px 16px;background:#f9f7f4;font-size:12px;color:#666;">Invoice</td><td align="right" style="padding:10px 16px;background:#f9f7f4;font-size:12px;font-weight:700;">${esc(invoiceNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">Check #${esc(checkNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Date received</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(receivedDate)}</td></tr>
+          <tr><td style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:15px;font-weight:700;">Amount received</td><td align="right" style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:16px;font-weight:700;color:#E07B2A;">${fmt(invoice.totalCents)}</td></tr>
+        </table>
+        <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">If you have any questions, call me at <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.</p>
+      </td></tr>
+      <tr><td style="padding:18px 36px;background:#1a1a1a;text-align:center;font-size:12px;color:#aaa;">Noland Earthworks, LLC &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated</td></tr>
+      <tr><td style="height:4px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+}
+
+async function savePaidCheckDocuments({
+  invoice,
+  job,
+  checkNumber,
+  paidAt,
+}: {
+  invoice: typeof nativeInvoices.$inferSelect;
+  job: InvoiceParams["job"];
+  checkNumber: string;
+  paidAt: Date;
+}): Promise<{ paidInvoiceUrl: string; paymentReceiptUrl: string }> {
+  const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
+  const lineItems: InvoiceParams["lineItems"] = JSON.parse(invoice.lineItems || "[]");
+  const paymentStatus = { method: "check" as const, reference: checkNumber, paidAt };
+  const paidInvoiceHtml = buildInvoiceHtml({
+    invoiceNumber,
+    job,
+    lineItems,
+    subtotalCents: invoice.subtotalCents,
+    depositPaidCents: invoice.depositPaidCents,
+    totalCents: invoice.totalCents,
+    notes: invoice.notes ?? undefined,
+    dueDate: invoice.dueDate ?? undefined,
+    paymentStatus,
+  });
+  const receiptHtml = buildCheckPaymentReceiptHtml({ invoice, checkNumber, paidAt });
+  const suffix = `${invoice.id}-${Date.now()}`;
+  const [paidInvoiceFile, paymentReceiptFile] = await Promise.all([
+    storagePut(`invoices/${suffix}-paid.html`, Buffer.from(paidInvoiceHtml, "utf8"), "text/html"),
+    storagePut(`payment-receipts/${suffix}.html`, Buffer.from(receiptHtml, "utf8"), "text/html"),
+  ]);
+  return { paidInvoiceUrl: paidInvoiceFile.url, paymentReceiptUrl: paymentReceiptFile.url };
+}
+
 export interface InvoiceParams {
   invoiceNumber: string;
   job: {
@@ -963,13 +1163,22 @@ export interface InvoiceParams {
   googleReviewUrl?: string;
   notes?: string;
   dueDate?: Date;
+  paymentStatus?: {
+    method: "check";
+    reference?: string | null;
+    paidAt: Date;
+  };
 }
 
-function buildInvoiceHtml(p: InvoiceParams): string {
+export function buildInvoiceHtml(p: InvoiceParams): string {
   const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
   const issuedDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const jobDate = (p.job.completedAt ?? p.job.scheduledDate)?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? "—";
   const dueStr = p.dueDate?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? "Upon receipt";
+  const paidDate = p.paymentStatus?.paidAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const paymentSummary = p.paymentStatus
+    ? `Paid by check${p.paymentStatus.reference ? ` #${esc(p.paymentStatus.reference)}` : ""} on ${esc(paidDate ?? "—")}`
+    : null;
 
   const lineItemRows = p.lineItems.map(li => `
     <tr>
@@ -1001,7 +1210,7 @@ function buildInvoiceHtml(p: InvoiceParams): string {
     <div style="background:#1a1a1a;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;">
       <img src="${logoUrl}" alt="Noland Earthworks" height="52" style="display:block;" />
       <div style="text-align:right;">
-        <div style="display:inline-block;background:#E07B2A;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:6px 14px;border-radius:4px;">Invoice</div>
+        <div style="display:inline-block;background:${p.paymentStatus ? "#16a34a" : "#E07B2A"};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:6px 14px;border-radius:4px;">${p.paymentStatus ? "Paid Invoice" : "Invoice"}</div>
         <div style="color:#aaa;font-size:13px;margin-top:8px;">${esc(p.invoiceNumber)}</div>
       </div>
     </div>
@@ -1018,8 +1227,8 @@ function buildInvoiceHtml(p: InvoiceParams): string {
         <div style="font-size:14px;color:#1a1a1a;">${issuedDate}</div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;margin-top:12px;margin-bottom:4px;">Job Date</div>
         <div style="font-size:14px;color:#1a1a1a;">${jobDate}</div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;margin-top:12px;margin-bottom:4px;">Payment Due</div>
-        <div style="font-size:14px;color:#1a1a1a;font-weight:600;">${dueStr}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;margin-top:12px;margin-bottom:4px;">${p.paymentStatus ? "Paid" : "Payment Due"}</div>
+        <div style="font-size:14px;color:${p.paymentStatus ? "#16a34a" : "#1a1a1a"};font-weight:600;">${p.paymentStatus ? esc(paidDate ?? "—") : dueStr}</div>
       </div>
     </div>
     ${p.job.serviceType || p.job.acreage ? `
@@ -1059,8 +1268,8 @@ function buildInvoiceHtml(p: InvoiceParams): string {
           <td style="padding:6px 16px;font-size:13px;color:#16a34a;text-align:right;">− ${fmt(p.depositPaidCents)}</td>
         </tr>` : ""}
         <tr style="border-top:2px solid #E07B2A;">
-          <td style="padding:10px 16px;font-size:16px;font-weight:700;color:#1a1a1a;">Balance Due</td>
-          <td style="padding:10px 16px;font-size:16px;font-weight:700;color:#E07B2A;text-align:right;">${fmt(p.totalCents)}</td>
+          <td style="padding:10px 16px;font-size:16px;font-weight:700;color:#1a1a1a;">${p.paymentStatus ? "Balance Paid" : "Balance Due"}</td>
+          <td style="padding:10px 16px;font-size:16px;font-weight:700;color:${p.paymentStatus ? "#16a34a" : "#E07B2A"};text-align:right;">${fmt(p.totalCents)}</td>
         </tr>
       </table>
     </div>
@@ -1069,13 +1278,13 @@ function buildInvoiceHtml(p: InvoiceParams): string {
       <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;">Notes</p>
       <div style="background:#f9f7f4;border:1px solid #f0ede6;border-radius:6px;padding:14px 16px;font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;">${esc(p.notes)}</div>
     </div>` : ""}
-    <div style="padding:${p.paymentLinkUrl ? "20px" : "16px"} 36px;background:#fdf6ee;border-top:1px solid #f0e4cc;${p.paymentLinkUrl ? "text-align:center;" : ""}">
-      ${p.paymentLinkUrl ? `<p style="margin:0 0 10px;font-size:13px;color:#7a4f1a;"><strong>Pay this invoice online</strong> by card or ACH bank transfer.</p>
+    <div style="padding:${p.paymentLinkUrl ? "20px" : "16px"} 36px;background:${p.paymentStatus ? "#f0fdf4" : "#fdf6ee"};border-top:1px solid ${p.paymentStatus ? "#bbf7d0" : "#f0e4cc"};${p.paymentLinkUrl ? "text-align:center;" : ""}">
+      ${paymentSummary ? `<p style="margin:0;font-size:13px;color:#166534;"><strong>Payment received:</strong> ${paymentSummary}. Thank you.</p>` : p.paymentLinkUrl ? `<p style="margin:0 0 10px;font-size:13px;color:#7a4f1a;"><strong>Pay this invoice online</strong> by card or ACH bank transfer.</p>
       <a href="${esc(p.paymentLinkUrl)}" style="display:inline-block;background:#E07B2A;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:700;">Pay Invoice Securely &rarr;</a>
       <p style="margin:12px 0 0;font-size:13px;color:#7a4f1a;">` : `<p style="margin:0;font-size:13px;color:#7a4f1a;">`}
-        <strong>Payment:</strong> Check, cash, or electronic transfer. Make checks payable to <strong>Noland Earthworks, LLC</strong>.
+        ${paymentSummary ? "" : `<strong>Payment:</strong> Check, cash, or electronic transfer. Make checks payable to <strong>Noland Earthworks, LLC</strong>.
         Questions? Call <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or email <a href="mailto:quotes@nolandearthworks.com" style="color:#E07B2A;">quotes@nolandearthworks.com</a>.
-      </p>
+      `}</p>
     </div>
     <div style="background:#1a1a1a;padding:18px 36px;text-align:center;">
       <p style="margin:0;font-size:12px;color:#888;">

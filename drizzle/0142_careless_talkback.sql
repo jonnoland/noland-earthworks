@@ -1,0 +1,1 @@
+ALTER TABLE `native_invoices` ADD `paymentReceiptUrl` varchar(1024);

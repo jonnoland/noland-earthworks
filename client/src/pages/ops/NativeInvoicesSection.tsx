@@ -66,6 +66,7 @@ type NativeInvoice = {
   paymentNotes?: string | null;
   paymentReceiptEmailId?: string | null;
   paymentReceiptSentAt?: Date | null;
+  paymentReceiptUrl?: string | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -150,6 +151,7 @@ export default function NativeInvoicesSection() {
   const [checkNote, setCheckNote] = useState("");
   const [sendCheckReceipt, setSendCheckReceipt] = useState(true);
   const [resendId, setResendId] = useState<number | null>(null);
+  const [resendReceiptId, setResendReceiptId] = useState<number | null>(null);
 
   // Fetch all invoices (no jobId filter = all)
   const { data: allInvoices = [], isLoading } = trpc.nativeJobs.listInvoices.useQuery({});
@@ -194,6 +196,15 @@ export default function NativeInvoicesSection() {
     onError: (e) => toast.error(e.message),
   });
 
+  const resendReceiptMutation = trpc.nativeJobs.resendCheckPaymentReceipt.useMutation({
+    onSuccess: (result) => {
+      utils.nativeJobs.listInvoices.invalidate();
+      toast.success(`Payment receipt resent to ${result.clientEmail}`);
+      setResendReceiptId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   // Filter invoices
   const filtered = allInvoices.filter((inv) => {
     const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
@@ -220,6 +231,7 @@ export default function NativeInvoicesSection() {
   const invoiceToMarkPaid = allInvoices.find((i) => i.id === markPaidId);
   const invoiceToRecordCheck = allInvoices.find((i) => i.id === checkPaymentId);
   const invoiceToResend = allInvoices.find((i) => i.id === resendId);
+  const invoiceToResendReceipt = allInvoices.find((i) => i.id === resendReceiptId);
 
   function openCheckPayment(invoice: NativeInvoice) {
     setCheckPaymentId(invoice.id);
@@ -437,9 +449,20 @@ export default function NativeInvoicesSection() {
                           size="sm"
                           onClick={() => window.open(inv.pdfUrl!, "_blank")}
                           className="h-7 px-2 text-zinc-400 hover:text-zinc-200 text-xs"
-                          title="View invoice"
+                          title={inv.status === "paid" && inv.paymentMethod === "check" ? "View paid final invoice" : "View invoice"}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {inv.paymentReceiptUrl && inv.status === "paid" && inv.paymentMethod === "check" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(inv.paymentReceiptUrl!, "_blank")}
+                          className="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs"
+                          title="View final payment receipt"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
                         </Button>
                       )}
                       {inv.stripePaymentLinkUrl && (
@@ -479,6 +502,18 @@ export default function NativeInvoicesSection() {
                           disabled={resendMutation.isPending}
                           className="h-7 px-2 text-blue-400 hover:text-blue-300 text-xs"
                           title="Resend invoice with a fresh card / ACH payment link"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {inv.status === "paid" && inv.paymentMethod === "check" && inv.clientEmail && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setResendReceiptId(inv.id)}
+                          disabled={resendReceiptMutation.isPending}
+                          className="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs"
+                          title={inv.paymentReceiptSentAt ? "Resend payment receipt" : "Send payment receipt"}
                         >
                           <Send className="w-3.5 h-3.5" />
                         </Button>
@@ -643,6 +678,36 @@ export default function NativeInvoicesSection() {
               className="bg-blue-700 hover:bg-blue-600 text-white"
             >
               {resendMutation.isPending ? "Resending..." : "Resend Invoice"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resend Payment Receipt Confirmation */}
+      <AlertDialog open={resendReceiptId !== null} onOpenChange={(v) => !v && setResendReceiptId(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resend payment receipt?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              {invoiceToResendReceipt && (
+                <>
+                  The paid receipt for invoice #{String(invoiceToResendReceipt.id).padStart(4, "0")}
+                  {invoiceToResendReceipt.paymentReference ? ` (Check #${invoiceToResendReceipt.paymentReference})` : ""} will be emailed to{" "}
+                  <strong className="text-zinc-200">{invoiceToResendReceipt.clientEmail}</strong>. The invoice will remain paid.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300" disabled={resendReceiptMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resendReceiptId && resendReceiptMutation.mutate({ invoiceId: resendReceiptId })}
+              disabled={resendReceiptMutation.isPending}
+              className="bg-emerald-700 hover:bg-emerald-600 text-white"
+            >
+              {resendReceiptMutation.isPending ? "Resending Receipt..." : "Resend Payment Receipt"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

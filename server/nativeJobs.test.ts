@@ -18,6 +18,10 @@ vi.mock("./stripe", () => ({
   isStripeConfigured: vi.fn(() => true),
 }));
 
+vi.mock("./storage", () => ({
+  storagePut: vi.fn(async () => ({ url: "https://storage.example.test/payment-document.html" })),
+}));
+
 import { getDb } from "./db";
 import { expireInvoiceCheckoutSession } from "./stripe";
 import { appRouter } from "./routers";

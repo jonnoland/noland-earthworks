@@ -4287,3 +4287,15 @@
 - [x] Add a direct paid-by-check completion path beside Send Final Invoice so an in-hand check does not trigger a live payment link.
 - [x] Create the invoice, record the check, and optionally email only the payment receipt from the Jobs workflow.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Invoice Payment Receipt Resend — October 3, 2026
+
+- [x] Add an owner-only invoice action to resend a check-payment receipt without changing payment status.
+- [x] Show the receipt delivery state and resend control only when an invoice was paid by check.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Paid Invoice and Receipt Viewing — October 3, 2026
+
+- [x] Save a viewable payment-receipt document when a check payment is recorded or its receipt is resent.
+- [x] Regenerate the final invoice as paid and expose it from Operations.
+- [x] Add paid invoice and receipt controls to invoice details, then validate, migrate, checkpoint, and refresh the preview.

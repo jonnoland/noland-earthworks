@@ -2201,6 +2201,8 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   paymentReceiptEmailId: varchar("paymentReceiptEmailId", { length: 128 }),
   /** Timestamp when the customer payment receipt was accepted for delivery. */
   paymentReceiptSentAt: timestamp("paymentReceiptSentAt"),
+  /** Stored HTML receipt matching the payment confirmation sent for a check payment. */
+  paymentReceiptUrl: varchar("paymentReceiptUrl", { length: 1024 }),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),
