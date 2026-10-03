@@ -16,6 +16,7 @@ import { payments, nativeQuotes, nativeInvoices, nativeJobs, stripeWebhookEvents
 import { eq, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { resolveInvoiceQuoteId } from "./nativeInvoiceQuoteLink";
+import { savePaidFinalDocuments, sendFinalPaymentReceipt } from "./nativeJobsRouter";
 
 function formatInvoiceAmount(cents: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -233,7 +234,7 @@ async function markNativeInvoicePaid(
       achPaymentPendingAt: null,
       paymentMethod: "stripe",
       paymentReference: null,
-      paymentNotes: null,
+      paymentNotes: paymentSource === "ach_settlement" ? "ach" : "card",
     }).where(eq(nativeInvoices.id, invoiceId));
   }
   await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));
@@ -255,6 +256,54 @@ async function markNativeInvoicePaid(
         title: `ACH settled — Quote #${quoteId} moved to Paid`,
         content: `Stripe confirmed the ACH settlement for final invoice #${invoice.id} (${formatInvoiceAmount(invoice.totalCents)}).${quote ? ` ${quote.clientName}'s quote, "${quote.title}", is now in Paid.` : " The linked quote is now in Paid."}`,
       }).catch((error) => console.warn(`[Stripe Webhook] ACH settlement notification failed for invoice #${invoice.id}:`, error));
+    }
+  }
+
+  const paymentDetail = paymentSource === "ach_settlement" ? "ach" as const : "card" as const;
+  let paidInvoiceUrl: string | null = null;
+  if (!wasAlreadyPaid || !invoice.pdfUrl || !invoice.paymentReceiptUrl) {
+    try {
+    const [job] = await db.select().from(nativeJobs).where(eq(nativeJobs.id, invoice.jobId)).limit(1);
+    if (!job) throw new Error("The linked job was not found");
+    const paidDocuments = await savePaidFinalDocuments({
+      invoice,
+      job,
+      method: "stripe",
+      detail: paymentDetail,
+      paidAt,
+    });
+    paidInvoiceUrl = paidDocuments.paidInvoiceUrl;
+    await db.update(nativeInvoices).set({
+      pdfUrl: paidDocuments.paidInvoiceUrl,
+      paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
+    }).where(eq(nativeInvoices.id, invoice.id));
+    } catch (error) {
+    console.error(`[Stripe Webhook] Could not save paid documents for invoice #${invoice.id}:`, error);
+    await notifyOwner({
+      title: `Paid invoice document needs attention — Invoice #${invoice.id}`,
+      content: `Stripe confirmed ${formatInvoiceAmount(invoice.totalCents)} for invoice #${invoice.id}, but its paid invoice document could not be generated. The payment remains recorded as paid.`,
+    }).catch((notifyError) => console.warn("[Stripe Webhook] Paid-document notification failed:", notifyError));
+    }
+  }
+
+  if (!wasAlreadyPaid || !invoice.paymentReceiptEmailId) {
+    const receipt = await sendFinalPaymentReceipt({
+      invoice,
+      method: "stripe",
+      detail: paymentDetail,
+      paidAt,
+      paidInvoiceUrl,
+    });
+    if (receipt.sent) {
+      await db.update(nativeInvoices).set({
+        paymentReceiptEmailId: receipt.emailId,
+        paymentReceiptSentAt: new Date(),
+      }).where(eq(nativeInvoices.id, invoice.id));
+    } else if (receipt.attempted) {
+      await notifyOwner({
+        title: `Payment receipt delivery failed — Invoice #${invoice.id}`,
+        content: `Stripe confirmed ${formatInvoiceAmount(invoice.totalCents)} for invoice #${invoice.id}, but the customer receipt email was not delivered. The invoice is paid; resend the receipt from Operations.`,
+      }).catch((notifyError) => console.warn("[Stripe Webhook] Receipt delivery notification failed:", notifyError));
     }
   }
   console.log(`[Stripe Webhook] Native invoice #${invoiceId} marked paid`);

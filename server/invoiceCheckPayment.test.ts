@@ -24,7 +24,7 @@ describe("manual invoice check payment workflow", () => {
     expect(router).toContain("paymentReference: input.checkNumber");
     expect(router).toContain('stripePaymentLinkUrl: null');
     expect(router).toContain("ACH payment is awaiting bank settlement");
-    expect(router).toContain("sendCheckPaymentReceipt");
+    expect(router).toContain("sendFinalPaymentReceipt");
     expect(router).toContain("paymentReceiptEmailId: receipt.emailId");
     expect(router).toContain("Payment received — ${invoiceNumber}");
   });
@@ -35,7 +35,7 @@ describe("manual invoice check payment workflow", () => {
     expect(invoicesUi).toContain("Date received");
     expect(invoicesUi).toContain("recordInvoiceCheck.useMutation");
     expect(invoicesUi).toContain("Check #{inv.paymentReference}");
-    expect(invoicesUi).toContain("Email a payment receipt to the customer");
+    expect(invoicesUi).toContain("Payment receipt sent automatically");
     expect(invoicesUi).toContain("paymentMethodLabel");
     expect(invoicesUi).toContain(">Payment</th>");
     expect(invoicesUi).toContain("Receipt emailed");
@@ -45,10 +45,10 @@ describe("manual invoice check payment workflow", () => {
     expect(invoicesUi).toContain("Refresh and view paid final invoice");
   });
 
-  it("resends only the receipt for paid check invoices while preserving settled payment state", () => {
-    expect(router).toContain("resendCheckPaymentReceipt: ownerProcedure");
-    expect(router).toContain("Only paid check invoices can receive a payment receipt resend.");
-    expect(router).toContain("savePaidCheckDocuments");
+  it("resends a receipt for every paid final invoice while preserving settled payment state", () => {
+    expect(router).toContain("resendPaymentReceipt: ownerProcedure");
+    expect(router).toContain("Only paid invoices can receive a payment receipt resend.");
+    expect(router).toContain("savePaidFinalDocuments");
     expect(router).toContain("paymentReceiptUrl: paidDocuments.paymentReceiptUrl");
   });
 

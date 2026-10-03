@@ -16,9 +16,9 @@ describe("completed job check payment workflow", () => {
     expect(router).toContain('finalPaymentStatus: "paid"');
   });
 
-  it("optionally sends only a paid receipt after a direct check completion", () => {
-    expect(router).toContain('if (isCheckPayment)');
-    expect(router).toContain('sendCheckPaymentReceipt');
+  it("automatically sends a paid receipt after a direct check completion", () => {
+    expect(router).toContain('if (isCheckPayment && invoice)');
+    expect(router).toContain('sendFinalPaymentReceipt');
     expect(router).toContain('paymentReceiptEmailId: checkReceipt.emailId');
     expect(router).toContain('sendCheckReceipt: z.boolean().optional().default(true)');
   });
@@ -27,6 +27,6 @@ describe("completed job check payment workflow", () => {
     expect(jobsUi).toContain('Check already received — record as paid');
     expect(jobsUi).toContain('Record Check & Mark Paid');
     expect(jobsUi).toContain('does not create or email a Stripe payment link');
-    expect(jobsUi).toContain('Email a paid receipt instead of an invoice with a payment link');
+    expect(jobsUi).toContain('Paid final invoice and receipt sent automatically');
   });
 });

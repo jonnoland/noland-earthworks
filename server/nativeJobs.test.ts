@@ -334,7 +334,7 @@ describe("nativeJobs.markInvoicePaid", () => {
 
     await expect(
       appRouter.createCaller(createOwnerContext()).nativeJobs.markInvoicePaid({ invoiceId: 75 })
-    ).resolves.toEqual({ success: true });
+    ).resolves.toEqual(expect.objectContaining({ success: true, receiptSent: false }));
 
     expect(updates).toContainEqual(expect.objectContaining({ status: "paid", achPaymentPendingAt: null, paymentMethod: "cash" }));
     expect(updates).toContainEqual(expect.objectContaining({ paidCents: 240000 }));
@@ -344,6 +344,10 @@ describe("nativeJobs.markInvoicePaid", () => {
       nextActionType: "final_payment_paid",
       nextActionDueAt: null,
     });
+    expect(updates).toContainEqual(expect.objectContaining({
+      pdfUrl: "https://storage.example.test/payment-document.html",
+      paymentReceiptUrl: "https://storage.example.test/payment-document.html",
+    }));
   });
 });
 

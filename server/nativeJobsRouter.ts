@@ -501,30 +501,6 @@ export const nativeJobsRouter = router({
           : "This job has no customer email address. The invoice was created but not sent.";
       }
 
-      if (isCheckPayment) {
-        checkReceipt = input.sendCheckReceipt
-          ? await sendCheckPaymentReceipt({
-            invoice: {
-              id: invoiceId,
-              clientName: job.clientName,
-              clientEmail: job.clientEmail,
-              totalCents,
-            },
-            checkNumber: input.checkNumber!,
-            paidAt: checkPaidAt,
-          })
-          : { attempted: false, sent: false, reason: "not_requested" };
-
-        if (checkReceipt.sent) {
-          await db
-            .update(nativeInvoices)
-            .set({ paymentReceiptEmailId: checkReceipt.emailId, paymentReceiptSentAt: new Date() })
-            .where(eq(nativeInvoices.id, invoiceId));
-        } else if (checkReceipt.attempted) {
-          emailSendError = "Check payment was recorded, but the receipt email could not be delivered.";
-        }
-      }
-
       const [invoice] = await db
         .select()
         .from(nativeInvoices)
@@ -546,6 +522,28 @@ export const nativeJobsRouter = router({
             .where(eq(nativeInvoices.id, invoice.id));
         } catch (error) {
           console.error(`[Invoices] Could not save paid documents for invoice #${invoiceId}:`, error);
+        }
+
+        checkReceipt = await sendFinalPaymentReceipt({
+          invoice: {
+            id: invoiceId,
+            clientName: job.clientName,
+            clientEmail: job.clientEmail,
+            totalCents,
+          },
+          method: "check",
+          reference: input.checkNumber!,
+          paidAt: checkPaidAt,
+          paidInvoiceUrl: directCheckDocuments?.paidInvoiceUrl ?? invoice.pdfUrl,
+        });
+
+        if (checkReceipt.sent) {
+          await db
+            .update(nativeInvoices)
+            .set({ paymentReceiptEmailId: checkReceipt.emailId, paymentReceiptSentAt: new Date() })
+            .where(eq(nativeInvoices.id, invoiceId));
+        } else if (checkReceipt.attempted) {
+          emailSendError = "Check payment was recorded, but the payment receipt email could not be delivered.";
         }
       }
 
@@ -737,6 +735,9 @@ export const nativeJobsRouter = router({
       if (!invoice) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
       }
+      if (invoice.status === "paid") {
+        return { success: true, alreadyPaid: true };
+      }
 
       const paidCents = input.paidCents ?? invoice.totalCents;
       const paidAt = new Date();
@@ -771,7 +772,47 @@ export const nativeJobsRouter = router({
           .where(eq(nativeQuotes.id, quoteId));
       }
 
-      return { success: true };
+      let paidDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string } | null = null;
+      try {
+        paidDocuments = await savePaidFinalDocuments({
+          invoice,
+          job: {
+            clientName: invoice.clientName,
+            clientEmail: invoice.clientEmail,
+            clientPhone: invoice.clientPhone,
+            propertyAddress: invoice.propertyAddress,
+            serviceType: invoice.serviceType,
+          },
+          method: "cash",
+          paidAt,
+        });
+        await db.update(nativeInvoices).set({
+          pdfUrl: paidDocuments.paidInvoiceUrl,
+          paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
+        }).where(eq(nativeInvoices.id, invoice.id));
+      } catch (error) {
+        console.error(`[Invoices] Could not save cash payment documents for invoice #${invoice.id}:`, error);
+      }
+
+      const receipt = await sendFinalPaymentReceipt({
+        invoice,
+        method: "cash",
+        paidAt,
+        paidInvoiceUrl: paidDocuments?.paidInvoiceUrl ?? invoice.pdfUrl,
+      });
+      if (receipt.sent) {
+        await db.update(nativeInvoices).set({
+          paymentReceiptEmailId: receipt.emailId,
+          paymentReceiptSentAt: new Date(),
+        }).where(eq(nativeInvoices.id, invoice.id));
+      }
+
+      return {
+        success: true,
+        paidInvoiceUrl: paidDocuments?.paidInvoiceUrl ?? invoice.pdfUrl,
+        paymentReceiptUrl: paidDocuments?.paymentReceiptUrl ?? null,
+        receiptSent: receipt.sent,
+      };
     }),
 
   /**
@@ -872,9 +913,13 @@ export const nativeJobsRouter = router({
         console.error(`[Invoices] Could not save paid documents for invoice #${invoice.id}:`, error);
       }
 
-      const receipt: CheckPaymentReceiptResult = input.sendReceipt
-        ? await sendCheckPaymentReceipt({ invoice, checkNumber: input.checkNumber, paidAt })
-        : { attempted: false, sent: false, reason: "not_requested" };
+      const receipt: CheckPaymentReceiptResult = await sendFinalPaymentReceipt({
+        invoice,
+        method: "check",
+        reference: input.checkNumber,
+        paidAt,
+        paidInvoiceUrl: paidDocuments?.paidInvoiceUrl ?? invoice.pdfUrl,
+      });
 
       if (receipt.sent) {
         await db
@@ -895,11 +940,8 @@ export const nativeJobsRouter = router({
       };
     }),
 
-  /**
-   * Re-sends the customer receipt for a completed check payment. This never
-   * changes the settled invoice, job, or quote payment status.
-   */
-  resendCheckPaymentReceipt: ownerProcedure
+  /** Re-sends a customer receipt for any settled final payment without changing payment status. */
+  resendPaymentReceipt: ownerProcedure
     .input(z.object({ invoiceId: z.number().int() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -912,16 +954,17 @@ export const nativeJobsRouter = router({
         .limit(1);
 
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
-      if (invoice.status !== "paid" || invoice.paymentMethod !== "check") {
-        throw new TRPCError({ code: "CONFLICT", message: "Only paid check invoices can receive a payment receipt resend." });
+      if (invoice.status !== "paid") {
+        throw new TRPCError({ code: "CONFLICT", message: "Only paid invoices can receive a payment receipt resend." });
       }
-      if (!invoice.paymentReference) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This check payment does not have a saved check number." });
-      }
+      const method: FinalInvoicePaymentMethod = invoice.paymentMethod === "check" || invoice.paymentMethod === "stripe"
+        ? invoice.paymentMethod
+        : "cash";
+      const detail = method === "stripe" ? (invoice.paymentNotes === "ach" ? "ach" as const : "card" as const) : undefined;
 
       let paidDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string };
       try {
-        paidDocuments = await savePaidCheckDocuments({
+        paidDocuments = await savePaidFinalDocuments({
           invoice,
           job: {
             clientName: invoice.clientName,
@@ -930,7 +973,9 @@ export const nativeJobsRouter = router({
             propertyAddress: invoice.propertyAddress,
             serviceType: invoice.serviceType,
           },
-          checkNumber: invoice.paymentReference,
+          method,
+          reference: invoice.paymentReference,
+          detail,
           paidAt: invoice.paidAt ?? new Date(),
         });
       } catch (error) {
@@ -938,10 +983,13 @@ export const nativeJobsRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not prepare the paid invoice and receipt. Try again shortly." });
       }
 
-      const receipt = await sendCheckPaymentReceipt({
+      const receipt = await sendFinalPaymentReceipt({
         invoice,
-        checkNumber: invoice.paymentReference,
+        method,
+        reference: invoice.paymentReference,
+        detail,
         paidAt: invoice.paidAt ?? new Date(),
+        paidInvoiceUrl: paidDocuments.paidInvoiceUrl,
       });
 
       if (!receipt.sent) {
@@ -1041,27 +1089,43 @@ function esc(str: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
-type CheckReceiptInvoice = Pick<typeof nativeInvoices.$inferSelect, "id" | "clientName" | "clientEmail" | "totalCents">;
+type PaymentReceiptInvoice = Pick<typeof nativeInvoices.$inferSelect, "id" | "clientName" | "clientEmail" | "totalCents">;
+export type FinalInvoicePaymentMethod = "check" | "cash" | "stripe";
 
-type CheckPaymentReceiptResult =
+type PaymentReceiptResult =
   | { attempted: false; sent: false; reason: "missing_email" | "email_not_configured" | "not_requested" }
   | { attempted: true; sent: true; emailId: string }
   | { attempted: true; sent: false; reason: "delivery_failed" };
+type CheckReceiptInvoice = PaymentReceiptInvoice;
+type CheckPaymentReceiptResult = PaymentReceiptResult;
 
-async function sendCheckPaymentReceipt({
+function paymentMethodDescription(method: FinalInvoicePaymentMethod, reference?: string | null, detail?: string | null): string {
+  if (method === "check") return `Check${reference ? ` #${reference}` : ""}`;
+  if (method === "cash") return "Cash";
+  return detail === "ach" ? "ACH bank transfer (Stripe)" : "Card payment (Stripe)";
+}
+
+export async function sendFinalPaymentReceipt({
   invoice,
-  checkNumber,
+  method,
+  reference,
+  detail,
   paidAt,
+  paidInvoiceUrl,
 }: {
-  invoice: CheckReceiptInvoice;
-  checkNumber: string;
+  invoice: PaymentReceiptInvoice;
+  method: FinalInvoicePaymentMethod;
+  reference?: string | null;
+  detail?: "ach" | "card" | null;
   paidAt: Date;
-}): Promise<CheckPaymentReceiptResult> {
+  paidInvoiceUrl?: string | null;
+}): Promise<PaymentReceiptResult> {
   if (!invoice.clientEmail) return { attempted: false, sent: false, reason: "missing_email" };
   if (!ENV.resendApiKey) return { attempted: false, sent: false, reason: "email_not_configured" };
 
   const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
   const firstName = invoice.clientName?.trim().split(/\s+/)[0] || "there";
+  const methodLabel = paymentMethodDescription(method, reference, detail);
   const receivedDate = paidAt.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -1075,13 +1139,14 @@ async function sendCheckPaymentReceipt({
       <tr><td style="padding:28px 36px;background:#1a1a1a;"><div style="font-size:19px;font-weight:700;color:#fff;">NOLAND <span style="color:#E07B2A;">EARTHWORKS</span></div><div style="margin-top:6px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">Payment Receipt</div></td></tr>
       <tr><td style="padding:28px 36px;">
         <p style="margin:0 0 14px;font-size:16px;">Hi ${esc(firstName)},</p>
-        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. I received your check payment and have marked your final invoice as paid.</p>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. Your final payment has been received and your final invoice is marked paid.</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:20px;">
           <tr><td style="padding:10px 16px;background:#f9f7f4;font-size:12px;color:#666;">Invoice</td><td align="right" style="padding:10px 16px;background:#f9f7f4;font-size:12px;font-weight:700;">${esc(invoiceNumber)}</td></tr>
-          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">Check #${esc(checkNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(methodLabel)}</td></tr>
           <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Date received</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(receivedDate)}</td></tr>
           <tr><td style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:15px;font-weight:700;">Amount received</td><td align="right" style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:16px;font-weight:700;color:#E07B2A;">${fmt(invoice.totalCents)}</td></tr>
         </table>
+        ${paidInvoiceUrl ? `<p style="margin:0 0 16px;font-size:13px;"><a href="${esc(paidInvoiceUrl)}" style="display:inline-block;background:#15803d;color:#fff;text-decoration:none;padding:10px 16px;border-radius:5px;font-weight:700;">View Paid Final Invoice</a></p>` : ""}
         <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">If you have any questions, call me at <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.</p>
       </td></tr>
       <tr><td style="padding:18px 36px;background:#1a1a1a;text-align:center;font-size:12px;color:#aaa;">Noland Earthworks, LLC &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated</td></tr>
@@ -1107,14 +1172,67 @@ async function sendCheckPaymentReceipt({
     });
     const data = await response.json().catch(() => ({})) as { id?: string; message?: string };
     if (!response.ok || !data.id) {
-      console.warn(`[Invoices] Check receipt delivery failed for invoice #${invoice.id}: ${data.message ?? response.statusText}`);
+      console.warn(`[Invoices] Payment receipt delivery failed for invoice #${invoice.id}: ${data.message ?? response.statusText}`);
       return { attempted: true, sent: false, reason: "delivery_failed" };
     }
     return { attempted: true, sent: true, emailId: data.id };
   } catch (error) {
-    console.warn(`[Invoices] Check receipt delivery failed for invoice #${invoice.id}:`, error);
+    console.warn(`[Invoices] Payment receipt delivery failed for invoice #${invoice.id}:`, error);
     return { attempted: true, sent: false, reason: "delivery_failed" };
   }
+}
+
+async function sendCheckPaymentReceipt({
+  invoice,
+  checkNumber,
+  paidAt,
+}: {
+  invoice: PaymentReceiptInvoice;
+  checkNumber: string;
+  paidAt: Date;
+}): Promise<PaymentReceiptResult> {
+  return sendFinalPaymentReceipt({ invoice, method: "check", reference: checkNumber, paidAt });
+}
+
+export function buildPaymentReceiptHtml({
+  invoice,
+  method,
+  reference,
+  detail,
+  paidAt,
+}: {
+  invoice: PaymentReceiptInvoice;
+  method: FinalInvoicePaymentMethod;
+  reference?: string | null;
+  detail?: "ach" | "card" | null;
+  paidAt: Date;
+}): string {
+  const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
+  const firstName = invoice.clientName?.trim().split(/\s+/)[0] || "there";
+  const methodLabel = paymentMethodDescription(method, reference, detail);
+  const receivedDate = paidAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return `<!DOCTYPE html>
+<html lang="en"><body style="margin:0;padding:0;background:#f4f1ec;font-family:Arial,sans-serif;color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#f4f1ec;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+      <tr><td style="height:5px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+      <tr><td style="padding:28px 36px;background:#1a1a1a;"><div style="font-size:19px;font-weight:700;color:#fff;">NOLAND <span style="color:#E07B2A;">EARTHWORKS</span></div><div style="margin-top:6px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">Payment Receipt</div></td></tr>
+      <tr><td style="padding:28px 36px;">
+        <p style="margin:0 0 14px;font-size:16px;">Hi ${esc(firstName)},</p>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. Your final payment has been received and your final invoice is marked paid.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:20px;">
+          <tr><td style="padding:10px 16px;background:#f9f7f4;font-size:12px;color:#666;">Invoice</td><td align="right" style="padding:10px 16px;background:#f9f7f4;font-size:12px;font-weight:700;">${esc(invoiceNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(methodLabel)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Date received</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(receivedDate)}</td></tr>
+          <tr><td style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:15px;font-weight:700;">Amount received</td><td align="right" style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:16px;font-weight:700;color:#15803d;">${fmt(invoice.totalCents)}</td></tr>
+        </table>
+        <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">If you have any questions, call me at <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.</p>
+      </td></tr>
+      <tr><td style="padding:18px 36px;background:#1a1a1a;text-align:center;font-size:12px;color:#aaa;">Noland Earthworks, LLC &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated</td></tr>
+      <tr><td style="height:4px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
 }
 
 export function buildCheckPaymentReceiptHtml({
@@ -1126,35 +1244,45 @@ export function buildCheckPaymentReceiptHtml({
   checkNumber: string;
   paidAt: Date;
 }): string {
+  return buildPaymentReceiptHtml({ invoice, method: "check", reference: checkNumber, paidAt });
+}
+
+export async function savePaidFinalDocuments({
+  invoice,
+  job,
+  method,
+  reference,
+  detail,
+  paidAt,
+}: {
+  invoice: typeof nativeInvoices.$inferSelect;
+  job: InvoiceParams["job"];
+  method: FinalInvoicePaymentMethod;
+  reference?: string | null;
+  detail?: "ach" | "card" | null;
+  paidAt: Date;
+}): Promise<{ paidInvoiceUrl: string; paymentReceiptUrl: string }> {
   const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
-  const firstName = invoice.clientName?.trim().split(/\s+/)[0] || "there";
-  const receivedDate = paidAt.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+  const lineItems: InvoiceParams["lineItems"] = JSON.parse(invoice.lineItems || "[]");
+  const paymentStatus = { method, reference, detail, paidAt };
+  const paidInvoiceHtml = buildInvoiceHtml({
+    invoiceNumber,
+    job,
+    lineItems,
+    subtotalCents: invoice.subtotalCents,
+    depositPaidCents: invoice.depositPaidCents,
+    totalCents: invoice.totalCents,
+    notes: invoice.notes ?? undefined,
+    dueDate: invoice.dueDate ?? undefined,
+    paymentStatus,
   });
-  return `<!DOCTYPE html>
-<html lang="en"><body style="margin:0;padding:0;background:#f4f1ec;font-family:Arial,sans-serif;color:#1a1a1a;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#f4f1ec;"><tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
-      <tr><td style="height:5px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
-      <tr><td style="padding:28px 36px;background:#1a1a1a;"><div style="font-size:19px;font-weight:700;color:#fff;">NOLAND <span style="color:#E07B2A;">EARTHWORKS</span></div><div style="margin-top:6px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">Payment Receipt</div></td></tr>
-      <tr><td style="padding:28px 36px;">
-        <p style="margin:0 0 14px;font-size:16px;">Hi ${esc(firstName)},</p>
-        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. I received your check payment and have marked your final invoice as paid.</p>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:20px;">
-          <tr><td style="padding:10px 16px;background:#f9f7f4;font-size:12px;color:#666;">Invoice</td><td align="right" style="padding:10px 16px;background:#f9f7f4;font-size:12px;font-weight:700;">${esc(invoiceNumber)}</td></tr>
-          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">Check #${esc(checkNumber)}</td></tr>
-          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Date received</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(receivedDate)}</td></tr>
-          <tr><td style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:15px;font-weight:700;">Amount received</td><td align="right" style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:16px;font-weight:700;color:#E07B2A;">${fmt(invoice.totalCents)}</td></tr>
-        </table>
-        <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">If you have any questions, call me at <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.</p>
-      </td></tr>
-      <tr><td style="padding:18px 36px;background:#1a1a1a;text-align:center;font-size:12px;color:#aaa;">Noland Earthworks, LLC &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated</td></tr>
-      <tr><td style="height:4px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
-    </table>
-  </td></tr></table>
-</body></html>`;
+  const receiptHtml = buildPaymentReceiptHtml({ invoice, method, reference, detail, paidAt });
+  const suffix = `${invoice.id}-${Date.now()}`;
+  const [paidInvoiceFile, paymentReceiptFile] = await Promise.all([
+    storagePut(`invoices/${suffix}-paid.html`, Buffer.from(paidInvoiceHtml, "utf8"), "text/html"),
+    storagePut(`payment-receipts/${suffix}.html`, Buffer.from(receiptHtml, "utf8"), "text/html"),
+  ]);
+  return { paidInvoiceUrl: paidInvoiceFile.url, paymentReceiptUrl: paymentReceiptFile.url };
 }
 
 async function savePaidCheckDocuments({
@@ -1168,27 +1296,7 @@ async function savePaidCheckDocuments({
   checkNumber: string;
   paidAt: Date;
 }): Promise<{ paidInvoiceUrl: string; paymentReceiptUrl: string }> {
-  const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
-  const lineItems: InvoiceParams["lineItems"] = JSON.parse(invoice.lineItems || "[]");
-  const paymentStatus = { method: "check" as const, reference: checkNumber, paidAt };
-  const paidInvoiceHtml = buildInvoiceHtml({
-    invoiceNumber,
-    job,
-    lineItems,
-    subtotalCents: invoice.subtotalCents,
-    depositPaidCents: invoice.depositPaidCents,
-    totalCents: invoice.totalCents,
-    notes: invoice.notes ?? undefined,
-    dueDate: invoice.dueDate ?? undefined,
-    paymentStatus,
-  });
-  const receiptHtml = buildCheckPaymentReceiptHtml({ invoice, checkNumber, paidAt });
-  const suffix = `${invoice.id}-${Date.now()}`;
-  const [paidInvoiceFile, paymentReceiptFile] = await Promise.all([
-    storagePut(`invoices/${suffix}-paid.html`, Buffer.from(paidInvoiceHtml, "utf8"), "text/html"),
-    storagePut(`payment-receipts/${suffix}.html`, Buffer.from(receiptHtml, "utf8"), "text/html"),
-  ]);
-  return { paidInvoiceUrl: paidInvoiceFile.url, paymentReceiptUrl: paymentReceiptFile.url };
+  return savePaidFinalDocuments({ invoice, job, method: "check", reference: checkNumber, paidAt });
 }
 
 export interface InvoiceParams {
@@ -1212,8 +1320,9 @@ export interface InvoiceParams {
   notes?: string;
   dueDate?: Date;
   paymentStatus?: {
-    method: "check";
+    method: FinalInvoicePaymentMethod;
     reference?: string | null;
+    detail?: "ach" | "card" | null;
     paidAt: Date;
   };
 }
@@ -1224,10 +1333,12 @@ export function buildInvoiceHtml(p: InvoiceParams): string {
   const jobDate = (p.job.completedAt ?? p.job.scheduledDate)?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? "—";
   const dueStr = p.dueDate?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? "Upon receipt";
   const paidDate = p.paymentStatus?.paidAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  const paymentSummary = p.paymentStatus
-    ? `Paid by check${p.paymentStatus.reference ? ` #${esc(p.paymentStatus.reference)}` : ""} on ${esc(paidDate ?? "—")}`
+  const paymentMethod = p.paymentStatus
+    ? paymentMethodDescription(p.paymentStatus.method, p.paymentStatus.reference, p.paymentStatus.detail)
     : null;
-  const paymentMethod = p.paymentStatus?.method === "check" ? "Check" : null;
+  const paymentSummary = p.paymentStatus
+    ? `Paid by ${paymentMethod} on ${esc(paidDate ?? "—")}`
+    : null;
 
   const lineItemRows = p.lineItems.map(li => `
     <tr>
@@ -1273,7 +1384,7 @@ export function buildInvoiceHtml(p: InvoiceParams): string {
         </div>
         <div style="font-size:13px;color:#166534;text-align:right;line-height:1.6;">
           <div><strong>Method:</strong> ${paymentMethod}</div>
-          <div><strong>Check number:</strong> ${p.paymentStatus.reference ? `#${esc(p.paymentStatus.reference)}` : "—"}</div>
+          ${p.paymentStatus.method === "check" ? `<div><strong>Check number:</strong> ${p.paymentStatus.reference ? `#${esc(p.paymentStatus.reference)}` : "—"}</div>` : ""}
           <div><strong>Date received:</strong> ${esc(paidDate ?? "—")}</div>
         </div>
       </div>

@@ -150,7 +150,6 @@ export default function NativeInvoicesSection() {
   const [checkNumber, setCheckNumber] = useState("");
   const [checkReceivedAt, setCheckReceivedAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [checkNote, setCheckNote] = useState("");
-  const [sendCheckReceipt, setSendCheckReceipt] = useState(true);
   const [resendId, setResendId] = useState<number | null>(null);
   const [resendReceiptId, setResendReceiptId] = useState<number | null>(null);
 
@@ -158,10 +157,14 @@ export default function NativeInvoicesSection() {
   const { data: allInvoices = [], isLoading } = trpc.nativeJobs.listInvoices.useQuery({});
 
   const markPaidMutation = trpc.nativeJobs.markInvoicePaid.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
       utils.nativeJobs.listInvoices.invalidate();
       utils.nativeJobs.list.invalidate();
-      toast.success("Cash payment recorded — invoice marked paid");
+      if (result.receiptSent) {
+        toast.success("Cash payment recorded — paid invoice and receipt emailed to the customer");
+      } else {
+        toast.success("Cash payment recorded — paid invoice and receipt saved in Operations");
+      }
       setMarkPaidId(null);
     },
     onError: (e) => toast.error(e.message),
@@ -197,7 +200,7 @@ export default function NativeInvoicesSection() {
     onError: (e) => toast.error(e.message),
   });
 
-  const resendReceiptMutation = trpc.nativeJobs.resendCheckPaymentReceipt.useMutation({
+  const resendReceiptMutation = trpc.nativeJobs.resendPaymentReceipt.useMutation({
     onSuccess: (result) => {
       utils.nativeJobs.listInvoices.invalidate();
       toast.success(`Payment receipt resent to ${result.clientEmail}`);
@@ -248,7 +251,6 @@ export default function NativeInvoicesSection() {
     setCheckNumber("");
     setCheckReceivedAt(new Date().toISOString().slice(0, 10));
     setCheckNote("");
-    setSendCheckReceipt(Boolean(invoice.clientEmail));
   }
 
   function submitCheckPayment() {
@@ -268,7 +270,7 @@ export default function NativeInvoicesSection() {
       checkNumber: reference,
       receivedAt,
       note: checkNote.trim() || undefined,
-      sendReceipt: sendCheckReceipt,
+      sendReceipt: true,
     });
   }
 
@@ -530,7 +532,7 @@ export default function NativeInvoicesSection() {
                           <Send className="w-3.5 h-3.5" />
                         </Button>
                       )}
-                      {inv.status === "paid" && inv.paymentMethod === "check" && inv.clientEmail && (
+                      {inv.status === "paid" && inv.clientEmail && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -649,23 +651,14 @@ export default function NativeInvoicesSection() {
                 className="bg-zinc-800 border-zinc-700 text-zinc-100"
               />
             </label>
-            <label className={`flex items-start gap-2 rounded-md border p-3 text-sm ${invoiceToRecordCheck?.clientEmail ? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200" : "border-zinc-700 bg-zinc-800/50 text-zinc-500"}`}>
-              <input
-                type="checkbox"
-                checked={sendCheckReceipt}
-                onChange={(event) => setSendCheckReceipt(event.target.checked)}
-                disabled={!invoiceToRecordCheck?.clientEmail}
-                className="mt-0.5 h-4 w-4 accent-emerald-500 disabled:cursor-not-allowed"
-              />
-              <span>
-                <span className="block font-medium">Email a payment receipt to the customer</span>
-                <span className="mt-0.5 block text-xs text-zinc-500">
-                  {invoiceToRecordCheck?.clientEmail
-                    ? `A receipt for Check #${checkNumber.trim() || "…"} will go to ${invoiceToRecordCheck.clientEmail}.`
-                    : "No customer email is saved on this invoice, so a receipt cannot be sent."}
-                </span>
+            <div className={`rounded-md border p-3 text-sm ${invoiceToRecordCheck?.clientEmail ? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200" : "border-zinc-700 bg-zinc-800/50 text-zinc-500"}`}>
+              <span className="block font-medium">Payment receipt sent automatically</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">
+                {invoiceToRecordCheck?.clientEmail
+                  ? `The paid final invoice and receipt for Check #${checkNumber.trim() || "…"} will go to ${invoiceToRecordCheck.clientEmail}.`
+                  : "No customer email is saved on this invoice. The paid invoice and receipt will still be stored here."}
               </span>
-            </label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCheckPaymentId(null)} disabled={recordCheckMutation.isPending} className="border-zinc-700 text-zinc-300">

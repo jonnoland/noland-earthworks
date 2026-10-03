@@ -17,10 +17,28 @@ const state = vi.hoisted(() => ({
     status: string;
     stripePaymentIntentId: string | null;
     paidAt?: Date | null;
+    paymentReceiptEmailId?: string | null;
+    paymentReceiptUrl?: string | null;
+    pdfUrl?: string | null;
   },
+  nativeJob: {
+    id: 7,
+    clientName: "Alex Landowner",
+    clientEmail: "alex@example.com",
+    clientPhone: null,
+    propertyAddress: "123 Rural Route",
+    serviceType: "Forestry Mulching",
+    lineItems: "[]",
+    totalCents: 125000,
+  } as Record<string, unknown> | null,
   invoiceUpdate: null as Record<string, unknown> | null,
   jobUpdate: null as Record<string, unknown> | null,
   quoteUpdate: null as Record<string, unknown> | null,
+  savePaidFinalDocuments: vi.fn().mockResolvedValue({
+    paidInvoiceUrl: "https://files.example.test/invoices/42-paid.html",
+    paymentReceiptUrl: "https://files.example.test/receipts/42.html",
+  }),
+  sendFinalPaymentReceipt: vi.fn().mockResolvedValue({ attempted: true, sent: true, emailId: "receipt_42" }),
   paymentsTable: { stripeSessionId: "stripeSessionId" },
   nativeQuotesTable: { id: "id" },
   nativeInvoicesTable: { id: "id" },
@@ -34,6 +52,10 @@ vi.mock("./stripe", () => ({
   getStripe: () => ({ webhooks: { constructEvent: () => state.event } }),
 }));
 vi.mock("./_core/notification", () => ({ notifyOwner: state.notifyOwner }));
+vi.mock("./nativeJobsRouter", () => ({
+  savePaidFinalDocuments: state.savePaidFinalDocuments,
+  sendFinalPaymentReceipt: state.sendFinalPaymentReceipt,
+}));
 vi.mock("drizzle-orm", () => ({
   eq: () => undefined,
   sql: (strings: TemplateStringsArray) => strings.join(""),
@@ -52,6 +74,7 @@ vi.mock("./db", () => ({
         where: () => ({
           limit: async () => {
             if (table === state.nativeInvoicesTable) return state.nativeInvoice ? [state.nativeInvoice] : [];
+            if (table === state.nativeJobsTable) return state.nativeJob ? [state.nativeJob] : [];
             return state.existingStatus ? [{ status: state.existingStatus }] : [];
           },
         }),
@@ -67,7 +90,7 @@ vi.mock("./db", () => ({
         where: async () => {
           if (table === state.paymentsTable && state.failPaymentUpdate) throw new Error("payment update failed");
           if (table === state.webhookEventsTable) state.ledgerStatus = String(values.status ?? state.ledgerStatus);
-          if (table === state.nativeInvoicesTable) state.invoiceUpdate = values;
+          if (table === state.nativeInvoicesTable) state.invoiceUpdate = { ...state.invoiceUpdate, ...values };
           if (table === state.nativeJobsTable) state.jobUpdate = values;
           if (table === state.nativeQuotesTable) state.quoteUpdate = values;
         },
@@ -156,10 +179,22 @@ describe("Stripe webhook behavior", () => {
     state.ledgerStatus = null;
     state.failPaymentUpdate = false;
     state.nativeInvoice = null;
+    state.nativeJob = {
+      id: 7,
+      clientName: "Alex Landowner",
+      clientEmail: "alex@example.com",
+      clientPhone: null,
+      propertyAddress: "123 Rural Route",
+      serviceType: "Forestry Mulching",
+      lineItems: "[]",
+      totalCents: 125000,
+    };
     state.invoiceUpdate = null;
     state.jobUpdate = null;
     state.quoteUpdate = null;
     state.notifyOwner.mockClear();
+    state.savePaidFinalDocuments.mockClear();
+    state.sendFinalPaymentReceipt.mockClear();
   });
 
   afterEach(() => vi.clearAllMocks());
@@ -226,6 +261,17 @@ describe("Stripe webhook behavior", () => {
       title: "ACH settled — Quote #19 moved to Paid",
       content: expect.stringContaining("Stripe confirmed the ACH settlement"),
     }));
+    expect(state.savePaidFinalDocuments).toHaveBeenCalledWith(expect.objectContaining({ method: "stripe", detail: "ach" }));
+    expect(state.sendFinalPaymentReceipt).toHaveBeenCalledWith(expect.objectContaining({
+      method: "stripe",
+      detail: "ach",
+      paidInvoiceUrl: "https://files.example.test/invoices/42-paid.html",
+    }));
+    expect(state.invoiceUpdate).toMatchObject({
+      pdfUrl: "https://files.example.test/invoices/42-paid.html",
+      paymentReceiptUrl: "https://files.example.test/receipts/42.html",
+      paymentReceiptEmailId: "receipt_42",
+    });
     expect(state.ledgerStatus).toBe("processed");
   });
 
@@ -239,6 +285,9 @@ describe("Stripe webhook behavior", () => {
       status: "paid",
       stripePaymentIntentId: "pi_ach_invoice_42",
       paidAt: new Date("2026-09-28T02:29:08.000Z"),
+      paymentReceiptEmailId: "receipt_prior_42",
+      paymentReceiptUrl: "https://files.example.test/receipts/prior-42.html",
+      pdfUrl: "https://files.example.test/invoices/prior-42-paid.html",
     };
 
     const response = await dispatchWebhook();

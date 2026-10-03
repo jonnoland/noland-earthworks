@@ -4311,3 +4311,9 @@
 - [x] Add a clear PAID watermark to generated invoices with a zero balance.
 - [x] Show the payment method, reference, and payment date above the paid invoice document content.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Universal Final Invoice Payment Receipts — October 3, 2026
+- [x] Trace cash, check, Stripe card, and ACH final-invoice settlement paths.
+- [x] Generate a paid final invoice and payment receipt for every settled final invoice.
+- [x] Deliver one customer receipt per payment path and record delivery state without duplicate sends on webhook retry.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.

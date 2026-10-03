@@ -395,7 +395,6 @@ function GenerateInvoiceDialog({
   const [checkNumber, setCheckNumber] = useState("");
   const [checkReceivedDate, setCheckReceivedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [checkNote, setCheckNote] = useState("");
-  const [sendCheckReceipt, setSendCheckReceipt] = useState(Boolean(job.clientEmail));
   const utils = trpc.useUtils();
 
   const generateMut = trpc.nativeJobs.generateInvoice.useMutation({
@@ -491,13 +490,10 @@ function GenerateInvoiceDialog({
                 Check note <span className="text-zinc-500">(optional)</span>
                 <Input value={checkNote} onChange={(event) => setCheckNote(event.target.value)} placeholder="Bank, memo, or deposit note" className="h-9 bg-zinc-800 border-zinc-700" />
               </label>
-              <label className={`flex items-start gap-2 text-xs ${job.clientEmail ? "cursor-pointer text-zinc-200" : "text-zinc-500"}`}>
-                <input type="checkbox" checked={sendCheckReceipt} onChange={(event) => setSendCheckReceipt(event.target.checked)} disabled={!job.clientEmail} className="mt-0.5 h-4 w-4 accent-emerald-500 disabled:cursor-not-allowed" />
-                <span>
-                  <span className="block font-medium">Email a paid receipt instead of an invoice with a payment link</span>
-                  <span className="mt-0.5 block text-zinc-500">{job.clientEmail ? `Sent to ${job.clientEmail}.` : "No customer email is saved on this job."}</span>
-                </span>
-              </label>
+              <div className={`rounded-md border p-2.5 text-xs ${job.clientEmail ? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200" : "border-zinc-700 bg-zinc-800/50 text-zinc-500"}`}>
+                <span className="block font-medium">Paid final invoice and receipt sent automatically</span>
+                <span className="mt-0.5 block text-zinc-500">{job.clientEmail ? `Sent to ${job.clientEmail}.` : "No customer email is saved. Both documents will be stored in Operations."}</span>
+              </div>
             </div>
           ) : job.clientEmail ? (
             <label className="flex items-center gap-3 cursor-pointer">
@@ -526,7 +522,7 @@ function GenerateInvoiceDialog({
               checkNumber: paymentMethod === "check" ? checkNumber.trim() || undefined : undefined,
               checkReceivedAt: paymentMethod === "check" && checkReceivedDate ? new Date(`${checkReceivedDate}T12:00:00`) : undefined,
               checkNote: paymentMethod === "check" ? checkNote.trim() || undefined : undefined,
-              sendCheckReceipt: paymentMethod === "check" && sendCheckReceipt,
+              sendCheckReceipt: paymentMethod === "check",
             })}
             disabled={generateMut.isPending || (paymentMethod === "check" && !checkNumber.trim())}
             className={paymentMethod === "check" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-amber-600 hover:bg-amber-500 text-white"}

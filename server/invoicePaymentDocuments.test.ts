@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCheckPaymentReceiptHtml, buildInvoiceHtml } from "./nativeJobsRouter";
+import { buildCheckPaymentReceiptHtml, buildInvoiceHtml, buildPaymentReceiptHtml } from "./nativeJobsRouter";
 
 describe("paid check invoice documents", () => {
   const paidAt = new Date("2026-10-03T12:00:00.000Z");
@@ -22,7 +22,7 @@ describe("paid check invoice documents", () => {
 
     expect(html).toContain("Paid Invoice");
     expect(html).toContain("Balance Paid");
-    expect(html).toContain("Paid by check #1050");
+    expect(html).toContain("Paid by Check #1050");
     expect(html).toContain('class="paid-stamp"');
     expect(html).toContain(">PAID</div>");
     expect(html).toContain("Payment Summary");
@@ -41,5 +41,24 @@ describe("paid check invoice documents", () => {
     expect(html).toContain("Payment Receipt");
     expect(html).toContain("Check #1050");
     expect(html).toContain("$2,500");
+  });
+
+  it("renders paid final documents for cash and Stripe payments", () => {
+    const invoice = { id: 43, clientName: "Laura Smith", clientEmail: "laura@example.com", totalCents: 185000 };
+    const stripeReceipt = buildPaymentReceiptHtml({ invoice, method: "stripe", detail: "ach", paidAt });
+    const cashInvoice = buildInvoiceHtml({
+      invoiceNumber: "INV-0043",
+      job: { clientName: "Laura Smith" },
+      lineItems: [{ description: "Forestry Mulching", qty: 1, unitPriceCents: 185000, totalCents: 185000 }],
+      subtotalCents: 185000,
+      depositPaidCents: 0,
+      totalCents: 185000,
+      paymentStatus: { method: "cash", paidAt },
+    });
+
+    expect(stripeReceipt).toContain("ACH bank transfer (Stripe)");
+    expect(cashInvoice).toContain("Method:</strong> Cash");
+    expect(cashInvoice).toContain(">PAID</div>");
+    expect(cashInvoice).not.toContain("Balance Due");
   });
 });
