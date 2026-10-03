@@ -15,14 +15,15 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeJobs, nativeInvoices, nativeQuotes, nativeJobScheduleDates, businessSettings } from "../drizzle/schema";
+import { nativeJobs, nativeInvoices, nativeInvoiceRefunds, nativeQuotes, nativeJobScheduleDates, businessSettings } from "../drizzle/schema";
 import { eq, desc, like, or, and, inArray } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { storagePut } from "./storage";
 import { attachJobScheduleDates, saveJobScheduleDates } from "./nativeJobScheduleDates";
-import { createInvoiceCheckoutSession, expireInvoiceCheckoutSession, isStripeConfigured } from "./stripe";
+import { createInvoiceCheckoutSession, expireInvoiceCheckoutSession, isStripeConfigured, refundInvoicePayment } from "./stripe";
 import { GOOGLE_REVIEW_URL } from "@shared/googleReview";
 import { resolveInvoiceQuoteId } from "./nativeInvoiceQuoteLink";
+import { calculateInvoiceRefund } from "./invoiceRefunds";
 
 // ─── Owner guard ──────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1022,6 +1023,155 @@ export const nativeJobsRouter = router({
         receiptSentAt,
         paidInvoiceUrl: paidDocuments.paidInvoiceUrl,
         paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
+      };
+    }),
+
+  /** Rebuilds a settled invoice's paid document and payment receipt without sending email. */
+  refreshPaidDocuments: ownerProcedure
+    .input(z.object({ invoiceId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [invoice] = await db
+        .select()
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.id, input.invoiceId))
+        .limit(1);
+
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status !== "paid") {
+        throw new TRPCError({ code: "CONFLICT", message: "A final payment receipt is available after this invoice is paid." });
+      }
+
+      const method: FinalInvoicePaymentMethod = invoice.paymentMethod === "check" || invoice.paymentMethod === "stripe"
+        ? invoice.paymentMethod
+        : "cash";
+      const detail = method === "stripe" ? (invoice.paymentNotes === "ach" ? "ach" as const : "card" as const) : undefined;
+      try {
+        const paidDocuments = await savePaidFinalDocuments({
+          invoice,
+          job: {
+            clientName: invoice.clientName,
+            clientEmail: invoice.clientEmail,
+            clientPhone: invoice.clientPhone,
+            propertyAddress: invoice.propertyAddress,
+            serviceType: invoice.serviceType,
+          },
+          method,
+          reference: invoice.paymentReference,
+          detail,
+          paidAt: invoice.paidAt ?? new Date(),
+        });
+        await db
+          .update(nativeInvoices)
+          .set({ pdfUrl: paidDocuments.paidInvoiceUrl, paymentReceiptUrl: paidDocuments.paymentReceiptUrl })
+          .where(eq(nativeInvoices.id, invoice.id));
+        return { success: true, invoiceId: invoice.id, ...paidDocuments };
+      } catch (error) {
+        console.error(`[Invoices] Could not refresh paid documents for invoice #${invoice.id}:`, error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not rebuild the paid invoice and receipt. Try again shortly." });
+      }
+    }),
+
+  /**
+   * Processes a Stripe refund or records an offline check/cash refund against a
+   * settled final invoice. The confirmation flag is deliberately required so a
+   * caller cannot make a refund by accidentally submitting the dialog.
+   */
+  refundInvoice: ownerProcedure
+    .input(z.object({
+      invoiceId: z.number().int(),
+      amountCents: z.number().int().positive(),
+      method: z.enum(["stripe", "check", "cash"]),
+      offlineReference: z.string().trim().max(255).optional(),
+      notes: z.string().trim().max(2000).optional(),
+      confirmRefund: z.literal(true),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [invoice] = await db
+        .select()
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.id, input.invoiceId))
+        .limit(1);
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status !== "paid") {
+        throw new TRPCError({ code: "CONFLICT", message: "Only settled paid invoices can be refunded." });
+      }
+
+      let refundCalculation: ReturnType<typeof calculateInvoiceRefund>;
+      try {
+        refundCalculation = calculateInvoiceRefund(invoice.totalCents, invoice.refundedCents, input.amountCents);
+      } catch (error) {
+        throw new TRPCError({
+          code: error instanceof Error && error.message.includes("fully refunded") ? "CONFLICT" : "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Refund amount is invalid.",
+        });
+      }
+
+      let refundReference = input.offlineReference?.trim() || null;
+      if (input.method === "stripe") {
+        if (invoice.paymentMethod !== "stripe" || !invoice.stripePaymentIntentId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This invoice does not have a Stripe payment available for an automatic Stripe refund. Record an offline check or cash refund instead." });
+        }
+        try {
+          const stripeRefund = await refundInvoicePayment(invoice.stripePaymentIntentId, input.amountCents);
+          refundReference = stripeRefund.refundId;
+        } catch (error) {
+          console.error(`[Invoices] Stripe refund failed for invoice #${invoice.id}:`, error);
+          throw new TRPCError({ code: "BAD_GATEWAY", message: "Stripe could not process the refund. No invoice records were changed." });
+        }
+      } else if (!refundReference) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a check number or cash refund reference for an offline refund." });
+      }
+
+      const refundedAt = new Date();
+      const { refundedCents, remainingCents, fullyRefunded } = refundCalculation;
+
+      await db.insert(nativeInvoiceRefunds).values({
+        invoiceId: invoice.id,
+        amountCents: input.amountCents,
+        method: input.method,
+        reference: refundReference,
+        notes: input.notes?.trim() || null,
+        refundedAt,
+      });
+      await db.update(nativeInvoices).set({
+        status: fullyRefunded ? "refunded" : "paid",
+        refundedCents,
+        refundedAt,
+        refundMethod: input.method,
+        refundReference,
+        refundNotes: input.notes?.trim() || null,
+      }).where(eq(nativeInvoices.id, invoice.id));
+      await db.update(nativeJobs).set({
+        paidCents: Math.max(0, (invoice.totalCents - refundedCents)),
+        paidAt: fullyRefunded ? null : invoice.paidAt,
+      }).where(eq(nativeJobs.id, invoice.jobId));
+
+      const quoteId = await resolveInvoiceQuoteId(db, invoice);
+      if (quoteId !== null) {
+        await db.update(nativeQuotes).set({
+          status: fullyRefunded ? "converted" : "paid",
+          finalPaymentStatus: fullyRefunded ? "refunded" : "partially_refunded",
+          nextActionType: fullyRefunded ? "refund_recorded" : "partial_refund_recorded",
+          nextActionDueAt: null,
+        }).where(eq(nativeQuotes.id, quoteId));
+      }
+
+      return {
+        success: true,
+        invoiceId: invoice.id,
+        amountCents: input.amountCents,
+        refundedCents,
+        remainingCents,
+        fullyRefunded,
+        method: input.method,
+        reference: refundReference,
+        refundedAt,
       };
     }),
 

@@ -4317,3 +4317,9 @@
 - [x] Generate a paid final invoice and payment receipt for every settled final invoice.
 - [x] Deliver one customer receipt per payment path and record delivery state without duplicate sends on webhook retry.
 - [x] Add regression coverage, validate, checkpoint, and refresh the preview.
+
+## Invoice Refunds and Universal Receipt Access — October 3, 2026
+- [x] Add audited partial and full refund records with clear invoice, job, and quote reconciliation.
+- [x] Process Stripe refunds only after an explicit in-app confirmation; support offline refund recording for checks and cash.
+- [x] Provide visible final-payment receipt access for every invoice with paid-document regeneration when needed.
+- [x] Add migrations, regression coverage, validation, checkpoint, and preview refresh.

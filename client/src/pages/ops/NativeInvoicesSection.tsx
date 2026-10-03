@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +42,7 @@ import {
   Copy,
   Banknote,
   RefreshCw,
+  Undo2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ type NativeInvoice = {
   subtotalCents: number;
   depositPaidCents: number;
   totalCents: number;
-  status: "unpaid" | "sent" | "paid" | "void";
+  status: "unpaid" | "sent" | "paid" | "refunded" | "void";
   pdfUrl: string | null;
   stripePaymentLinkUrl?: string | null;
   achPaymentPendingAt?: Date | null;
@@ -68,6 +70,11 @@ type NativeInvoice = {
   paymentReceiptEmailId?: string | null;
   paymentReceiptSentAt?: Date | null;
   paymentReceiptUrl?: string | null;
+  refundedCents: number;
+  refundedAt?: Date | null;
+  refundMethod?: string | null;
+  refundReference?: string | null;
+  refundNotes?: string | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -102,12 +109,14 @@ const STATUS_FILTERS = [
   { value: "unpaid", label: "Unpaid" },
   { value: "sent", label: "Sent" },
   { value: "paid", label: "Paid" },
+  { value: "refunded", label: "Refunded" },
   { value: "void", label: "Void" },
 ] as const;
 
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "paid": return "bg-green-500/15 text-green-400 border-green-500/30";
+    case "refunded": return "bg-rose-500/15 text-rose-300 border-rose-500/30";
     case "sent": return "bg-blue-500/15 text-blue-400 border-blue-500/30";
     case "unpaid": return "bg-amber-500/15 text-amber-400 border-amber-500/30";
     case "void": return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
@@ -122,6 +131,7 @@ function statusLabel(status: string): string {
 function statusIcon(status: string) {
   switch (status) {
     case "paid": return <CheckCircle className="w-3 h-3" />;
+    case "refunded": return <Undo2 className="w-3 h-3" />;
     case "sent": return <Send className="w-3 h-3" />;
     case "unpaid": return <Clock className="w-3 h-3" />;
     case "void": return <XCircle className="w-3 h-3" />;
@@ -152,6 +162,12 @@ export default function NativeInvoicesSection() {
   const [checkNote, setCheckNote] = useState("");
   const [resendId, setResendId] = useState<number | null>(null);
   const [resendReceiptId, setResendReceiptId] = useState<number | null>(null);
+  const [refundInvoiceId, setRefundInvoiceId] = useState<number | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundMethod, setRefundMethod] = useState<"stripe" | "check" | "cash">("check");
+  const [refundReference, setRefundReference] = useState("");
+  const [refundNotes, setRefundNotes] = useState("");
+  const [refundConfirmed, setRefundConfirmed] = useState(false);
 
   // Fetch all invoices (no jobId filter = all)
   const { data: allInvoices = [], isLoading } = trpc.nativeJobs.listInvoices.useQuery({});
@@ -209,11 +225,25 @@ export default function NativeInvoicesSection() {
     onError: (e) => toast.error(e.message),
   });
 
-  const refreshPaidDocumentsMutation = trpc.nativeJobs.refreshPaidCheckDocuments.useMutation({
+  const refreshPaidDocumentsMutation = trpc.nativeJobs.refreshPaidDocuments.useMutation({
     onSuccess: (result) => {
       utils.nativeJobs.listInvoices.invalidate();
-      window.open(result.paidInvoiceUrl, "_blank");
+      window.open(result.paymentReceiptUrl, "_blank");
       toast.success("Paid final invoice and payment receipt refreshed");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const refundMutation = trpc.nativeJobs.refundInvoice.useMutation({
+    onSuccess: (result) => {
+      utils.nativeJobs.listInvoices.invalidate();
+      utils.nativeJobs.list.invalidate();
+      utils.nativeQuotes.list.invalidate();
+      toast.success(result.fullyRefunded
+        ? `Full refund of ${formatCents(result.amountCents)} recorded.`
+        : `Partial refund of ${formatCents(result.amountCents)} recorded. ${formatCents(result.remainingCents)} remains paid.`);
+      setRefundInvoiceId(null);
+      setRefundConfirmed(false);
     },
     onError: (e) => toast.error(e.message),
   });
@@ -234,8 +264,8 @@ export default function NativeInvoicesSection() {
   // Summary stats
   const totalInvoiced = allInvoices.reduce((s, i) => s + (i.totalCents ?? 0), 0);
   const totalPaid = allInvoices
-    .filter((i) => i.status === "paid")
-    .reduce((s, i) => s + (i.totalCents ?? 0), 0);
+    .filter((i) => i.status === "paid" || i.status === "refunded")
+    .reduce((s, i) => s + Math.max(0, (i.totalCents ?? 0) - (i.refundedCents ?? 0)), 0);
   const totalOutstanding = allInvoices
     .filter((i) => i.status === "unpaid" || i.status === "sent")
     .reduce((s, i) => s + (i.totalCents ?? 0), 0);
@@ -245,6 +275,7 @@ export default function NativeInvoicesSection() {
   const invoiceToRecordCheck = allInvoices.find((i) => i.id === checkPaymentId);
   const invoiceToResend = allInvoices.find((i) => i.id === resendId);
   const invoiceToResendReceipt = allInvoices.find((i) => i.id === resendReceiptId);
+  const invoiceToRefund = allInvoices.find((i) => i.id === refundInvoiceId);
 
   function openCheckPayment(invoice: NativeInvoice) {
     setCheckPaymentId(invoice.id);
@@ -271,6 +302,42 @@ export default function NativeInvoicesSection() {
       receivedAt,
       note: checkNote.trim() || undefined,
       sendReceipt: true,
+    });
+  }
+
+  function openRefund(invoice: NativeInvoice) {
+    const remainingCents = Math.max(0, invoice.totalCents - (invoice.refundedCents ?? 0));
+    setRefundInvoiceId(invoice.id);
+    setRefundAmount((remainingCents / 100).toFixed(2));
+    setRefundMethod(invoice.paymentMethod === "stripe" ? "stripe" : invoice.paymentMethod === "cash" ? "cash" : "check");
+    setRefundReference("");
+    setRefundNotes("");
+    setRefundConfirmed(false);
+  }
+
+  function submitRefund() {
+    if (!invoiceToRefund) return;
+    const amountCents = Math.round(Number(refundAmount) * 100);
+    const remainingCents = Math.max(0, invoiceToRefund.totalCents - (invoiceToRefund.refundedCents ?? 0));
+    if (!Number.isFinite(amountCents) || amountCents <= 0 || amountCents > remainingCents) {
+      toast.error(`Enter a refund amount between $1 and ${formatCents(remainingCents)}.`);
+      return;
+    }
+    if ((refundMethod === "check" || refundMethod === "cash") && !refundReference.trim()) {
+      toast.error("Enter an offline refund reference before recording it.");
+      return;
+    }
+    if (!refundConfirmed) {
+      toast.error("Confirm the refund details before continuing.");
+      return;
+    }
+    refundMutation.mutate({
+      invoiceId: invoiceToRefund.id,
+      amountCents,
+      method: refundMethod,
+      offlineReference: refundReference.trim() || undefined,
+      notes: refundNotes.trim() || undefined,
+      confirmRefund: true,
     });
   }
 
@@ -403,6 +470,11 @@ export default function NativeInvoicesSection() {
                         -{formatCents(inv.depositPaidCents)} dep.
                       </div>
                     )}
+                    {inv.refundedCents > 0 && (
+                      <div className="text-[10px] text-rose-300">
+                        -{formatCents(inv.refundedCents)} refunded
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <span
@@ -460,37 +532,53 @@ export default function NativeInvoicesSection() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const needsPaidDocumentRefresh = inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl;
+                            const needsPaidDocumentRefresh = inv.status === "paid" && !inv.paymentReceiptUrl;
                             if (needsPaidDocumentRefresh) {
                               refreshPaidDocumentsMutation.mutate({ invoiceId: inv.id });
                               return;
                             }
                             window.open(inv.pdfUrl!, "_blank");
                           }}
-                          disabled={refreshPaidDocumentsMutation.isPending && inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl}
+                          disabled={refreshPaidDocumentsMutation.isPending && inv.status === "paid" && !inv.paymentReceiptUrl}
                           className="h-7 px-2 text-zinc-400 hover:text-zinc-200 text-xs"
                           title={
-                            inv.status === "paid" && inv.paymentMethod === "check"
+                            inv.status === "paid"
                               ? inv.paymentReceiptUrl ? "View paid final invoice" : "Refresh and view paid final invoice"
                               : "View invoice"
                           }
                         >
-                          {refreshPaidDocumentsMutation.isPending && inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl
+                          {refreshPaidDocumentsMutation.isPending && inv.status === "paid" && !inv.paymentReceiptUrl
                             ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                             : <ExternalLink className="w-3.5 h-3.5" />}
                         </Button>
                       )}
-                      {inv.paymentReceiptUrl && inv.status === "paid" && inv.paymentMethod === "check" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(inv.paymentReceiptUrl!, "_blank")}
-                          className="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs"
-                          title="View final payment receipt"
-                        >
-                          <Receipt className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (inv.status !== "paid" && inv.status !== "refunded") return;
+                          if (inv.paymentReceiptUrl) {
+                            window.open(inv.paymentReceiptUrl, "_blank");
+                          } else if (inv.status === "paid") {
+                            refreshPaidDocumentsMutation.mutate({ invoiceId: inv.id });
+                          }
+                        }}
+                        disabled={
+                          (inv.status !== "paid" && inv.status !== "refunded") ||
+                          (inv.status === "refunded" && !inv.paymentReceiptUrl) ||
+                          refreshPaidDocumentsMutation.isPending
+                        }
+                        className="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs disabled:text-zinc-600"
+                        title={
+                          inv.paymentReceiptUrl ? "View final payment receipt" :
+                            inv.status === "paid" ? "Create and view final payment receipt" :
+                              "Final payment receipt is available once this invoice is paid"
+                        }
+                      >
+                        {refreshPaidDocumentsMutation.isPending && inv.status === "paid" && !inv.paymentReceiptUrl
+                          ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          : <Receipt className="w-3.5 h-3.5" />}
+                      </Button>
                       {inv.stripePaymentLinkUrl && (
                         <>
                           <Button
@@ -542,6 +630,18 @@ export default function NativeInvoicesSection() {
                           title={inv.paymentReceiptSentAt ? "Resend payment receipt" : "Send payment receipt"}
                         >
                           <Send className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {inv.status === "paid" && Math.max(0, inv.totalCents - (inv.refundedCents ?? 0)) > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openRefund(inv)}
+                          disabled={refundMutation.isPending}
+                          className="h-7 px-2 text-rose-400 hover:text-rose-300 text-xs"
+                          title="Process or record a partial or full refund"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
                         </Button>
                       )}
                       {(inv.status === "unpaid" || inv.status === "sent") && !inv.achPaymentPendingAt && (
@@ -729,6 +829,92 @@ export default function NativeInvoicesSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Refund Invoice */}
+      <Dialog open={refundInvoiceId !== null} onOpenChange={(open) => !open && !refundMutation.isPending && setRefundInvoiceId(null)}>
+        <DialogContent className="max-w-md bg-zinc-900 border-zinc-700 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="w-4 h-4 text-rose-400" /> Record or Process Refund
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {invoiceToRefund ? (
+                <>
+                  Invoice #{String(invoiceToRefund.id).padStart(4, "0")} has {formatCents(Math.max(0, invoiceToRefund.totalCents - (invoiceToRefund.refundedCents ?? 0)))} available to refund. Stripe refunds are submitted to Stripe; check and cash refunds are recorded for your books after you have issued them.
+                </>
+              ) : "Choose the amount and refund method."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Refund amount
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                inputMode="decimal"
+                value={refundAmount}
+                onChange={(event) => setRefundAmount(event.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Refund method
+              <select
+                value={refundMethod}
+                onChange={(event) => setRefundMethod(event.target.value as "stripe" | "check" | "cash")}
+                className="h-10 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:border-amber-500"
+              >
+                {invoiceToRefund?.paymentMethod === "stripe" && <option value="stripe">Refund through Stripe</option>}
+                <option value="check">Refund by check — record only</option>
+                <option value="cash">Refund by cash — record only</option>
+              </select>
+            </label>
+            {refundMethod !== "stripe" && (
+              <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+                {refundMethod === "check" ? "Refund check number" : "Cash refund reference"}
+                <Input
+                  value={refundReference}
+                  onChange={(event) => setRefundReference(event.target.value)}
+                  placeholder={refundMethod === "check" ? "Example: 1124" : "Example: Cash refund Oct. 3"}
+                  maxLength={255}
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                />
+              </label>
+            )}
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Refund note <span className="font-normal text-zinc-500">(optional)</span>
+              <Input
+                value={refundNotes}
+                onChange={(event) => setRefundNotes(event.target.value)}
+                placeholder="Reason or handling notes"
+                maxLength={2000}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </label>
+            <label className="flex items-start gap-2 rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-sm text-zinc-200">
+              <Checkbox
+                checked={refundConfirmed}
+                onCheckedChange={(checked) => setRefundConfirmed(checked === true)}
+                className="mt-0.5 border-rose-400 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600"
+              />
+              <span>I have verified the amount and understand that a Stripe refund cannot be undone here. Offline refunds have already been issued and will be recorded.</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundInvoiceId(null)} disabled={refundMutation.isPending} className="border-zinc-700 text-zinc-300">
+              Cancel
+            </Button>
+            <Button
+              onClick={submitRefund}
+              disabled={!refundConfirmed || refundMutation.isPending}
+              className="bg-rose-700 hover:bg-rose-600 text-white"
+            >
+              {refundMutation.isPending ? "Processing Refund..." : refundMethod === "stripe" ? "Process Stripe Refund" : "Record Refund"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

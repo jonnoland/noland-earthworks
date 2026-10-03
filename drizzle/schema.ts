@@ -2179,8 +2179,8 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   /** Deposit already paid — deducted from balance due */
   depositPaidCents: int("depositPaidCents").notNull().default(0),
   totalCents: int("totalCents").notNull().default(0),
-  /** unpaid | sent | paid | void */
-  status: mysqlEnum("status", ["unpaid", "sent", "paid", "void"]).notNull().default("unpaid"),
+  /** unpaid | sent | paid | refunded | void */
+  status: mysqlEnum("status", ["unpaid", "sent", "paid", "refunded", "void"]).notNull().default("unpaid"),
   /** S3 URL of the generated PDF */
   pdfUrl: varchar("pdfUrl", { length: 1024 }),
   /** Hosted Stripe Checkout URL supporting card and ACH Direct Debit */
@@ -2203,6 +2203,16 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   paymentReceiptSentAt: timestamp("paymentReceiptSentAt"),
   /** Stored HTML receipt matching the payment confirmation sent for a check payment. */
   paymentReceiptUrl: varchar("paymentReceiptUrl", { length: 1024 }),
+  /** Cumulative refund amount against this final invoice, in cents. */
+  refundedCents: int("refundedCents").notNull().default(0),
+  /** Most recent refund recorded against this invoice. */
+  refundedAt: timestamp("refundedAt"),
+  /** stripe | check | cash — the method used to issue or record the refund. */
+  refundMethod: varchar("refundMethod", { length: 30 }),
+  /** Stripe refund ID or an owner-entered offline refund reference. */
+  refundReference: varchar("refundReference", { length: 255 }),
+  /** Owner-entered explanation or handling note for the refund. */
+  refundNotes: text("refundNotes"),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),
@@ -2214,6 +2224,24 @@ export const nativeInvoices = mysqlTable("native_invoices", {
 });
 export type NativeInvoice = typeof nativeInvoices.$inferSelect;
 export type InsertNativeInvoice = typeof nativeInvoices.$inferInsert;
+
+/** Immutable refund ledger entries for partial and full final-invoice refunds. */
+export const nativeInvoiceRefunds = mysqlTable("native_invoice_refunds", {
+  id: int("id").primaryKey().autoincrement(),
+  invoiceId: int("invoiceId").notNull(),
+  amountCents: int("amountCents").notNull(),
+  /** stripe | check | cash */
+  method: varchar("method", { length: 30 }).notNull(),
+  /** Stripe refund ID or offline refund reference. */
+  reference: varchar("reference", { length: 255 }),
+  notes: text("notes"),
+  refundedAt: timestamp("refundedAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("native_invoice_refunds_invoice_idx").on(table.invoiceId),
+]);
+export type NativeInvoiceRefund = typeof nativeInvoiceRefunds.$inferSelect;
+export type InsertNativeInvoiceRefund = typeof nativeInvoiceRefunds.$inferInsert;
 
 // ─── Native Clients ───────────────────────────────────────────────────────────
 /**

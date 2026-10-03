@@ -191,3 +191,24 @@ export async function expireInvoiceCheckoutSession(sessionId: string): Promise<v
     await stripe.checkout.sessions.expire(sessionId);
   }
 }
+
+/**
+ * Refunds a specific amount of a settled final-invoice PaymentIntent. Stripe
+ * keeps the original payment method and bank/card settlement handling intact.
+ */
+export async function refundInvoicePayment(
+  paymentIntentId: string,
+  amountCents: number,
+  reason?: Stripe.RefundCreateParams.Reason
+): Promise<{ refundId: string; status: string | null }> {
+  if (!Number.isInteger(amountCents) || amountCents <= 0) {
+    throw new Error("Refund amount must be a positive whole number of cents");
+  }
+  const stripe = getStripe();
+  const refund = await stripe.refunds.create({
+    payment_intent: paymentIntentId,
+    amount: amountCents,
+    reason,
+  });
+  return { refundId: refund.id, status: refund.status };
+}

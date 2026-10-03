@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = vi.hoisted(() => ({
   lastCheckoutParams: null as Record<string, unknown> | null,
+  lastRefundParams: null as Record<string, unknown> | null,
   retrievedCheckout: { payment_status: "unpaid", status: "open" },
   expiredCheckoutId: null as string | null,
 }));
@@ -50,6 +51,12 @@ vi.mock("stripe", () => {
         }),
       },
     },
+    refunds: {
+      create: vi.fn().mockImplementation(async (params: Record<string, unknown>) => {
+        state.lastRefundParams = params;
+        return { id: "re_invoice_refund123", status: "succeeded" };
+      }),
+    },
   }));
   return { default: Stripe };
 });
@@ -59,6 +66,7 @@ vi.mock("stripe", () => {
 describe("stripe helpers", () => {
   beforeEach(() => {
     state.lastCheckoutParams = null;
+    state.lastRefundParams = null;
     state.retrievedCheckout = { payment_status: "unpaid", status: "open" };
     state.expiredCheckoutId = null;
   });
@@ -129,6 +137,13 @@ describe("stripe helpers", () => {
     const { expireInvoiceCheckoutSession } = await import("./stripe");
     await expect(expireInvoiceCheckoutSession("cs_pending_ach")).rejects.toThrow("awaiting Stripe confirmation");
     expect(state.expiredCheckoutId).toBeNull();
+  });
+
+  it("creates a partial Stripe refund against the settled invoice PaymentIntent", async () => {
+    const { refundInvoicePayment } = await import("./stripe");
+    const result = await refundInvoicePayment("pi_invoice_paid", 42500);
+    expect(result).toEqual({ refundId: "re_invoice_refund123", status: "succeeded" });
+    expect(state.lastRefundParams).toEqual({ payment_intent: "pi_invoice_paid", amount: 42500, reason: undefined });
   });
 });
 
