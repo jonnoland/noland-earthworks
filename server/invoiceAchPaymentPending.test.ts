@@ -20,6 +20,8 @@ describe("ACH payment-pending invoice status", () => {
   });
 
   it("clears the pending state if an invoice is manually marked paid", () => {
-    expect(jobsRouterSource).toContain('set({ status: "paid", paidAt, achPaymentPendingAt: null })');
+    expect(jobsRouterSource).toContain('status: "paid",');
+    expect(jobsRouterSource).toContain("achPaymentPendingAt: null,");
+    expect(jobsRouterSource).toContain('paymentMethod: "manual",');
   });
 });

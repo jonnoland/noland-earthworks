@@ -2191,6 +2191,12 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   /** Set after an ACH checkout is submitted and cleared only when Stripe settles or fails it. */
   achPaymentPendingAt: timestamp("achPaymentPendingAt"),
+  /** card | ach | check | manual — retained for payment reconciliation and receipts. */
+  paymentMethod: varchar("paymentMethod", { length: 30 }),
+  /** Check number or other owner-entered payment reference. */
+  paymentReference: varchar("paymentReference", { length: 100 }),
+  /** Internal payment note, such as bank, memo, or check-handling detail. */
+  paymentNotes: text("paymentNotes"),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),

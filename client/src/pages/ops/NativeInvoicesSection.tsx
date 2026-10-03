@@ -20,6 +20,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Search,
@@ -31,6 +39,7 @@ import {
   XCircle,
   Send,
   Copy,
+  Banknote,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -52,6 +61,9 @@ type NativeInvoice = {
   pdfUrl: string | null;
   stripePaymentLinkUrl?: string | null;
   achPaymentPendingAt?: Date | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -120,6 +132,10 @@ export default function NativeInvoicesSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [markPaidId, setMarkPaidId] = useState<number | null>(null);
+  const [checkPaymentId, setCheckPaymentId] = useState<number | null>(null);
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkReceivedAt, setCheckReceivedAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [checkNote, setCheckNote] = useState("");
   const [resendId, setResendId] = useState<number | null>(null);
 
   // Fetch all invoices (no jobId filter = all)
@@ -131,6 +147,19 @@ export default function NativeInvoicesSection() {
       utils.nativeJobs.list.invalidate();
       toast.success("Invoice marked as paid");
       setMarkPaidId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const recordCheckMutation = trpc.nativeJobs.recordInvoiceCheck.useMutation({
+    onSuccess: (result) => {
+      utils.nativeJobs.listInvoices.invalidate();
+      utils.nativeJobs.list.invalidate();
+      utils.nativeQuotes.list.invalidate();
+      toast.success(`Check #${result.checkNumber} recorded — invoice marked paid`);
+      setCheckPaymentId(null);
+      setCheckNumber("");
+      setCheckNote("");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -168,7 +197,35 @@ export default function NativeInvoicesSection() {
   const countUnpaid = allInvoices.filter((i) => i.status === "unpaid" || i.status === "sent").length;
 
   const invoiceToMarkPaid = allInvoices.find((i) => i.id === markPaidId);
+  const invoiceToRecordCheck = allInvoices.find((i) => i.id === checkPaymentId);
   const invoiceToResend = allInvoices.find((i) => i.id === resendId);
+
+  function openCheckPayment(invoice: NativeInvoice) {
+    setCheckPaymentId(invoice.id);
+    setCheckNumber("");
+    setCheckReceivedAt(new Date().toISOString().slice(0, 10));
+    setCheckNote("");
+  }
+
+  function submitCheckPayment() {
+    if (checkPaymentId === null) return;
+    const reference = checkNumber.trim();
+    if (!reference) {
+      toast.error("Enter the check number before recording payment.");
+      return;
+    }
+    const receivedAt = new Date(`${checkReceivedAt}T12:00:00`);
+    if (Number.isNaN(receivedAt.getTime())) {
+      toast.error("Enter a valid check received date.");
+      return;
+    }
+    recordCheckMutation.mutate({
+      invoiceId: checkPaymentId,
+      checkNumber: reference,
+      receivedAt,
+      note: checkNote.trim() || undefined,
+    });
+  }
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: 500 }}>
@@ -314,12 +371,19 @@ export default function NativeInvoicesSection() {
                         </span>
                       </div>
                     ) : (
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusBadgeClass(inv.status)}`}
-                      >
-                        {statusIcon(inv.status)}
-                        {statusLabel(inv.status)}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusBadgeClass(inv.status)}`}
+                        >
+                          {statusIcon(inv.status)}
+                          {statusLabel(inv.status)}
+                        </span>
+                        {inv.status === "paid" && inv.paymentMethod === "check" && inv.paymentReference && (
+                          <span className="inline-flex items-center gap-1 text-[9px] leading-none text-emerald-300/75" title={inv.paymentNotes ?? undefined}>
+                            <Banknote className="w-3 h-3" /> Check #{inv.paymentReference}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-3 py-2.5">
@@ -380,9 +444,21 @@ export default function NativeInvoicesSection() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => openCheckPayment(inv)}
+                          disabled={recordCheckMutation.isPending}
+                          className="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs"
+                          title="Record check received"
+                        >
+                          <Banknote className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {(inv.status === "unpaid" || inv.status === "sent") && !inv.achPaymentPendingAt && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setMarkPaidId(inv.id)}
                           className="h-7 px-2 text-green-400 hover:text-green-300 text-xs"
-                          title="Mark as paid"
+                          title="Record another offline payment method"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
                         </Button>
@@ -406,7 +482,7 @@ export default function NativeInvoicesSection() {
                 <>
                   Invoice #{String(invoiceToMarkPaid.id).padStart(4, "0")} for{" "}
                   <strong className="text-zinc-200">{invoiceToMarkPaid.clientName}</strong> —{" "}
-                  {formatCents(invoiceToMarkPaid.totalCents)}. This will also update the job record.
+                  {formatCents(invoiceToMarkPaid.totalCents)}. This will also update the job record. If you have a check in hand, cancel and use the green banknote button so the check number is saved.
                 </>
               )}
             </AlertDialogDescription>
@@ -424,6 +500,64 @@ export default function NativeInvoicesSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Record Check Received */}
+      <Dialog open={checkPaymentId !== null} onOpenChange={(open) => !open && !recordCheckMutation.isPending && setCheckPaymentId(null)}>
+        <DialogContent className="max-w-md bg-zinc-900 border-zinc-700 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="w-4 h-4 text-emerald-400" /> Record Check Received
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {invoiceToRecordCheck ? (
+                <>
+                  Record the check you have in hand for invoice #{String(invoiceToRecordCheck.id).padStart(4, "0")} — {formatCents(invoiceToRecordCheck.totalCents)}. The open online payment link will be closed first to prevent a duplicate payment.
+                </>
+              ) : "Record the received check before marking this invoice paid."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Check number
+              <Input
+                value={checkNumber}
+                onChange={(event) => setCheckNumber(event.target.value)}
+                placeholder="Example: 1048"
+                maxLength={100}
+                autoFocus
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Date received
+              <Input
+                type="date"
+                value={checkReceivedAt}
+                onChange={(event) => setCheckReceivedAt(event.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-zinc-200">
+              Internal note <span className="font-normal text-zinc-500">(optional)</span>
+              <Input
+                value={checkNote}
+                onChange={(event) => setCheckNote(event.target.value)}
+                placeholder="Example: First Citizens Bank, deposited Oct. 3"
+                maxLength={1000}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCheckPaymentId(null)} disabled={recordCheckMutation.isPending} className="border-zinc-700 text-zinc-300">
+              Cancel
+            </Button>
+            <Button onClick={submitCheckPayment} disabled={!checkNumber.trim() || recordCheckMutation.isPending} className="bg-emerald-700 hover:bg-emerald-600 text-white">
+              {recordCheckMutation.isPending ? "Recording..." : "Record Check Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Resend Invoice Confirmation */}
       <AlertDialog open={resendId !== null} onOpenChange={(v) => !v && setResendId(null)}>

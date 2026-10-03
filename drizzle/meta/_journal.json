@@ -981,6 +981,13 @@
       "when": 1790783846084,
       "tag": "0139_perpetual_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "5",
+      "when": 1791050306720,
+      "tag": "0140_wooden_strong_guy",
+      "breakpoints": true
     }
   ]
 }

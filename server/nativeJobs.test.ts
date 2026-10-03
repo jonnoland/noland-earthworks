@@ -12,7 +12,14 @@ vi.mock("./db", () => ({
   getDb: vi.fn(),
 }));
 
+vi.mock("./stripe", () => ({
+  createInvoiceCheckoutSession: vi.fn(),
+  expireInvoiceCheckoutSession: vi.fn(),
+  isStripeConfigured: vi.fn(() => true),
+}));
+
 import { getDb } from "./db";
+import { expireInvoiceCheckoutSession } from "./stripe";
 import { appRouter } from "./routers";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -333,6 +340,82 @@ describe("nativeJobs.markInvoicePaid", () => {
       nextActionType: "final_payment_paid",
       nextActionDueAt: null,
     });
+  });
+});
+
+describe("nativeJobs.recordInvoiceCheck", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("records a received check, closes the online checkout, and moves the linked quote to paid", async () => {
+    const invoice = {
+      id: 76,
+      jobId: 1,
+      quoteId: 10,
+      totalCents: 240000,
+      status: "sent",
+      achPaymentPendingAt: null,
+      stripeCheckoutSessionId: "cs_open_invoice",
+    };
+    const updates: Array<Record<string, unknown>> = [];
+    const updateSet = vi.fn((values: Record<string, unknown>) => ({
+      where: vi.fn().mockImplementation(async () => { updates.push(values); }),
+    }));
+    const mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([invoice]),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+    vi.mocked(expireInvoiceCheckoutSession).mockResolvedValue(undefined);
+
+    await expect(
+      appRouter.createCaller(createOwnerContext()).nativeJobs.recordInvoiceCheck({
+        invoiceId: 76,
+        checkNumber: "1048",
+        receivedAt: new Date("2026-10-03T12:00:00Z"),
+        note: "Deposited at bank",
+      })
+    ).resolves.toEqual(expect.objectContaining({ success: true, checkNumber: "1048" }));
+
+    expect(expireInvoiceCheckoutSession).toHaveBeenCalledWith("cs_open_invoice");
+    expect(updates).toContainEqual(expect.objectContaining({
+      status: "paid",
+      paymentMethod: "check",
+      paymentReference: "1048",
+      paymentNotes: "Deposited at bank",
+      stripePaymentLinkUrl: null,
+    }));
+    expect(updates).toContainEqual(expect.objectContaining({ paidCents: 240000 }));
+    expect(updates).toContainEqual(expect.objectContaining({
+      finalPaymentStatus: "paid",
+      status: "paid",
+    }));
+  });
+
+  it("refuses a check entry while an ACH payment is awaiting settlement", async () => {
+    const invoice = {
+      id: 77,
+      jobId: 1,
+      quoteId: 10,
+      totalCents: 240000,
+      status: "sent",
+      achPaymentPendingAt: new Date(),
+      stripeCheckoutSessionId: "cs_pending_ach",
+    };
+    const mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([invoice]),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+
+    await expect(
+      appRouter.createCaller(createOwnerContext()).nativeJobs.recordInvoiceCheck({ invoiceId: 77, checkNumber: "1049" })
+    ).rejects.toThrow("ACH payment is awaiting bank settlement");
+    expect(expireInvoiceCheckoutSession).not.toHaveBeenCalled();
   });
 });
 

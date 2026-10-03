@@ -9,6 +9,7 @@
  *   generateInvoice — build HTML invoice, store in S3, optionally email client
  *   listInvoices    — list invoices for a job (or all)
  *   markInvoicePaid — mark invoice as paid
+ *   recordInvoiceCheck — record a received check and close the invoice
  */
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -653,7 +654,14 @@ export const nativeJobsRouter = router({
 
       await db
         .update(nativeInvoices)
-        .set({ status: "paid", paidAt, achPaymentPendingAt: null })
+        .set({
+          status: "paid",
+          paidAt,
+          achPaymentPendingAt: null,
+          paymentMethod: "manual",
+          paymentReference: null,
+          paymentNotes: null,
+        })
         .where(eq(nativeInvoices.id, input.invoiceId));
 
       await db
@@ -675,6 +683,82 @@ export const nativeJobsRouter = router({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * Records an in-hand check against a final invoice. When a prior hosted
+   * Checkout link exists, it is retired first to prevent double collection.
+   */
+  recordInvoiceCheck: ownerProcedure
+    .input(z.object({
+      invoiceId: z.number().int(),
+      checkNumber: z.string().trim().min(1).max(100),
+      receivedAt: z.date().optional(),
+      note: z.string().trim().max(1000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [invoice] = await db
+        .select()
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.id, input.invoiceId))
+        .limit(1);
+
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status === "paid") throw new TRPCError({ code: "CONFLICT", message: "This invoice is already paid." });
+      if (invoice.status === "void") throw new TRPCError({ code: "CONFLICT", message: "Void invoices cannot receive a check payment." });
+      if (invoice.achPaymentPendingAt) {
+        throw new TRPCError({ code: "CONFLICT", message: "An ACH payment is awaiting bank settlement. Do not record a check payment unless the ACH payment fails." });
+      }
+
+      if (invoice.stripeCheckoutSessionId) {
+        try {
+          await expireInvoiceCheckoutSession(invoice.stripeCheckoutSessionId);
+        } catch (error) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: error instanceof Error
+              ? `Could not close the open online payment link: ${error.message}`
+              : "Could not close the open online payment link. Refresh the invoice and try again.",
+          });
+        }
+      }
+
+      const paidAt = input.receivedAt ?? new Date();
+      const paymentNotes = input.note?.trim() || null;
+      await db
+        .update(nativeInvoices)
+        .set({
+          status: "paid",
+          paidAt,
+          achPaymentPendingAt: null,
+          paymentMethod: "check",
+          paymentReference: input.checkNumber,
+          paymentNotes,
+          stripePaymentLinkUrl: null,
+        })
+        .where(eq(nativeInvoices.id, invoice.id));
+
+      await db
+        .update(nativeJobs)
+        .set({ paidCents: invoice.totalCents, paidAt })
+        .where(eq(nativeJobs.id, invoice.jobId));
+
+      const quoteId = await resolveInvoiceQuoteId(db, invoice);
+      if (quoteId !== null) {
+        await db
+          .update(nativeQuotes)
+          .set({
+            finalPaymentStatus: "paid",
+            status: "paid",
+            nextActionType: "final_payment_paid",
+            nextActionDueAt: null,
+          })
+          .where(eq(nativeQuotes.id, quoteId));
+      }
+
+      return { success: true, paidAt, checkNumber: input.checkNumber };
     }),
 });
 

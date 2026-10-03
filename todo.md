@@ -4261,3 +4261,16 @@
 - [x] Show category labels during review and in the saved Service Log history.
 - [x] Add a staged, accessible import progress bar for PDF and Word document processing.
 - [x] Add tests, migrate the schema, validate, checkpoint, and refresh the preview.
+
+## Google Reviews Operations Visibility — October 1, 2026
+
+- [x] Inspect Google Business Profile connection, stored review records, and Operations review display data flow.
+- [ ] Identify and repair the cause preventing Google reviews from appearing in Operations. Blocked pending Google Cloud quota restoration and a valid Google Business Profile location or Place ID.
+- [ ] Validate the review sync and display path, then checkpoint and refresh the preview if code changes are required. Blocked until a live review feed is available.
+
+## Manual Check Payment Workflow — October 3, 2026
+
+- [x] Review current invoice payment and refund data flow for an auditable manual-check path.
+- [x] Add check payment fields and an Operations action to record an in-hand check against a final invoice.
+- [x] Ensure a recorded check marks the invoice, job, and linked quote paid without invoking Stripe.
+- [x] Add receipt details and regression coverage, validate, checkpoint, and refresh the preview.
