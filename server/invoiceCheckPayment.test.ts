@@ -12,6 +12,8 @@ describe("manual invoice check payment workflow", () => {
     expect(schema).toContain('paymentMethod: varchar("paymentMethod", { length: 30 })');
     expect(schema).toContain('paymentReference: varchar("paymentReference", { length: 100 })');
     expect(schema).toContain('paymentNotes: text("paymentNotes")');
+    expect(schema).toContain('paymentReceiptEmailId: varchar("paymentReceiptEmailId", { length: 128 })');
+    expect(schema).toContain('paymentReceiptSentAt: timestamp("paymentReceiptSentAt")');
   });
 
   it("records a received check only after closing an open online checkout", () => {
@@ -21,6 +23,9 @@ describe("manual invoice check payment workflow", () => {
     expect(router).toContain("paymentReference: input.checkNumber");
     expect(router).toContain('stripePaymentLinkUrl: null');
     expect(router).toContain("ACH payment is awaiting bank settlement");
+    expect(router).toContain("sendCheckPaymentReceipt");
+    expect(router).toContain("paymentReceiptEmailId: receipt.emailId");
+    expect(router).toContain("Payment received — ${invoiceNumber}");
   });
 
   it("provides an invoice check receipt action with check number and receipt date", () => {
@@ -29,5 +34,9 @@ describe("manual invoice check payment workflow", () => {
     expect(invoicesUi).toContain("Date received");
     expect(invoicesUi).toContain("recordInvoiceCheck.useMutation");
     expect(invoicesUi).toContain("Check #{inv.paymentReference}");
+    expect(invoicesUi).toContain("Email a payment receipt to the customer");
+    expect(invoicesUi).toContain("paymentMethodLabel");
+    expect(invoicesUi).toContain(">Payment</th>");
+    expect(invoicesUi).toContain("Receipt emailed");
   });
 });

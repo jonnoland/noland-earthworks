@@ -81,6 +81,11 @@ interface GeneratedInvoiceResult {
   paymentLinkUrl?: string | null;
   paymentLinkError?: string;
   pdfUrl?: string | null;
+  paymentMethod?: string | null;
+  paidAt?: Date | null;
+  receiptAttempted?: boolean;
+  receiptSent?: boolean;
+  receiptReason?: "missing_email" | "email_not_configured" | "not_requested" | "delivery_failed";
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -386,11 +391,26 @@ function GenerateInvoiceDialog({
 }) {
   const [sendEmail, setSendEmail] = useState(true);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "check">("online");
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkReceivedDate, setCheckReceivedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [checkNote, setCheckNote] = useState("");
+  const [sendCheckReceipt, setSendCheckReceipt] = useState(Boolean(job.clientEmail));
   const utils = trpc.useUtils();
 
   const generateMut = trpc.nativeJobs.generateInvoice.useMutation({
     onSuccess: (invoice) => {
-      if (invoice.emailSent && invoice.emailSendError) {
+      if (invoice.paymentMethod === "check") {
+        if (invoice.receiptSent) {
+          toast.success(`Check #${checkNumber} recorded — payment receipt emailed to ${job.clientEmail}`);
+        } else if (invoice.receiptAttempted) {
+          toast.warning(`Check #${checkNumber} recorded, but the payment receipt could not be delivered.`);
+        } else if (invoice.receiptReason === "missing_email") {
+          toast.success(`Check #${checkNumber} recorded — no customer email is available for a receipt.`);
+        } else {
+          toast.success(`Check #${checkNumber} recorded — invoice and job marked paid.`);
+        }
+      } else if (invoice.emailSent && invoice.emailSendError) {
         toast.warning(`Invoice emailed, but the online payment link could not be created: ${invoice.emailSendError}`);
       } else if (invoice.emailSent) {
         toast.success(`Final payment invoice emailed to ${job.clientEmail}`);
@@ -422,7 +442,7 @@ function GenerateInvoiceDialog({
         <div className="space-y-4 py-2">
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
             <p className="font-semibold">Final payment invoice</p>
-            <p className="mt-1 text-xs text-amber-100/75">Any recorded quote deposit is deducted automatically. The remaining balance will be sent to the customer for payment.</p>
+            <p className="mt-1 text-xs text-amber-100/75">Any recorded quote deposit is deducted automatically. Choose an online payment link or record a check you already have in hand.</p>
           </div>
           <div className="bg-zinc-800 rounded-lg p-3 text-sm">
             <div className="text-zinc-400 mb-1">Client</div>
@@ -443,7 +463,43 @@ function GenerateInvoiceDialog({
               rows={3}
             />
           </div>
-          {job.clientEmail ? (
+          <div className="space-y-1">
+            <Label className="text-zinc-300 text-sm">How was the final balance paid?</Label>
+            <select
+              value={paymentMethod}
+              onChange={(event) => setPaymentMethod(event.target.value as "online" | "check")}
+              className="h-10 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:border-amber-500"
+            >
+              <option value="online">Send online payment link (Card or ACH)</option>
+              <option value="check">Check already received — record as paid</option>
+            </select>
+          </div>
+          {paymentMethod === "check" ? (
+            <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <p className="text-xs leading-relaxed text-emerald-100">This creates the final invoice as paid, records the check, and does not create or email a Stripe payment link.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1 text-xs text-zinc-300">
+                  Check number
+                  <Input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} placeholder="e.g., 1048" className="h-9 bg-zinc-800 border-zinc-700" />
+                </label>
+                <label className="grid gap-1 text-xs text-zinc-300">
+                  Date received
+                  <Input type="date" value={checkReceivedDate} onChange={(event) => setCheckReceivedDate(event.target.value)} className="h-9 bg-zinc-800 border-zinc-700" />
+                </label>
+              </div>
+              <label className="grid gap-1 text-xs text-zinc-300">
+                Check note <span className="text-zinc-500">(optional)</span>
+                <Input value={checkNote} onChange={(event) => setCheckNote(event.target.value)} placeholder="Bank, memo, or deposit note" className="h-9 bg-zinc-800 border-zinc-700" />
+              </label>
+              <label className={`flex items-start gap-2 text-xs ${job.clientEmail ? "cursor-pointer text-zinc-200" : "text-zinc-500"}`}>
+                <input type="checkbox" checked={sendCheckReceipt} onChange={(event) => setSendCheckReceipt(event.target.checked)} disabled={!job.clientEmail} className="mt-0.5 h-4 w-4 accent-emerald-500 disabled:cursor-not-allowed" />
+                <span>
+                  <span className="block font-medium">Email a paid receipt instead of an invoice with a payment link</span>
+                  <span className="mt-0.5 block text-zinc-500">{job.clientEmail ? `Sent to ${job.clientEmail}.` : "No customer email is saved on this job."}</span>
+                </span>
+              </label>
+            </div>
+          ) : job.clientEmail ? (
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -462,11 +518,24 @@ function GenerateInvoiceDialog({
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} className="border-zinc-600">Cancel</Button>
           <Button
-            onClick={() => generateMut.mutate({ jobId: job.id, sendEmail, notes: notes || undefined })}
-            disabled={generateMut.isPending}
-            className="bg-amber-600 hover:bg-amber-500 text-white"
+            onClick={() => generateMut.mutate({
+              jobId: job.id,
+              sendEmail: paymentMethod === "online" && sendEmail,
+              notes: notes || undefined,
+              paymentMethod,
+              checkNumber: paymentMethod === "check" ? checkNumber.trim() || undefined : undefined,
+              checkReceivedAt: paymentMethod === "check" && checkReceivedDate ? new Date(`${checkReceivedDate}T12:00:00`) : undefined,
+              checkNote: paymentMethod === "check" ? checkNote.trim() || undefined : undefined,
+              sendCheckReceipt: paymentMethod === "check" && sendCheckReceipt,
+            })}
+            disabled={generateMut.isPending || (paymentMethod === "check" && !checkNumber.trim())}
+            className={paymentMethod === "check" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-amber-600 hover:bg-amber-500 text-white"}
           >
-            {generateMut.isPending ? "Creating Final Invoice..." : sendEmail && job.clientEmail ? "Create & Send Final Invoice" : "Create Final Invoice"}
+            {generateMut.isPending
+              ? paymentMethod === "check" ? "Recording Check Payment..." : "Creating Final Invoice..."
+              : paymentMethod === "check"
+                ? "Record Check & Mark Paid"
+                : sendEmail && job.clientEmail ? "Create & Send Final Invoice" : "Create Final Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1191,7 +1260,12 @@ export default function NativeJobsSection() {
             utils.nativeJobs.list.invalidate();
             utils.nativeJobs.listInvoices.invalidate();
             setSelectedJob((current) => current?.id === selectedJob.id
-              ? { ...current, invoicedCents: invoice.totalCents, invoicedAt: new Date() }
+              ? {
+                ...current,
+                invoicedCents: invoice.totalCents,
+                invoicedAt: new Date(),
+                ...(invoice.paymentMethod === "check" ? { paidCents: invoice.totalCents, paidAt: invoice.paidAt ?? new Date() } : {}),
+              }
               : current);
           }}
         />

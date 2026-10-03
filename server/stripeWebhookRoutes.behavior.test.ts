@@ -191,7 +191,7 @@ describe("Stripe webhook behavior", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ received: true });
-    expect(state.invoiceUpdate).toMatchObject({ stripePaymentIntentId: "pi_pending_ach_invoice_42" });
+    expect(state.invoiceUpdate).toMatchObject({ stripePaymentIntentId: "pi_pending_ach_invoice_42", paymentMethod: "stripe" });
     expect(state.invoiceUpdate?.achPaymentPendingAt).toBeInstanceOf(Date);
     expect(state.jobUpdate).toBeNull();
     expect(state.ledgerStatus).toBe("processed");
@@ -212,7 +212,7 @@ describe("Stripe webhook behavior", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ received: true });
-    expect(state.invoiceUpdate).toMatchObject({ status: "paid", stripePaymentIntentId: "pi_ach_invoice_42", achPaymentPendingAt: null });
+    expect(state.invoiceUpdate).toMatchObject({ status: "paid", stripePaymentIntentId: "pi_ach_invoice_42", achPaymentPendingAt: null, paymentMethod: "stripe" });
     expect(state.invoiceUpdate?.paidAt).toBeInstanceOf(Date);
     expect(state.jobUpdate).toMatchObject({ paidCents: 125000 });
     expect(state.jobUpdate?.paidAt).toBeInstanceOf(Date);

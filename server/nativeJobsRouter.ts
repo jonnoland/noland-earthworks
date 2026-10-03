@@ -252,6 +252,11 @@ export const nativeJobsRouter = router({
         sendEmail: z.boolean().optional().default(false),
         notes: z.string().max(2000).optional(),
         dueDate: z.date().optional(),
+        paymentMethod: z.enum(["online", "check"]).optional().default("online"),
+        checkNumber: z.string().trim().max(100).optional(),
+        checkReceivedAt: z.date().optional(),
+        checkNote: z.string().trim().max(1000).optional(),
+        sendCheckReceipt: z.boolean().optional().default(true),
       })
     )
     .mutation(async ({ input }) => {
@@ -288,6 +293,13 @@ export const nativeJobsRouter = router({
         });
       }
 
+      if (input.paymentMethod === "check" && !input.checkNumber) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Enter the check number before recording a completed-job payment.",
+        });
+      }
+
       // Load deposit info from the source quote
       let depositPaidCents = 0;
       if (job.quoteId) {
@@ -304,6 +316,8 @@ export const nativeJobsRouter = router({
 
       const subtotalCents = lineItems.reduce((sum, li) => sum + li.totalCents, 0) || job.totalCents;
       const totalCents = Math.max(0, subtotalCents - depositPaidCents);
+      const isCheckPayment = input.paymentMethod === "check";
+      const checkPaidAt = input.checkReceivedAt ?? new Date();
       let paymentLinkUrl: string | null = null;
       let stripeCheckoutSessionId: string | null = null;
       let stripePaymentIntentId: string | null = null;
@@ -345,15 +359,21 @@ export const nativeJobsRouter = router({
           subtotalCents,
           depositPaidCents,
           totalCents,
-          status: "unpaid",
+          status: isCheckPayment ? "paid" : "unpaid",
           pdfUrl,
           dueDate: input.dueDate,
           notes: input.notes,
+          ...(isCheckPayment ? {
+            paidAt: checkPaidAt,
+            paymentMethod: "check",
+            paymentReference: input.checkNumber,
+            paymentNotes: input.checkNote?.trim() || undefined,
+          } : {}),
         });
 
       const invoiceId = (inserted as unknown as { insertId: number }).insertId;
 
-      if (isStripeConfigured() && totalCents > 0) {
+      if (!isCheckPayment && isStripeConfigured() && totalCents > 0) {
         try {
           const checkout = await createInvoiceCheckoutSession({
             invoiceId,
@@ -397,13 +417,30 @@ export const nativeJobsRouter = router({
       // Mark job as invoiced
       await db
         .update(nativeJobs)
-        .set({ invoicedCents: totalCents, invoicedAt: new Date() })
+        .set({
+          invoicedCents: totalCents,
+          invoicedAt: new Date(),
+          ...(isCheckPayment ? { paidCents: totalCents, paidAt: checkPaidAt } : {}),
+        })
         .where(eq(nativeJobs.id, job.id));
+
+      if (isCheckPayment && job.quoteId) {
+        await db
+          .update(nativeQuotes)
+          .set({
+            finalPaymentStatus: "paid",
+            status: "paid",
+            nextActionType: "final_payment_paid",
+            nextActionDueAt: null,
+          })
+          .where(eq(nativeQuotes.id, job.quoteId));
+      }
 
       // Email the final-payment invoice when requested.
       let emailSent = false;
       let emailSendError: string | undefined;
-      if (input.sendEmail && job.clientEmail && ENV.resendApiKey) {
+      let checkReceipt: CheckPaymentReceiptResult | null = null;
+      if (!isCheckPayment && input.sendEmail && job.clientEmail && ENV.resendApiKey) {
         try {
           const [settings] = await db
             .select({ googleReviewUrl: businessSettings.googleReviewUrl })
@@ -456,12 +493,36 @@ export const nativeJobsRouter = router({
           console.error("[Invoice] Failed to send email:", err);
           emailSendError = err instanceof Error ? err.message : "The invoice was created, but the email could not be sent.";
         }
-      } else if (input.sendEmail) {
+      } else if (!isCheckPayment && input.sendEmail) {
         emailSendError = job.clientEmail
           ? paymentLinkError
             ? `Email delivery is not configured, and Stripe could not create the payment link: ${paymentLinkError}`
             : "Email delivery is not configured. The invoice was created but not sent."
           : "This job has no customer email address. The invoice was created but not sent.";
+      }
+
+      if (isCheckPayment) {
+        checkReceipt = input.sendCheckReceipt
+          ? await sendCheckPaymentReceipt({
+            invoice: {
+              id: invoiceId,
+              clientName: job.clientName,
+              clientEmail: job.clientEmail,
+              totalCents,
+            },
+            checkNumber: input.checkNumber!,
+            paidAt: checkPaidAt,
+          })
+          : { attempted: false, sent: false, reason: "not_requested" };
+
+        if (checkReceipt.sent) {
+          await db
+            .update(nativeInvoices)
+            .set({ paymentReceiptEmailId: checkReceipt.emailId, paymentReceiptSentAt: new Date() })
+            .where(eq(nativeInvoices.id, invoiceId));
+        } else if (checkReceipt.attempted) {
+          emailSendError = "Check payment was recorded, but the receipt email could not be delivered.";
+        }
       }
 
       const [invoice] = await db
@@ -470,7 +531,15 @@ export const nativeJobsRouter = router({
         .where(eq(nativeInvoices.id, invoiceId))
         .limit(1);
 
-      return { ...invoice, emailSent, emailSendError, paymentLinkError };
+      return {
+        ...invoice,
+        emailSent,
+        emailSendError,
+        paymentLinkError,
+        receiptAttempted: checkReceipt?.attempted ?? false,
+        receiptSent: checkReceipt?.sent ?? false,
+        receiptReason: checkReceipt && !checkReceipt.sent ? checkReceipt.reason : undefined,
+      };
     }),
 
   /**
@@ -658,7 +727,7 @@ export const nativeJobsRouter = router({
           status: "paid",
           paidAt,
           achPaymentPendingAt: null,
-          paymentMethod: "manual",
+          paymentMethod: "cash",
           paymentReference: null,
           paymentNotes: null,
         })
@@ -695,6 +764,7 @@ export const nativeJobsRouter = router({
       checkNumber: z.string().trim().min(1).max(100),
       receivedAt: z.date().optional(),
       note: z.string().trim().max(1000).optional(),
+      sendReceipt: z.boolean().optional().default(true),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -737,6 +807,8 @@ export const nativeJobsRouter = router({
           paymentReference: input.checkNumber,
           paymentNotes,
           stripePaymentLinkUrl: null,
+          paymentReceiptEmailId: null,
+          paymentReceiptSentAt: null,
         })
         .where(eq(nativeInvoices.id, invoice.id));
 
@@ -758,7 +830,25 @@ export const nativeJobsRouter = router({
           .where(eq(nativeQuotes.id, quoteId));
       }
 
-      return { success: true, paidAt, checkNumber: input.checkNumber };
+      const receipt: CheckPaymentReceiptResult = input.sendReceipt
+        ? await sendCheckPaymentReceipt({ invoice, checkNumber: input.checkNumber, paidAt })
+        : { attempted: false, sent: false, reason: "not_requested" };
+
+      if (receipt.sent) {
+        await db
+          .update(nativeInvoices)
+          .set({ paymentReceiptEmailId: receipt.emailId, paymentReceiptSentAt: new Date() })
+          .where(eq(nativeInvoices.id, invoice.id));
+      }
+
+      return {
+        success: true,
+        paidAt,
+        checkNumber: input.checkNumber,
+        receipt: receipt.sent
+          ? { attempted: true, sent: true }
+          : { attempted: receipt.attempted, sent: false, reason: receipt.reason },
+      };
     }),
 });
 
@@ -775,6 +865,82 @@ function esc(str: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+type CheckReceiptInvoice = Pick<typeof nativeInvoices.$inferSelect, "id" | "clientName" | "clientEmail" | "totalCents">;
+
+type CheckPaymentReceiptResult =
+  | { attempted: false; sent: false; reason: "missing_email" | "email_not_configured" | "not_requested" }
+  | { attempted: true; sent: true; emailId: string }
+  | { attempted: true; sent: false; reason: "delivery_failed" };
+
+async function sendCheckPaymentReceipt({
+  invoice,
+  checkNumber,
+  paidAt,
+}: {
+  invoice: CheckReceiptInvoice;
+  checkNumber: string;
+  paidAt: Date;
+}): Promise<CheckPaymentReceiptResult> {
+  if (!invoice.clientEmail) return { attempted: false, sent: false, reason: "missing_email" };
+  if (!ENV.resendApiKey) return { attempted: false, sent: false, reason: "email_not_configured" };
+
+  const invoiceNumber = `INV-${String(invoice.id).padStart(4, "0")}`;
+  const firstName = invoice.clientName.trim().split(/\s+/)[0] || "there";
+  const receivedDate = paidAt.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const receiptHtml = `<!DOCTYPE html>
+<html lang="en"><body style="margin:0;padding:0;background:#f4f1ec;font-family:Arial,sans-serif;color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#f4f1ec;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+      <tr><td style="height:5px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+      <tr><td style="padding:28px 36px;background:#1a1a1a;"><div style="font-size:19px;font-weight:700;color:#fff;">NOLAND <span style="color:#E07B2A;">EARTHWORKS</span></div><div style="margin-top:6px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">Payment Receipt</div></td></tr>
+      <tr><td style="padding:28px 36px;">
+        <p style="margin:0 0 14px;font-size:16px;">Hi ${esc(firstName)},</p>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555;">Thank you. I received your check payment and have marked your final invoice as paid.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:20px;">
+          <tr><td style="padding:10px 16px;background:#f9f7f4;font-size:12px;color:#666;">Invoice</td><td align="right" style="padding:10px 16px;background:#f9f7f4;font-size:12px;font-weight:700;">${esc(invoiceNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Payment method</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">Check #${esc(checkNumber)}</td></tr>
+          <tr><td style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;color:#666;">Date received</td><td align="right" style="padding:10px 16px;border-top:1px solid #eee;font-size:12px;font-weight:700;">${esc(receivedDate)}</td></tr>
+          <tr><td style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:15px;font-weight:700;">Amount received</td><td align="right" style="padding:12px 16px;border-top:2px solid #E07B2A;font-size:16px;font-weight:700;color:#E07B2A;">${fmt(invoice.totalCents)}</td></tr>
+        </table>
+        <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">If you have any questions, call me at <a href="tel:6154064819" style="color:#E07B2A;">(615) 406-4819</a> or reply to this email.</p>
+      </td></tr>
+      <tr><td style="padding:18px 36px;background:#1a1a1a;text-align:center;font-size:12px;color:#aaa;">Noland Earthworks, LLC &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated</td></tr>
+      <tr><td style="height:4px;background:#E07B2A;font-size:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ENV.resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Noland Earthworks <quotes@nolandearthworks.com>",
+        to: invoice.clientEmail,
+        reply_to: "quotes@nolandearthworks.com",
+        subject: `Payment received — ${invoiceNumber}`,
+        html: receiptHtml,
+      }),
+    });
+    const data = await response.json().catch(() => ({})) as { id?: string; message?: string };
+    if (!response.ok || !data.id) {
+      console.warn(`[Invoices] Check receipt delivery failed for invoice #${invoice.id}: ${data.message ?? response.statusText}`);
+      return { attempted: true, sent: false, reason: "delivery_failed" };
+    }
+    return { attempted: true, sent: true, emailId: data.id };
+  } catch (error) {
+    console.warn(`[Invoices] Check receipt delivery failed for invoice #${invoice.id}:`, error);
+    return { attempted: true, sent: false, reason: "delivery_failed" };
+  }
 }
 
 export interface InvoiceParams {

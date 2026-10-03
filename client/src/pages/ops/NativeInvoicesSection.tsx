@@ -64,6 +64,8 @@ type NativeInvoice = {
   paymentMethod?: string | null;
   paymentReference?: string | null;
   paymentNotes?: string | null;
+  paymentReceiptEmailId?: string | null;
+  paymentReceiptSentAt?: Date | null;
   emailSentId: string | null;
   emailSentAt: Date | null;
   paidAt: Date | null;
@@ -125,6 +127,16 @@ function statusIcon(status: string) {
   }
 }
 
+function paymentMethodLabel(invoice: NativeInvoice): string {
+  if (invoice.achPaymentPendingAt) return "Stripe ACH";
+  if (invoice.paymentMethod === "check") {
+    return invoice.paymentReference ? `Check #${invoice.paymentReference}` : "Check";
+  }
+  if (invoice.paymentMethod === "stripe") return "Stripe";
+  if (invoice.paymentMethod === "cash") return "Cash";
+  return invoice.status === "paid" ? "Unspecified" : "—";
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NativeInvoicesSection() {
@@ -136,6 +148,7 @@ export default function NativeInvoicesSection() {
   const [checkNumber, setCheckNumber] = useState("");
   const [checkReceivedAt, setCheckReceivedAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [checkNote, setCheckNote] = useState("");
+  const [sendCheckReceipt, setSendCheckReceipt] = useState(true);
   const [resendId, setResendId] = useState<number | null>(null);
 
   // Fetch all invoices (no jobId filter = all)
@@ -145,7 +158,7 @@ export default function NativeInvoicesSection() {
     onSuccess: () => {
       utils.nativeJobs.listInvoices.invalidate();
       utils.nativeJobs.list.invalidate();
-      toast.success("Invoice marked as paid");
+      toast.success("Cash payment recorded — invoice marked paid");
       setMarkPaidId(null);
     },
     onError: (e) => toast.error(e.message),
@@ -156,7 +169,15 @@ export default function NativeInvoicesSection() {
       utils.nativeJobs.listInvoices.invalidate();
       utils.nativeJobs.list.invalidate();
       utils.nativeQuotes.list.invalidate();
-      toast.success(`Check #${result.checkNumber} recorded — invoice marked paid`);
+      if (result.receipt.sent) {
+        toast.success(`Check #${result.checkNumber} recorded — receipt emailed to the customer`);
+      } else if (result.receipt.attempted) {
+        toast.warning(`Check #${result.checkNumber} recorded, but the receipt email could not be delivered.`);
+      } else if (result.receipt.reason === "missing_email") {
+        toast.success(`Check #${result.checkNumber} recorded — no customer email was available for a receipt.`);
+      } else {
+        toast.success(`Check #${result.checkNumber} recorded — invoice marked paid`);
+      }
       setCheckPaymentId(null);
       setCheckNumber("");
       setCheckNote("");
@@ -205,6 +226,7 @@ export default function NativeInvoicesSection() {
     setCheckNumber("");
     setCheckReceivedAt(new Date().toISOString().slice(0, 10));
     setCheckNote("");
+    setSendCheckReceipt(Boolean(invoice.clientEmail));
   }
 
   function submitCheckPayment() {
@@ -224,6 +246,7 @@ export default function NativeInvoicesSection() {
       checkNumber: reference,
       receivedAt,
       note: checkNote.trim() || undefined,
+      sendReceipt: sendCheckReceipt,
     });
   }
 
@@ -315,6 +338,7 @@ export default function NativeInvoicesSection() {
                 <th className="text-left px-3 py-2 font-medium">Service</th>
                 <th className="text-left px-3 py-2 font-medium">Date</th>
                 <th className="text-right px-3 py-2 font-medium">Amount</th>
+                <th className="text-center px-3 py-2 font-medium">Payment</th>
                 <th className="text-center px-3 py-2 font-medium">Status</th>
                 <th className="text-center px-3 py-2 font-medium">Actions</th>
               </tr>
@@ -354,6 +378,25 @@ export default function NativeInvoicesSection() {
                       <div className="text-[10px] text-zinc-500">
                         -{formatCents(inv.depositPaidCents)} dep.
                       </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span
+                      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                        inv.paymentMethod === "check"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                          : inv.paymentMethod === "stripe" || inv.achPaymentPendingAt
+                            ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                            : inv.paymentMethod === "cash"
+                              ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                              : "border-zinc-700 bg-zinc-800 text-zinc-500"
+                      }`}
+                      title={inv.paymentNotes ?? undefined}
+                    >
+                      {paymentMethodLabel(inv)}
+                    </span>
+                    {inv.paymentReceiptSentAt && (
+                      <span className="mt-1 block text-[9px] leading-none text-zinc-500">Receipt emailed</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
@@ -472,17 +515,17 @@ export default function NativeInvoicesSection() {
         )}
       </div>
 
-      {/* Mark Paid Confirmation */}
+      {/* Cash Payment Confirmation */}
       <AlertDialog open={markPaidId !== null} onOpenChange={(v) => !v && setMarkPaidId(null)}>
         <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark invoice as paid?</AlertDialogTitle>
+            <AlertDialogTitle>Record cash payment?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
               {invoiceToMarkPaid && (
                 <>
                   Invoice #{String(invoiceToMarkPaid.id).padStart(4, "0")} for{" "}
                   <strong className="text-zinc-200">{invoiceToMarkPaid.clientName}</strong> —{" "}
-                  {formatCents(invoiceToMarkPaid.totalCents)}. This will also update the job record. If you have a check in hand, cancel and use the green banknote button so the check number is saved.
+                  {formatCents(invoiceToMarkPaid.totalCents)}. This will mark the payment method as Cash and update the job record. If you have a check in hand, cancel and use the green banknote button so the check number is saved.
                 </>
               )}
             </AlertDialogDescription>
@@ -495,7 +538,7 @@ export default function NativeInvoicesSection() {
               onClick={() => markPaidId && markPaidMutation.mutate({ invoiceId: markPaidId })}
               className="bg-green-700 hover:bg-green-600 text-white"
             >
-              Mark Paid
+              Record Cash Payment
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -546,6 +589,23 @@ export default function NativeInvoicesSection() {
                 maxLength={1000}
                 className="bg-zinc-800 border-zinc-700 text-zinc-100"
               />
+            </label>
+            <label className={`flex items-start gap-2 rounded-md border p-3 text-sm ${invoiceToRecordCheck?.clientEmail ? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200" : "border-zinc-700 bg-zinc-800/50 text-zinc-500"}`}>
+              <input
+                type="checkbox"
+                checked={sendCheckReceipt}
+                onChange={(event) => setSendCheckReceipt(event.target.checked)}
+                disabled={!invoiceToRecordCheck?.clientEmail}
+                className="mt-0.5 h-4 w-4 accent-emerald-500 disabled:cursor-not-allowed"
+              />
+              <span>
+                <span className="block font-medium">Email a payment receipt to the customer</span>
+                <span className="mt-0.5 block text-xs text-zinc-500">
+                  {invoiceToRecordCheck?.clientEmail
+                    ? `A receipt for Check #${checkNumber.trim() || "…"} will go to ${invoiceToRecordCheck.clientEmail}.`
+                    : "No customer email is saved on this invoice, so a receipt cannot be sent."}
+                </span>
+              </span>
             </label>
           </div>
           <DialogFooter>

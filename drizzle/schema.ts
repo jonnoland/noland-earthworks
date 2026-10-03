@@ -2197,6 +2197,10 @@ export const nativeInvoices = mysqlTable("native_invoices", {
   paymentReference: varchar("paymentReference", { length: 100 }),
   /** Internal payment note, such as bank, memo, or check-handling detail. */
   paymentNotes: text("paymentNotes"),
+  /** Resend email ID for the optional manual-check payment receipt. */
+  paymentReceiptEmailId: varchar("paymentReceiptEmailId", { length: 128 }),
+  /** Timestamp when the customer payment receipt was accepted for delivery. */
+  paymentReceiptSentAt: timestamp("paymentReceiptSentAt"),
   /** Resend email ID — for tracking delivery */
   emailSentId: varchar("emailSentId", { length: 128 }),
   emailSentAt: timestamp("emailSentAt"),

@@ -4,7 +4,7 @@
  * These tests validate the router procedures in isolation using a mocked
  * database (vi.mock). No real database connection is required.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 // ─── Mock the database module ─────────────────────────────────────────────────
@@ -332,7 +332,7 @@ describe("nativeJobs.markInvoicePaid", () => {
       appRouter.createCaller(createOwnerContext()).nativeJobs.markInvoicePaid({ invoiceId: 75 })
     ).resolves.toEqual({ success: true });
 
-    expect(updates).toContainEqual(expect.objectContaining({ status: "paid", achPaymentPendingAt: null }));
+    expect(updates).toContainEqual(expect.objectContaining({ status: "paid", achPaymentPendingAt: null, paymentMethod: "cash" }));
     expect(updates).toContainEqual(expect.objectContaining({ paidCents: 240000 }));
     expect(updates).toContainEqual({
       finalPaymentStatus: "paid",
@@ -345,6 +345,7 @@ describe("nativeJobs.markInvoicePaid", () => {
 
 describe("nativeJobs.recordInvoiceCheck", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.unstubAllGlobals());
 
   it("records a received check, closes the online checkout, and moves the linked quote to paid", async () => {
     const invoice = {
@@ -416,6 +417,54 @@ describe("nativeJobs.recordInvoiceCheck", () => {
       appRouter.createCaller(createOwnerContext()).nativeJobs.recordInvoiceCheck({ invoiceId: 77, checkNumber: "1049" })
     ).rejects.toThrow("ACH payment is awaiting bank settlement");
     expect(expireInvoiceCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it("emails a receipt after recording a check without making payment recording depend on delivery", async () => {
+    const invoice = {
+      id: 78,
+      jobId: 1,
+      quoteId: 10,
+      clientName: "Ken Sawyer",
+      clientEmail: "ken@example.com",
+      totalCents: 325000,
+      status: "sent",
+      achPaymentPendingAt: null,
+      stripeCheckoutSessionId: null,
+    };
+    const updates: Array<Record<string, unknown>> = [];
+    const updateSet = vi.fn((values: Record<string, unknown>) => ({
+      where: vi.fn().mockImplementation(async () => { updates.push(values); }),
+    }));
+    const mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([invoice]),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "receipt_email_123" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      appRouter.createCaller(createOwnerContext()).nativeJobs.recordInvoiceCheck({
+        invoiceId: 78,
+        checkNumber: "1050",
+        sendReceipt: true,
+      })
+    ).resolves.toEqual(expect.objectContaining({ receipt: { attempted: true, sent: true } }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.resend.com/emails",
+      expect.objectContaining({ method: "POST", body: expect.stringContaining("Payment received — INV-0078") })
+    );
+    expect(updates).toContainEqual(expect.objectContaining({
+      paymentReceiptEmailId: "receipt_email_123",
+      paymentReceiptSentAt: expect.any(Date),
+    }));
   });
 });
 

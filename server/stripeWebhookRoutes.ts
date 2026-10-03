@@ -175,6 +175,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       await db.update(nativeInvoices).set({
         achPaymentPendingAt: new Date(),
         stripePaymentIntentId: paymentIntentId,
+        paymentMethod: "stripe",
       }).where(eq(nativeInvoices.id, nativeInvoiceId));
       console.log(`[Stripe Webhook] Invoice #${nativeInvoiceId} payment submitted and awaiting settlement`);
     }
@@ -230,6 +231,9 @@ async function markNativeInvoicePaid(
       paidAt,
       stripePaymentIntentId: paymentIntentId ?? invoice.stripePaymentIntentId,
       achPaymentPendingAt: null,
+      paymentMethod: "stripe",
+      paymentReference: null,
+      paymentNotes: null,
     }).where(eq(nativeInvoices.id, invoiceId));
   }
   await db.update(nativeJobs).set({ paidCents: invoice.totalCents, paidAt }).where(eq(nativeJobs.id, invoice.jobId));

@@ -19,9 +19,9 @@ describe("ACH payment-pending invoice status", () => {
     expect(invoiceUiSource).toContain("!inv.achPaymentPendingAt");
   });
 
-  it("clears the pending state if an invoice is manually marked paid", () => {
+  it("clears the pending state if a cash payment is recorded", () => {
     expect(jobsRouterSource).toContain('status: "paid",');
     expect(jobsRouterSource).toContain("achPaymentPendingAt: null,");
-    expect(jobsRouterSource).toContain('paymentMethod: "manual",');
+    expect(jobsRouterSource).toContain('paymentMethod: "cash",');
   });
 });

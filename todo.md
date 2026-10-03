@@ -4274,3 +4274,16 @@
 - [x] Add check payment fields and an Operations action to record an in-hand check against a final invoice.
 - [x] Ensure a recorded check marks the invoice, job, and linked quote paid without invoking Stripe.
 - [x] Add receipt details and regression coverage, validate, checkpoint, and refresh the preview.
+
+## Check Payment Receipt and Method Visibility — October 3, 2026
+
+- [x] Add payment-method and receipt-delivery fields to final invoices.
+- [x] Send an optional, default-on customer receipt when an in-hand check is recorded without rolling back a valid payment if email delivery fails.
+- [x] Capture Stripe and cash payment methods consistently and show the specific method in the invoice list.
+- [x] Add regression coverage, apply the schema migration, validate, checkpoint, and refresh the preview.
+
+## Completed Job Check Payment Flow — October 3, 2026
+
+- [x] Add a direct paid-by-check completion path beside Send Final Invoice so an in-hand check does not trigger a live payment link.
+- [x] Create the invoice, record the check, and optionally email only the payment receipt from the Jobs workflow.
+- [x] Add regression coverage, validate, checkpoint, and refresh the preview.
