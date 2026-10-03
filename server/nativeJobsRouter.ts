@@ -976,6 +976,54 @@ export const nativeJobsRouter = router({
         paymentReceiptUrl: paidDocuments.paymentReceiptUrl,
       };
     }),
+
+  /**
+   * Rebuilds stored paid documents for a legacy check invoice. No customer
+   * message is sent and the existing paid status is never changed.
+   */
+  refreshPaidCheckDocuments: ownerProcedure
+    .input(z.object({ invoiceId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [invoice] = await db
+        .select()
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.id, input.invoiceId))
+        .limit(1);
+
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (invoice.status !== "paid" || invoice.paymentMethod !== "check" || !invoice.paymentReference) {
+        throw new TRPCError({ code: "CONFLICT", message: "Only paid check invoices with a saved check number can be refreshed." });
+      }
+
+      let paidDocuments: { paidInvoiceUrl: string; paymentReceiptUrl: string };
+      try {
+        paidDocuments = await savePaidCheckDocuments({
+          invoice,
+          job: {
+            clientName: invoice.clientName,
+            clientEmail: invoice.clientEmail,
+            clientPhone: invoice.clientPhone,
+            propertyAddress: invoice.propertyAddress,
+            serviceType: invoice.serviceType,
+          },
+          checkNumber: invoice.paymentReference,
+          paidAt: invoice.paidAt ?? new Date(),
+        });
+      } catch (error) {
+        console.error(`[Invoices] Could not refresh paid documents for invoice #${invoice.id}:`, error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not rebuild the paid invoice and receipt. Try again shortly." });
+      }
+
+      await db
+        .update(nativeInvoices)
+        .set({ pdfUrl: paidDocuments.paidInvoiceUrl, paymentReceiptUrl: paidDocuments.paymentReceiptUrl })
+        .where(eq(nativeInvoices.id, invoice.id));
+
+      return { success: true, invoiceId: invoice.id, ...paidDocuments };
+    }),
 });
 
 // ─── HTML Builders ─────────────────────────────────────────────────────────────

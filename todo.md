@@ -4299,3 +4299,9 @@
 - [x] Save a viewable payment-receipt document when a check payment is recorded or its receipt is resent.
 - [x] Regenerate the final invoice as paid and expose it from Operations.
 - [x] Add paid invoice and receipt controls to invoice details, then validate, migrate, checkpoint, and refresh the preview.
+
+## Legacy Paid Invoice Document Repair — October 3, 2026
+
+- [x] Identify paid check invoices whose stored document still shows an unpaid balance.
+- [x] Add an owner-safe refresh path that replaces legacy paid-check invoice documents with paid versions.
+- [x] Regenerate affected documents, add regression coverage, validate, checkpoint, and refresh the preview.

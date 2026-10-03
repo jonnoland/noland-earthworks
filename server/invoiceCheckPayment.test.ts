@@ -42,6 +42,7 @@ describe("manual invoice check payment workflow", () => {
     expect(invoicesUi).toContain("View paid final invoice");
     expect(invoicesUi).toContain("View final payment receipt");
     expect(invoicesUi).toContain("Resend Payment Receipt");
+    expect(invoicesUi).toContain("Refresh and view paid final invoice");
   });
 
   it("resends only the receipt for paid check invoices while preserving settled payment state", () => {
@@ -49,5 +50,12 @@ describe("manual invoice check payment workflow", () => {
     expect(router).toContain("Only paid check invoices can receive a payment receipt resend.");
     expect(router).toContain("savePaidCheckDocuments");
     expect(router).toContain("paymentReceiptUrl: paidDocuments.paymentReceiptUrl");
+  });
+
+  it("rebuilds legacy paid check documents without emailing the customer or changing paid status", () => {
+    expect(router).toContain("refreshPaidCheckDocuments: ownerProcedure");
+    expect(router).toContain("Only paid check invoices with a saved check number can be refreshed.");
+    expect(router).toContain("No customer\n   * message is sent");
+    expect(router).toContain("set({ pdfUrl: paidDocuments.paidInvoiceUrl, paymentReceiptUrl: paidDocuments.paymentReceiptUrl })");
   });
 });

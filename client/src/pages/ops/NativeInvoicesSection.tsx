@@ -40,6 +40,7 @@ import {
   Send,
   Copy,
   Banknote,
+  RefreshCw,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -201,6 +202,15 @@ export default function NativeInvoicesSection() {
       utils.nativeJobs.listInvoices.invalidate();
       toast.success(`Payment receipt resent to ${result.clientEmail}`);
       setResendReceiptId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const refreshPaidDocumentsMutation = trpc.nativeJobs.refreshPaidCheckDocuments.useMutation({
+    onSuccess: (result) => {
+      utils.nativeJobs.listInvoices.invalidate();
+      window.open(result.paidInvoiceUrl, "_blank");
+      toast.success("Paid final invoice and payment receipt refreshed");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -447,11 +457,25 @@ export default function NativeInvoicesSection() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(inv.pdfUrl!, "_blank")}
+                          onClick={() => {
+                            const needsPaidDocumentRefresh = inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl;
+                            if (needsPaidDocumentRefresh) {
+                              refreshPaidDocumentsMutation.mutate({ invoiceId: inv.id });
+                              return;
+                            }
+                            window.open(inv.pdfUrl!, "_blank");
+                          }}
+                          disabled={refreshPaidDocumentsMutation.isPending && inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl}
                           className="h-7 px-2 text-zinc-400 hover:text-zinc-200 text-xs"
-                          title={inv.status === "paid" && inv.paymentMethod === "check" ? "View paid final invoice" : "View invoice"}
+                          title={
+                            inv.status === "paid" && inv.paymentMethod === "check"
+                              ? inv.paymentReceiptUrl ? "View paid final invoice" : "Refresh and view paid final invoice"
+                              : "View invoice"
+                          }
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          {refreshPaidDocumentsMutation.isPending && inv.status === "paid" && inv.paymentMethod === "check" && !inv.paymentReceiptUrl
+                            ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            : <ExternalLink className="w-3.5 h-3.5" />}
                         </Button>
                       )}
                       {inv.paymentReceiptUrl && inv.status === "paid" && inv.paymentMethod === "check" && (
