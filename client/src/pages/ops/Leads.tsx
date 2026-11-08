@@ -135,7 +135,7 @@ function SourceConversionChart({ leads, onSourceClick }: { leads: Lead[]; onSour
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BUSINESS_ADDRESS = "93 Halliburton Road, Vanleer, TN 37181";
+const BUSINESS_ADDRESS = "Vanleer, TN";
 
 const KANBAN_STAGES = [
   { id: "new",           label: "New Lead",   subtitle: "Fresh inquiries" },

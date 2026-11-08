@@ -406,8 +406,7 @@ export default function Footer() {
               }}
             >
               <strong style={{ color: "rgba(240,237,230,0.6)", display: "block", marginBottom: "0.2rem" }}>Noland Earthworks, LLC</strong>
-              93 Halliburton Road<br />
-              Vanleer, TN 37181<br />
+              Based in Vanleer, TN, serving surrounding areas.<br />
               <a
                 href="tel:6154064819"
                 style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}

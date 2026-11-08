@@ -105,6 +105,7 @@ export default function ForestryMulchingPage() {
       },
       "address": {
         "@type": "PostalAddress",
+        "addressLocality": "Vanleer",
         "addressRegion": "TN",
         "addressCountry": "US"
       },

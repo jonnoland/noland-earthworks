@@ -118,7 +118,7 @@ export default function ContactSection() {
               {[
                 { icon: <Phone size={18} />, label: "Phone", value: "615-406-4819", href: "tel:6154064819" },
                 { icon: <Mail size={18} />, label: "Email", value: "info@nolandearthworks.com", href: "mailto:info@nolandearthworks.com" },
-                { icon: <MapPin size={18} />, label: "Service Area", value: "Middle & West Tennessee (35 Counties)", href: "#service-areas" },
+                { icon: <MapPin size={18} />, label: "Location", value: "Based in Vanleer, TN, serving surrounding areas.", href: "#service-areas" },
               ].map((c) => (
                 <a
                   key={c.label}

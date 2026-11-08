@@ -296,7 +296,7 @@ function GeneralTab() {
     { label: "Company name", done: !!form.companyName },
     { label: "Phone number", done: !!form.phone },
     { label: "Email address", done: !!form.email },
-    { label: "Business address", done: !!form.address },
+    { label: "Service area description", done: !!form.address },
     { label: "Website URL", done: !!form.website },
     { label: "Google Review URL", done: !!form.googleReviewUrl },
   ];
@@ -317,8 +317,8 @@ function GeneralTab() {
               <TextInput value={form.email} onChange={f("email")} placeholder="info@company.com" type="email" />
             </FieldRow>
           </div>
-          <FieldRow label="Address">
-            <TextInput value={form.address} onChange={f("address")} placeholder="123 Main St" />
+          <FieldRow label="Service area description">
+            <TextInput value={form.address} onChange={f("address")} placeholder="Based in Vanleer, TN, serving surrounding areas." />
           </FieldRow>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <FieldRow label="City">

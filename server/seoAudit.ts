@@ -351,8 +351,8 @@ Paste the tag above, replacing the URL with this page's full URL.
     "addressRegion": "TN",
     "addressCountry": "US"
   },
-  "geo": { "@type": "GeoCoordinates", "latitude": 36.25, "longitude": -87.47 },
-  "areaServed": "Middle and West Tennessee"
+  "areaServed": "Middle and West Tennessee",
+  "description": "Based in Vanleer, TN, serving surrounding areas."
 }
 </script>
 
@@ -762,7 +762,7 @@ This runs before the page renders and sets lang="en" on the <html> tag.`, priori
   if (localBusinessValid) {
     checks.push({ id: "local_business_schema_ok", category: "onpage", label: "LocalBusiness JSON-LD validation", status: "pass", value: "Valid", detail: localBusinessDetail, priority: "high" });
   } else {
-    checks.push({ id: "local_business_schema_invalid", category: "onpage", label: "LocalBusiness JSON-LD validation", status: schemaScripts.length > 0 ? "warn" : "fail", value: "Incomplete", detail: localBusinessDetail, recommendation: "Add or complete LocalBusiness JSON-LD with name, address, telephone, areaServed, and geo fields for local SEO.", fixExample: `<!-- Complete LocalBusiness JSON-LD — paste in Squarespace Code Injection → Header -->
+    checks.push({ id: "local_business_schema_invalid", category: "onpage", label: "LocalBusiness JSON-LD validation", status: schemaScripts.length > 0 ? "warn" : "fail", value: "Incomplete", detail: localBusinessDetail, recommendation: "Add or complete LocalBusiness JSON-LD with the general service-area location, name, telephone, and areaServed for local SEO.", fixExample: `<!-- Complete LocalBusiness JSON-LD — paste in Squarespace Code Injection → Header -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -772,19 +772,12 @@ This runs before the page renders and sets lang="en" on the <html> tag.`, priori
   "url": "https://nolandearthworks.com",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "",
     "addressLocality": "Vanleer",
     "addressRegion": "TN",
-    "postalCode": "37181",
     "addressCountry": "US"
   },
-  "geo": {
-    "@type": "GeoCoordinates",
-    "latitude": 36.25,
-    "longitude": -87.47
-  },
   "areaServed": "Middle and West Tennessee",
-  "description": "Veteran-owned land management and forestry mulching serving Middle & West Tennessee."
+  "description": "Based in Vanleer, TN, serving surrounding areas. Veteran-owned land management and forestry mulching serving Middle & West Tennessee."
 }
 </script>
 

@@ -1042,8 +1042,7 @@ export default function AboutPage() {
                 }}
               >
                 <strong style={{ color: "rgba(240,237,230,0.8)", display: "block", marginBottom: "0.25rem", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "0.8rem" }}>Noland Earthworks, LLC</strong>
-                93 Halliburton Road<br />
-                Vanleer, TN 37181<br />
+                Based in Vanleer, TN, serving surrounding areas.<br />
                 <a href="tel:6154064819" style={{ color: "rgba(240,237,230,0.55)", textDecoration: "none" }}>Phone: 615-406-4819</a>
                 <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8rem", color: "rgba(240,237,230,0.4)" }}>
                   Serving 35 counties across Middle and West Tennessee

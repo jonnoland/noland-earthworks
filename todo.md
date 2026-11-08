@@ -1,3 +1,4 @@
+- [x] Replace the former street address across public contact/footer/About content, maps, structured SEO metadata, business settings, and operational fallbacks with "Based in Vanleer, TN, serving surrounding areas."
 - [x] Replace footer text "NOLAND EARTHWORKS" + tagline with logo image
 - [x] Add Related Services section to all four service detail pages
 - [x] Add unique SEO page titles to all pages

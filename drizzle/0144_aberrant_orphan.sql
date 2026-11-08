@@ -1,0 +1,2 @@
+ALTER TABLE `business_settings` MODIFY COLUMN `address` varchar(300) DEFAULT 'Based in Vanleer, TN, serving surrounding areas.';--> statement-breakpoint
+ALTER TABLE `business_settings` MODIFY COLUMN `zip` varchar(20) DEFAULT '';
